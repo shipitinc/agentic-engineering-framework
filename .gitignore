@@ -1,3 +1,11 @@
-# Agent session artifacts (not part of the canonical framework)
-.air/
-.junie/
+# Transient agent session artifacts.
+#
+# Do NOT ignore the whole .air/ or .junie/ namespaces: both may contain durable,
+# shareable project configuration that is intended to be versioned (e.g. worktree
+# setup, Docker environment, MCP configuration, and review prompts under .air/;
+# Skills and other project-scoped agent configuration under .junie/).
+#
+# Ignore only narrowly-scoped, evidence-backed transient paths. Currently the only
+# artifacts observed under these namespaces are per-session plan files.
+.air/plans/
+.junie/plans/

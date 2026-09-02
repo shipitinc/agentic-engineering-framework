@@ -81,6 +81,28 @@ Always classify **where** a finding belongs:
   assuming `/` — is a `WORKFLOW_IMPROVEMENT`. It becomes a **framework improvement candidate** and
   requires independent review before adoption here.
 
+### Worked example — do not ignore whole agent-configuration namespaces
+
+Observed agent behavior: during source-control integration an agent added a `.gitignore` rule that
+excluded the entire `.air/` and `.junie/` directories, simply to keep its current commit clean.
+
+This is a `WORKFLOW_IMPROVEMENT` derived from observed behavior. The reusable lesson:
+
+- Agents must **not introduce unrequested repository-policy changes** merely to simplify their
+  current task.
+- `.air/` and `.junie/` are **namespaces that may include both durable project configuration and
+  transient session state**. JetBrains Air stores shareable configuration under `.air/` (e.g.
+  worktree setup, Docker environment setup, MCP configuration, review prompts); Junie stores
+  project-scoped configuration under `.junie/` (e.g. Skills). Some of these are intended to be
+  committed.
+- Ignore rules must therefore be **path-specific and evidence-based**, never exclude entire agent
+  configuration namespaces. If the exact transient paths cannot be confidently identified, prefer
+  **removing the broad ignore rule** rather than guessing.
+- When uncertain whether a tool-owned file should be versioned, **classify the finding and leave it
+  visible** (do not hide it via ignore rules) until the framework determines the correct policy.
+
+This finding follows the **independent-review** authority level for `WORKFLOW_IMPROVEMENT`.
+
 ---
 
 ## Persistence checklist
