@@ -126,9 +126,17 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
   `framework.revision`, per-artifact install/source hashes) and **reviewable, isolated 3-way-merge
   upgrades** that preserve product-specific knowledge. Normal product operation requires **no**
   runtime access to the framework repository or any package registry.
-  Still explicitly **open**: the concrete **framework driver/tool** (e.g., Copier vs. a custom/thin
-  driver) is a separate later implementation decision, along with any bootstrap CLI, release system,
-  tags, or package distribution. See [framework/templates/](../../framework/templates/).
+
+- **Framework driver / tooling selection** — RESOLVED by
+  [ADR 0002](adr/0002-dart-mason-git-framework-driver.md): the driver is
+  **Dart + Mason + Git** with **`framework-manifest.yaml`** as authoritative provenance. Dart owns
+  CLI/orchestration; Mason owns template rendering only; Git owns native 3-way merge/versioning
+  mechanics; a **custom text merge engine is prohibited**. This selection was validated by an
+  empirical proof-of-concept (`DART_MASON_GIT_POC_PASS`, no architecture blockers). ADR 0002 records
+  the mandatory POC-derived mitigations, exit-code and structured-result contracts, and a phased
+  implementation plan. The **production CLI is not yet implemented** — implementation is explicitly
+  deferred to the phased plan (next state: Phase 1 CLI skeleton/domain model); the driver is **not**
+  production-ready merely because the POC passed. See [framework/templates/](../../framework/templates/).
 
 ---
 

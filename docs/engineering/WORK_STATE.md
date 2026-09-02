@@ -17,6 +17,8 @@ product-specific architecture, design, or infrastructure decisions — those bel
   - [LEARNING_POLICY.md](LEARNING_POLICY.md) — knowledge classification & authority.
   - [adr/0001-framework-distribution-and-versioning.md](adr/0001-framework-distribution-and-versioning.md)
     — framework distribution/versioning architecture decision.
+  - [adr/0002-dart-mason-git-framework-driver.md](adr/0002-dart-mason-git-framework-driver.md)
+    — framework driver/tooling selection (Dart + Mason + Git).
   - [framework/templates/](../../framework/templates/) — minimal placeholder structure.
 
 ## Recorded framework decisions
@@ -26,8 +28,16 @@ product-specific architecture, design, or infrastructure decisions — those bel
   hashes, no persisted `locally_modified` flag) and **reviewable, isolated 3-way-merge** upgrades
   that preserve product-specific knowledge. Provenance and any template answers are kept separate;
   normal product operation requires **no** runtime access to this framework repo or a registry.
-  - **Deferred (not decided):** the concrete framework **driver/tool** (e.g., Copier vs. a
-    custom/thin driver), and any bootstrap CLI, release system, tags, or package distribution.
+- **Framework driver/tool selection (ADR 0002):** the driver is **Dart + Mason + Git** with
+  **`framework-manifest.yaml`** as authoritative provenance. **Dart** owns CLI/orchestration;
+  **Mason** owns template rendering only (non-authoritative metadata); **Git** owns native 3-way
+  merge/versioning mechanics; a **custom text merge engine is prohibited**. This was validated by an
+  empirical proof-of-concept (`DART_MASON_GIT_POC_PASS`, all pass criteria met, **no architecture
+  blockers**). ADR 0002 records the mandatory POC-derived mitigations, the exit-code and
+  structured-result contracts, and an 8-phase implementation plan.
+  - **POC passed, but no production CLI is implemented yet.** The driver is **not** production-ready
+    merely because the POC passed. No packages, releases, tags, CI, Mason bricks, or product repos
+    were created. **Next state:** Phase 1 implementation design / CLI skeleton + domain model.
 
 - **Plan artifact retention policy (APPROVED WITH REFINEMENT):** agent-generated plan artifacts
   (`.air/plans/`, `.junie/plans/`, or equivalent) are **visible/versionable but not automatically
@@ -71,9 +81,11 @@ unmodified pending an explicit follow-up task to carry out the deletion.
 
 ## Next steps for the framework itself
 
-- Select the framework **driver/tool** for the copy-based distribution model (deferred by ADR 0001),
-  then implement bootstrap/upgrade tooling.
+- **Begin Phase 1** of the ADR 0002 implementation plan (CLI skeleton + domain model, structured
+  output, exit-code semantics; no real bootstrap/update yet). Driver/tool selection itself is now
+  resolved (Dart + Mason + Git per ADR 0002).
 - Resolve the remaining `UNRESOLVED_FRAMEWORK_AREA` items in [WORKFLOW.md](WORKFLOW.md).
-- Flesh out [framework/templates/](../../framework/templates/) once the driver/tool is chosen.
+- Flesh out [framework/templates/](../../framework/templates/) as Mason bricks during the phased
+  implementation (ADR 0002).
 - Material workflow-framework changes require independent review; consequential governance changes
   require human approval.

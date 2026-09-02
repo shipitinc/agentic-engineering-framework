@@ -112,6 +112,25 @@ This is a `WORKFLOW_IMPROVEMENT` derived from observed behavior. The reusable le
 
 This finding follows the **independent-review** authority level for `WORKFLOW_IMPROVEMENT`.
 
+### Worked example — validate framework tooling with a disposable POC before adoption
+
+Before selecting the framework driver/tool, a disposable proof-of-concept validated
+Dart + Mason + Git against the ADR 0001 model entirely **outside** the canonical tracked working
+tree (throwaway repos in a temp area), leaving the canonical repository unchanged. The reusable
+lessons (`WORKFLOW_IMPROVEMENT`, generally reusable):
+
+- **Prove a candidate tool empirically in an isolated, disposable context before adopting it**, and
+  keep that experimentation out of the canonical tracked tree so provenance/baseline stays intact.
+- **Delegate merge mechanics to Git-native plumbing** (isolated worktree + synthetic
+  base/local/incoming commits, or `git merge-tree --write-tree`); do **not** write a custom text
+  merge engine.
+- **Keep the rendering engine subordinate and replaceable**: authoritative provenance lives in a
+  tool-independent manifest, never in rendering-tool metadata.
+
+The concrete decision and full requirements are recorded in
+[ADR 0002](adr/0002-dart-mason-git-framework-driver.md); this entry captures only the reusable
+method. It follows the **human-decision** authority level (consequential architecture selection).
+
 ---
 
 ## Plan artifact retention policy
