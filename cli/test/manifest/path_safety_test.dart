@@ -36,6 +36,19 @@ void main() {
       );
     });
 
+    test('rejects UNC-style paths', () {
+      // UNC paths (//host/share/...) are rejected via the leading-"/" check.
+      expect(
+        () => normalizeManagedPath('//host/share/file'),
+        throwsA(isA<PathSafetyException>()),
+      );
+      // Backslash UNC form is unified to forward slashes, then rejected too.
+      expect(
+        () => normalizeManagedPath('\\\\host\\share\\file'),
+        throwsA(isA<PathSafetyException>()),
+      );
+    });
+
     test('rejects parent-directory traversal', () {
       expect(
         () => normalizeManagedPath('../secret'),

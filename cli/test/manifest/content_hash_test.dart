@@ -42,6 +42,35 @@ void main() {
       expect(() => ContentHash.parse('sha256:abc'), throwsFormatException);
     });
 
+    test('binary content is hashed as raw bytes (no LF normalization)', () {
+      // Two binaries differing only by a single 0x0d vs 0x0a byte. Both are
+      // classified binary via the NUL byte, so they must hash differently.
+      final withCr = ContentHash.ofBytes(<int>[0x00, 0x0d, 0x41]);
+      final withLf = ContentHash.ofBytes(<int>[0x00, 0x0a, 0x41]);
+      expect(withCr, isNot(equals(withLf)));
+    });
+
+    test('NUL-containing content is treated as binary', () {
+      // As binary, CRLF differs from LF (unlike text, which normalizes).
+      final binaryCrlf = ContentHash.ofBytes(<int>[0x00, 0x0d, 0x0a]);
+      final binaryLf = ContentHash.ofBytes(<int>[0x00, 0x0a]);
+      expect(binaryCrlf, isNot(equals(binaryLf)));
+      // Forcing the same bytes as text would normalize CRLF -> LF and match.
+      final asTextCrlf = ContentHash.ofBytes(<int>[
+        0x00,
+        0x0d,
+        0x0a,
+      ], isText: true);
+      final asTextLf = ContentHash.ofBytes(<int>[0x00, 0x0a], isText: true);
+      expect(asTextCrlf, equals(asTextLf));
+    });
+
+    test('text CRLF and LF still hash identically (backward-compatible)', () {
+      final crlf = ContentHash.ofBytes(utf8.encode('a\r\nb\r\n'));
+      final lf = ContentHash.ofBytes(utf8.encode('a\nb\n'));
+      expect(crlf, equals(lf));
+    });
+
     test('ofFile equals ofBytes for the same content', () {
       final dir = Directory.systemTemp.createTempSync('hash_test_');
       try {

@@ -14,14 +14,34 @@ import 'package:crypto/crypto.dart';
 ///
 /// ## Normalization choice (documented, deterministic)
 ///
-/// Content is hashed after **line-ending normalization**: every `CRLF`
-/// (`\r\n`) and every lone `CR` (`\r`) is converted to a single `LF` (`\n`)
-/// before hashing. This makes the hash independent of the line-ending style a
-/// product repository happens to check out with (e.g. Git `core.autocrlf`), so
-/// an artifact that differs only by line endings is treated as *unchanged*.
-/// The normalized bytes are then hashed with SHA-256. This decision is fixed
-/// and applied uniformly to every artifact so hashes are byte-for-byte
-/// reproducible across platforms and runs.
+/// Content is classified per artifact as **text** or **binary**, and
+/// line-ending normalization is applied **only to text**:
+///
+/// - **Text** content is hashed after **line-ending normalization**: every
+///   `CRLF` (`\r\n`) and every lone `CR` (`\r`) is converted to a single `LF`
+///   (`\n`) before hashing. This makes the hash independent of the line-ending
+///   style a product repository happens to check out with (e.g. Git
+///   `core.autocrlf`), so a text artifact that differs only by line endings is
+///   treated as *unchanged*.
+/// - **Binary** content is hashed as **raw bytes** with no normalization, so a
+///   binary artifact differing only by a `0x0d`/`0x0a` byte is (correctly)
+///   treated as changed and never misclassified as a line-ending difference.
+///
+/// The (possibly normalized) bytes are then hashed with SHA-256. This decision
+/// is fixed and deterministic so hashes are byte-for-byte reproducible across
+/// platforms and runs.
+///
+/// ### Binary-detection heuristic (deterministic, dependency-free)
+///
+/// Content is classified as **binary** when either of the following holds:
+/// - it contains at least one `NUL` (`0x00`) byte; or
+/// - more than 30% of its bytes are non-text control bytes, where a
+///   "non-text control byte" is any byte `< 0x20` that is **not** one of the
+///   common text whitespace controls TAB (`0x09`), LF (`0x0a`), CR (`0x0d`)
+///   or FF (`0x0c`).
+///
+/// Empty content is treated as text. Callers may bypass the heuristic with an
+/// explicit `isText` override (see [ContentHash.ofBytes]).
 class ContentHash {
   const ContentHash._(this.algorithm, this.hex);
 
@@ -34,16 +54,26 @@ class ContentHash {
   /// The algorithm identifier used for all Phase 2 hashing.
   static const String defaultAlgorithm = 'sha256';
 
-  /// Computes the [ContentHash] of raw [bytes] after line-ending normalization.
-  factory ContentHash.ofBytes(List<int> bytes) {
-    final normalized = _normalizeLineEndings(bytes);
-    final digest = sha256.convert(normalized);
+  /// Computes the [ContentHash] of raw [bytes].
+  ///
+  /// Text content is line-ending normalized before hashing; binary content is
+  /// hashed as raw bytes. Classification uses the deterministic heuristic
+  /// documented on [ContentHash] unless [isText] is supplied to force text
+  /// (`true`) or binary (`false`) treatment. [isText] is a backward-compatible
+  /// optional override: with the default (`null`) the heuristic decides, and
+  /// text artifacts hash identically to previous releases.
+  factory ContentHash.ofBytes(List<int> bytes, {bool? isText}) {
+    final treatAsText = isText ?? !_looksBinary(bytes);
+    final toHash = treatAsText ? _normalizeLineEndings(bytes) : bytes;
+    final digest = sha256.convert(toHash);
     return ContentHash._(defaultAlgorithm, digest.toString());
   }
 
   /// Computes the [ContentHash] of a [file]'s current on-disk content.
-  factory ContentHash.ofFile(File file) {
-    return ContentHash.ofBytes(file.readAsBytesSync());
+  ///
+  /// Pass [isText] to override the automatic text/binary classification.
+  factory ContentHash.ofFile(File file, {bool? isText}) {
+    return ContentHash.ofBytes(file.readAsBytesSync(), isText: isText);
   }
 
   /// Parses a stored `"algorithm:hex"` representation (e.g. `sha256:ab12...`).
@@ -89,8 +119,29 @@ class ContentHash {
     return true;
   }
 
+  /// Classifies [bytes] as binary per the heuristic documented on
+  /// [ContentHash]: any `NUL` byte, or more than 30% non-text control bytes.
+  /// Empty content is treated as text (not binary).
+  static bool _looksBinary(List<int> bytes) {
+    if (bytes.isEmpty) return false;
+    const nul = 0x00;
+    const tab = 0x09;
+    const lf = 0x0a;
+    const ff = 0x0c;
+    const cr = 0x0d;
+    const space = 0x20;
+    var controlCount = 0;
+    for (final b in bytes) {
+      if (b == nul) return true;
+      if (b < space && b != tab && b != lf && b != ff && b != cr) {
+        controlCount++;
+      }
+    }
+    return controlCount * 10 > bytes.length * 3; // > 30%
+  }
+
   /// Converts `\r\n` and lone `\r` to `\n`. Operates on raw bytes so the same
-  /// deterministic rule applies uniformly to every artifact (see class doc).
+  /// deterministic rule applies to every *text* artifact (see class doc).
   static List<int> _normalizeLineEndings(List<int> bytes) {
     const cr = 0x0d;
     const lf = 0x0a;
