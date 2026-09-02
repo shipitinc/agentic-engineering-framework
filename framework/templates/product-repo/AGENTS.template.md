@@ -31,5 +31,10 @@ This product repository is governed by a **versioned copy** of the agentic engin
 
 ## Framework provenance
 
-- Framework version/revision: TBD (see this product repo's `framework-manifest.yaml`, which is the
-  instantiated copy of the framework-side source template `manifest.template.yaml`)
+- Framework revision: TBD — the **authoritative, immutable** provenance identifier.
+- Framework version: TBD — human-readable metadata only (revision controls provenance if they differ).
+- Both are recorded in this product repo's `framework-manifest.yaml` (the instantiated copy of the
+  framework-side source template `manifest.template.yaml`), which stores **provenance only** plus
+  per-artifact baseline hashes. Framework upgrades arrive as **reviewable, isolated 3-way-merge**
+  changes and must **not** create a runtime dependency on the framework repo. See the framework's
+  ADR 0001 (`docs/engineering/adr/0001-framework-distribution-and-versioning.md`).

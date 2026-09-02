@@ -27,5 +27,9 @@
 
 ## Framework provenance
 
-- Framework version/revision: TBD (see this product repo's `framework-manifest.yaml`, which is the
-  instantiated copy of the framework-side source template `manifest.template.yaml`)
+- Framework revision (authoritative): TBD
+- Framework version (human-readable metadata): TBD
+- Recorded in this product repo's `framework-manifest.yaml` (the instantiated copy of the
+  framework-side source template `manifest.template.yaml`). The manifest stores **provenance only**
+  plus per-artifact baseline hashes; local modifications are **derived** from hash comparison.
+  Upgrades are reviewable, isolated 3-way merges with no runtime dependency on the framework repo.

@@ -118,12 +118,24 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
 
 ---
 
+## Resolved framework areas
+
+- **Distribution/versioning of framework artifacts to product repositories** — RESOLVED at the
+  architecture level by [ADR 0001](adr/0001-framework-distribution-and-versioning.md):
+  **versioned copy-based installation** with **deterministic provenance** (authoritative
+  `framework.revision`, per-artifact install/source hashes) and **reviewable, isolated 3-way-merge
+  upgrades** that preserve product-specific knowledge. Normal product operation requires **no**
+  runtime access to the framework repository or any package registry.
+  Still explicitly **open**: the concrete **framework driver/tool** (e.g., Copier vs. a custom/thin
+  driver) is a separate later implementation decision, along with any bootstrap CLI, release system,
+  tags, or package distribution. See [framework/templates/](../../framework/templates/).
+
+---
+
 ## Unresolved framework areas
 
 These are explicitly **not** finalized and must not be treated as tested policy:
 
-- `UNRESOLVED_FRAMEWORK_AREA`: Concrete mechanism for distributing/versioning framework artifacts to
-  product repositories (pull vs. push, pinning strategy). See [framework/templates/](../../framework/templates/).
 - `UNRESOLVED_FRAMEWORK_AREA`: Exact required deterministic validation gate set per project type.
 - `UNRESOLVED_FRAMEWORK_AREA`: Ownership-conflict detection/enforcement mechanics for concurrent writers.
 - `UNRESOLVED_FRAMEWORK_AREA`: Standard format and storage location for ADRs in product repos.

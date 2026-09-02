@@ -1,11 +1,15 @@
-# Transient agent session artifacts.
+# Agent-configuration namespaces (.air/ and .junie/) are left fully visible to Git
+# by default.
 #
-# Do NOT ignore the whole .air/ or .junie/ namespaces: both may contain durable,
-# shareable project configuration that is intended to be versioned (e.g. worktree
-# setup, Docker environment, MCP configuration, and review prompts under .air/;
-# Skills and other project-scoped agent configuration under .junie/).
+# Do NOT ignore the whole .air/ or .junie/ namespaces, nor their plan directories:
+# both may contain durable, shareable project artifacts that are intended to be
+# versioned (e.g. worktree setup, Docker environment, MCP configuration, and review
+# prompts under .air/; Skills and other project-scoped agent configuration under
+# .junie/). Air plan files may be useful project artifacts, and Junie plans are
+# explicitly designed to be editable/committable.
 #
-# Ignore only narrowly-scoped, evidence-backed transient paths. Currently the only
-# artifacts observed under these namespaces are per-session plan files.
-.air/plans/
-.junie/plans/
+# Generated does not imply transient: do not add ignore rules for tool-owned
+# namespaces or generated artifacts without concrete evidence about their lifecycle
+# and repository value. Default to visibility/versionability when uncertain; ignore
+# only paths demonstrated to be local/session-only and not useful for collaboration,
+# provenance, replay, or review.

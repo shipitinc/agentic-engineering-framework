@@ -13,9 +13,21 @@ product-specific architecture, design, or infrastructure decisions — those bel
   learning policy, and templates). This repository is **not** an application.
 - **What exists now:**
   - [AGENTS.md](../../AGENTS.md) — repository-wide invariants.
-  - [WORKFLOW.md](WORKFLOW.md) — reusable lifecycle (with explicitly unresolved areas).
+  - [WORKFLOW.md](WORKFLOW.md) — reusable lifecycle (with resolved and still-unresolved areas).
   - [LEARNING_POLICY.md](LEARNING_POLICY.md) — knowledge classification & authority.
+  - [adr/0001-framework-distribution-and-versioning.md](adr/0001-framework-distribution-and-versioning.md)
+    — framework distribution/versioning architecture decision.
   - [framework/templates/](../../framework/templates/) — minimal placeholder structure.
+
+## Recorded framework decisions
+
+- **Distribution/versioning architecture (ADR 0001):** versioned **copy-based** installation with
+  **deterministic provenance** (authoritative `framework.revision`, per-artifact install/source
+  hashes, no persisted `locally_modified` flag) and **reviewable, isolated 3-way-merge** upgrades
+  that preserve product-specific knowledge. Provenance and any template answers are kept separate;
+  normal product operation requires **no** runtime access to this framework repo or a registry.
+  - **Deferred (not decided):** the concrete framework **driver/tool** (e.g., Copier vs. a
+    custom/thin driver), and any bootstrap CLI, release system, tags, or package distribution.
 
 ## Explicitly out of scope for this repository
 
@@ -34,8 +46,9 @@ product-specific architecture, design, or infrastructure decisions — those bel
 
 ## Next steps for the framework itself
 
-- Resolve the `UNRESOLVED_FRAMEWORK_AREA` items in [WORKFLOW.md](WORKFLOW.md).
-- Flesh out [framework/templates/](../../framework/templates/) once the distribution/versioning
-  mechanism is decided (currently unresolved).
+- Select the framework **driver/tool** for the copy-based distribution model (deferred by ADR 0001),
+  then implement bootstrap/upgrade tooling.
+- Resolve the remaining `UNRESOLVED_FRAMEWORK_AREA` items in [WORKFLOW.md](WORKFLOW.md).
+- Flesh out [framework/templates/](../../framework/templates/) once the driver/tool is chosen.
 - Material workflow-framework changes require independent review; consequential governance changes
   require human approval.

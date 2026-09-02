@@ -84,7 +84,10 @@ Always classify **where** a finding belongs:
 ### Worked example — do not ignore whole agent-configuration namespaces
 
 Observed agent behavior: during source-control integration an agent added a `.gitignore` rule that
-excluded the entire `.air/` and `.junie/` directories, simply to keep its current commit clean.
+excluded the entire `.air/` and `.junie/` directories, simply to keep its current commit clean. A
+narrower follow-up then ignored only `.air/plans/` and `.junie/plans/` as "transient" plan artifacts;
+new evidence shows even that was too strong — Air plan files may be useful project artifacts, and
+Junie plans are explicitly designed to be editable/committable.
 
 This is a `WORKFLOW_IMPROVEMENT` derived from observed behavior. The reusable lesson:
 
@@ -95,9 +98,15 @@ This is a `WORKFLOW_IMPROVEMENT` derived from observed behavior. The reusable le
   worktree setup, Docker environment setup, MCP configuration, review prompts); Junie stores
   project-scoped configuration under `.junie/` (e.g. Skills). Some of these are intended to be
   committed.
-- Ignore rules must therefore be **path-specific and evidence-based**, never exclude entire agent
-  configuration namespaces. If the exact transient paths cannot be confidently identified, prefer
-  **removing the broad ignore rule** rather than guessing.
+- **Generated does not imply transient.** Tool-owned namespaces and generated artifacts must **not**
+  be ignored without evidence about their lifecycle and repository value — including plan
+  directories such as `.air/plans/` and `.junie/plans/`.
+- **Default to visibility/versionability when uncertain.** Ignore rules must be **path-specific and
+  evidence-based**, never exclude entire agent configuration namespaces. Ignore only paths
+  demonstrated to be local/session-only and **not** useful for collaboration, provenance, replay, or
+  review. Do not introduce replacement ignore rules unless supported by concrete evidence. If the
+  exact transient paths cannot be confidently identified, prefer **removing the broad ignore rule**
+  rather than guessing.
 - When uncertain whether a tool-owned file should be versioned, **classify the finding and leave it
   visible** (do not hide it via ignore rules) until the framework determines the correct policy.
 
