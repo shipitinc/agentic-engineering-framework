@@ -21,6 +21,23 @@ These invariants are authoritative for any agent operating under this framework.
 - **Implementers never approve their own work.**
 - **Independent reviewers are read-only** with respect to production code under review.
 
+#### Junie orchestration binding
+- The **main Junie session is the authoritative Engineering Manager / Orchestrator**. It is the only
+  Manager; a competing `engineering-manager` subagent must **not** be created.
+- The Manager **delegates production implementation** to specialist subagents rather than reviewing
+  its own work, and **consumes their structured results** directly.
+- **Routine lifecycle transitions are automatic** and the **human is never used as a message relay**
+  between agents. `RESULT: IMPLEMENTED` automatically triggers independent review; `RESULT:
+  DO_NOT_MERGE` automatically triggers correction (unless the finding itself is
+  `HUMAN_DECISION_REQUIRED`); correction is always followed by a fresh **focused re-review**.
+- **Integration is allowed only after independent approval.** A failed agent report is **evidence**,
+  not grounds to silently skip a gate.
+- Every child result must include **exact repository/worktree/HEAD provenance**, and **only the
+  Manager updates workflow state** (`docs/engineering/WORK_STATE.md`). Durable discoveries are
+  classified and persisted per `docs/engineering/LEARNING_POLICY.md`.
+- Orchestration artifacts live under `.junie/` (`agents/`, `skills/`, `commands/run-feature.md`); the
+  `/run-feature` command is the single human entry point for the autonomous loop.
+
 ### Ownership & concurrency
 - Production-writing agents must declare **`OWNED_PATHS`**, **`READ_ONLY_PATHS`**, and
   **`PROHIBITED_PATHS`**.
@@ -49,6 +66,22 @@ These invariants are authoritative for any agent operating under this framework.
   policy permits.
 - **Production promotion should remain human-authorized** unless a human-approved project policy
   explicitly changes that.
+
+### Human questions & clarifications
+- **Always surface questions to the human through the structured question UI**, never as free-form
+  prose buried in a normal chat answer. Whenever an agent needs a human product / architecture /
+  security / destructive-operation / infrastructure-access / production-deployment-authority / other
+  consequential decision — or any clarification, missing requirement, scope choice, or priority /
+  trade-off — it must be presented as one or more discrete, selectable questions via the question UI
+  (in this environment, the `ask_user` / `mcp__Air__ask_user_question` tool).
+- **Each question and each option must be a single, atomic proposal.** Do not bundle multiple
+  unrelated decisions into one question or option; the human must be able to accept or reject each
+  independently.
+- **Research first.** Do not ask about facts you can determine yourself from the repository; reserve
+  questions for genuine preferences, scope, priorities, trade-offs, or `HUMAN_DECISION_REQUIRED`
+  gates. Provide real, non-overlapping next-step options and enough discovered context to decide.
+- This rule does **not** relax the automation invariants: routine workflow transitions still proceed
+  automatically and are **never** turned into human questions.
 
 ### Knowledge & learning
 - Agents must **persist verified discoveries** that future agents would otherwise need to rediscover.

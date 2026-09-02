@@ -195,9 +195,16 @@ implementation if evidence suggests a better design, but the categories are stab
 | `20` | `PREFLIGHT_POLICY_FAILURE`   | preflight / policy failure (e.g., dirty tree)        |
 | `30` | `HUMAN_DECISION_REQUIRED`    | human decision required                              |
 | `40` | `INTERNAL_TOOL_FAILURE`      | internal / tool failure                              |
+| `50` | `NOT_IMPLEMENTED`            | command recognized but not yet implemented (stub)    |
 
 The POC validated deterministic propagation of `0` (clean), `10` (conflict), and `20` (dirty
 preflight) through both the shell driver and the AOT-compiled Dart CLI.
+
+`NOT_IMPLEMENTED` (`50`) was **ratified during Phase 1** (human-approved architecture-contract
+extension). It gives stub commands (`bootstrap`, `upgrade`, `status`, `doctor`) an unambiguous,
+non-zero, non-colliding semantic so a stub can **never** be mistaken for `SUCCESS` or for another
+result family. It was discovered as an `ARCHITECTURE_DISCOVERY` by the Phase 1 implementer and
+independent reviewer (`HUMAN_DECISION_REQUIRED: YES`, `CORRECTION_REQUIRED: NO`) and ratified here.
 
 ## Structured result contract (conceptual)
 
@@ -213,6 +220,7 @@ defined conceptually now and **not implemented** here:
 - `HUMAN_DECISION_REQUIRED`
 - `VALIDATION_FAILED`
 - `INTERNAL_ERROR`
+- `NOT_IMPLEMENTED` (stub commands; maps to exit category `NOT_IMPLEMENTED` = `50`)
 
 ## Git merge mechanism
 

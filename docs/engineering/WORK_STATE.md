@@ -35,9 +35,19 @@ product-specific architecture, design, or infrastructure decisions — those bel
   empirical proof-of-concept (`DART_MASON_GIT_POC_PASS`, all pass criteria met, **no architecture
   blockers**). ADR 0002 records the mandatory POC-derived mitigations, the exit-code and
   structured-result contracts, and an 8-phase implementation plan.
-  - **POC passed, but no production CLI is implemented yet.** The driver is **not** production-ready
-    merely because the POC passed. No packages, releases, tags, CI, Mason bricks, or product repos
-    were created. **Next state:** Phase 1 implementation design / CLI skeleton + domain model.
+  - **POC passed.** The driver is **not** production-ready merely because the POC passed. No
+    packages, releases, tags, CI, Mason bricks, or product repos were created.
+  - **Phase 1 (CLI skeleton + domain model) IMPLEMENTED and independently APPROVED.** Delivered
+    through the autonomous orchestration loop (implement → independent review → merge-readiness) in an
+    isolated worktree (`feature/phase1-cli`, base `572b3d14`); `cli/**` package with structured
+    result families, `--json` output, and centralized semantic exit categories. Gates green:
+    `dart format`, `dart analyze`, `dart test` (25/25), `dart compile exe`. State:
+    `MERGE_APPROVED` / `READY_FOR_INTEGRATION` — **held, unpushed**, pending explicit integration
+    authorization. **Next state:** Phase 2 (manifest + hashing).
+  - **Exit-code contract extension ratified (human-approved):** `NOT_IMPLEMENTED = 50` added to the
+    ADR 0002 exit-code contract (`ARCHITECTURE_DISCOVERY` surfaced by the Phase 1 implementer /
+    independent reviewer). Gives stub commands an unambiguous, non-zero, non-colliding semantic so a
+    stub can never be mistaken for `SUCCESS`.
 
 - **Plan artifact retention policy (APPROVED WITH REFINEMENT):** agent-generated plan artifacts
   (`.air/plans/`, `.junie/plans/`, or equivalent) are **visible/versionable but not automatically
@@ -81,9 +91,11 @@ unmodified pending an explicit follow-up task to carry out the deletion.
 
 ## Next steps for the framework itself
 
-- **Begin Phase 1** of the ADR 0002 implementation plan (CLI skeleton + domain model, structured
-  output, exit-code semantics; no real bootstrap/update yet). Driver/tool selection itself is now
-  resolved (Dart + Mason + Git per ADR 0002).
+- **Phase 1 is done** (CLI skeleton + domain model, structured output, exit-code semantics; stubs
+  only, no real bootstrap/update). It is `MERGE_APPROVED` and held unpushed in `feature/phase1-cli`
+  pending explicit integration authorization.
+- **Begin Phase 2** of the ADR 0002 implementation plan (manifest + hashing) on new files, with no
+  ownership overlap with the held Phase 1 `cli/lib/src` paths.
 - Resolve the remaining `UNRESOLVED_FRAMEWORK_AREA` items in [WORKFLOW.md](WORKFLOW.md).
 - Flesh out [framework/templates/](../../framework/templates/) as Mason bricks during the phased
   implementation (ADR 0002).
