@@ -114,6 +114,84 @@ This finding follows the **independent-review** authority level for `WORKFLOW_IM
 
 ---
 
+## Plan artifact retention policy
+
+**Status:** `APPROVED WITH REFINEMENT` (human decision). Applies to agent-generated plan artifacts
+(e.g. under `.air/plans/`, `.junie/plans/`, or any equivalent agent-platform plan directory),
+regardless of which tool produced them. The policy is **tool-neutral**: it classifies artifacts by
+**information authority**, never by artifact **origin**.
+
+**Default:** Plan artifacts are **visible/versionable but not automatically committed**. Committing
+is an exception that must be justified per-plan, never a default outcome of "an agent produced it."
+
+**`LEAVE_UNTRACKED` is interim, not durable storage.** Untracked is a valid *temporary* working state
+while the originating work/review cycle is still active and the local plan is still serving an
+immediate working purpose — it is **not** a permanent archival disposition. Every plan that goes
+untracked must eventually be **intentionally classified** into exactly one final disposition:
+`COMMIT`, `PROMOTE_THEN_DELETE`, or `DELETE`. The framework must not rely on indefinitely untracked
+local files for durable knowledge or audit evidence, because the local workspace may be discarded at
+any time.
+
+### Classification categories
+
+- **`AUTHORITATIVE_PLAN`**
+  The plan itself is the durable source of truth — no ADR/doc/contract/code/test captures its
+  conclusion or rationale. **Commit** it.
+
+- **`SUPPORTING_PLAN`**
+  Process evidence for a decision whose durable conclusions are **already promoted** elsewhere (ADR,
+  `WORKFLOW.md`, `WORK_STATE.md`, code, tests, configuration). **Do not commit**; leave
+  visible/untracked **while the review cycle is active**, then finalize to `DELETE` (or
+  `PROMOTE_THEN_DELETE` if any residual detail is later found not yet promoted).
+
+- **`AUDIT_ARTIFACT`**
+  Retained specifically for exact replay/provenance of a consequential, human-gated decision.
+  **Commit only** when that exact replay/provenance has **material future value** (e.g.
+  security-sensitive, production-promotion, or governance-change reviews) — not merely because a
+  review occurred.
+
+- **`PROMOTION_REQUIRED`**
+  Contains durable knowledge (rationale, constraints, decisions) not yet reflected in an authoritative
+  artifact (ADR, contract, workflow document, design document, issue, test, script, or
+  configuration). **Promote** that knowledge into the correct artifact first; the plan then
+  re-classifies as `SUPPORTING_PLAN` (untracked), not committed.
+
+- **`TRANSIENT_PLAN`**
+  Scratch/execution planning (task breakdown, step tracking) with no standalone informational value
+  once executed.
+
+- **`DUPLICATE_ARTIFACT`**
+  Materially overlaps another plan/review covering the same scope and verdict.
+
+  `TRANSIENT_PLAN` and `DUPLICATE_ARTIFACT` **may be deleted**, but only after an **explicit retention
+  review** confirms no unique durable value remains — never deleted merely to make `git status` clean,
+  and never deleted before any `PROMOTION_REQUIRED` content has been promoted or committed.
+
+### Applying the policy
+
+1. Read the plan's actual content and current repository state; do not classify from the filename or
+   originating tool alone.
+2. Check whether its durable conclusion/rationale already exists in an ADR, `WORKFLOW.md`,
+   `WORK_STATE.md`, code, tests, or configuration. If yes → `SUPPORTING_PLAN` (do not commit).
+3. If it holds durable knowledge found nowhere else → `PROMOTION_REQUIRED` (promote), or
+   `AUTHORITATIVE_PLAN` (commit) if the plan itself is the intended permanent home.
+4. If it is process/execution scaffolding with no standalone value → `TRANSIENT_PLAN`.
+5. If it duplicates another plan's scope and verdict → `DUPLICATE_ARTIFACT`.
+6. Only delete `TRANSIENT_PLAN`/`DUPLICATE_ARTIFACT` artifacts after an explicit, evidence-based
+   retention review; never as a side effect of an unrelated task.
+7. `LEAVE_UNTRACKED` is never the final answer. Once the originating work/review cycle is no longer
+   active and the plan is no longer serving an immediate working purpose, it must be given a **final
+   disposition** of exactly one of: `COMMIT` (it is `AUTHORITATIVE_PLAN` or a required
+   `AUDIT_ARTIFACT`), `PROMOTE_THEN_DELETE` (it held durable knowledge that has now been promoted
+   elsewhere), or `DELETE` (it is `SUPPORTING_PLAN`/`TRANSIENT_PLAN`/`DUPLICATE_ARTIFACT` with no
+   unique durable value remaining). Record the approved final disposition (e.g. in `WORK_STATE.md`)
+   before executing it.
+
+This policy follows the **human-decision** authority level (consequential governance change) and is
+expected to evolve based on future findings.
+
+---
+
 ## Persistence checklist
 
 Before persisting any discovery:

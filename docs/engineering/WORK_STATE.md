@@ -29,6 +29,31 @@ product-specific architecture, design, or infrastructure decisions — those bel
   - **Deferred (not decided):** the concrete framework **driver/tool** (e.g., Copier vs. a
     custom/thin driver), and any bootstrap CLI, release system, tags, or package distribution.
 
+- **Plan artifact retention policy (APPROVED WITH REFINEMENT):** agent-generated plan artifacts
+  (`.air/plans/`, `.junie/plans/`, or equivalent) are **visible/versionable but not automatically
+  committed** by default. See [LEARNING_POLICY.md — Plan artifact retention
+  policy](LEARNING_POLICY.md#plan-artifact-retention-policy) for the full classification model
+  (`AUTHORITATIVE_PLAN`, `SUPPORTING_PLAN`, `AUDIT_ARTIFACT`, `PROMOTION_REQUIRED`, `TRANSIENT_PLAN`,
+  `DUPLICATE_ARTIFACT`) and commit/promote/delete criteria. Policy is tool-neutral (classifies by
+  information authority, not artifact origin). **Refinement:** `LEAVE_UNTRACKED` is an interim
+  working state only, never a permanent disposition — every untracked plan must eventually be
+  intentionally finalized to `COMMIT`, `PROMOTE_THEN_DELETE`, or `DELETE` unless its originating
+  work/review cycle is still active.
+
+## Pending plan artifact cleanup (approved, not yet executed)
+
+The following **final dispositions** were human-approved for the three plan artifacts already
+classified under the retention policy above. **Not yet executed** — the files remain untracked and
+unmodified pending an explicit follow-up task to carry out the deletion.
+
+- `.air/plans/independent-review-framework-bootstrap.plan.md` — classification=`SUPPORTING_PLAN`,
+  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW`.
+- `.junie/plans/independent-review-framework-bootstrap.md` — classification=`DUPLICATE_ARTIFACT`,
+  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW`.
+- `.junie/plans/framework-artifact-distribution-architecture.md` — classification=`SUPPORTING_PLAN`,
+  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW` (durable conclusions already fully
+  captured in ADR 0001 and this file's own "Recorded framework decisions" entry above).
+
 ## Explicitly out of scope for this repository
 
 - Product-specific **architecture** decisions (belong in product repos + their ADRs).
