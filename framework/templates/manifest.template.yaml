@@ -1,0 +1,25 @@
+# Placeholder manifest for instantiated framework artifacts.
+# PURPOSE: record which framework version produced a product repo's copies.
+#
+# FILENAME MODEL (do not confuse the two names):
+#   - SOURCE TEMPLATE (in THIS framework repository): this file, named
+#     `manifest.template.yaml`.
+#   - INSTANTIATED COPY (in a PRODUCT repository): this template is copied and
+#     renamed to `framework-manifest.yaml`.
+#   The `.template.yaml` suffix marks the framework-side source; the product-side
+#   instance drops the `.template` marker and is always `framework-manifest.yaml`.
+#
+# NOTE: The concrete versioning/distribution scheme is UNRESOLVED_FRAMEWORK_AREA.
+
+framework:
+  # Source framework repository (do not depend on at runtime; copies are versioned).
+  source: "agentic-engineering-framework"
+  # Version/revision of the framework used to instantiate the product artifacts.
+  version: "TBD"          # UNRESOLVED_FRAMEWORK_AREA
+  revision: "TBD"         # e.g. git commit of the framework at instantiation time
+
+product:
+  name: "TBD"
+  instantiated_at: "TBD"
+
+artifacts: []             # list of files instantiated into the product repo (TBD)
