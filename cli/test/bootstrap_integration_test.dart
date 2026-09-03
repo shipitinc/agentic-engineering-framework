@@ -63,6 +63,7 @@ void main() {
         'dart',
         ['run', 'cli/bin/framework.dart', 'bootstrap', '--target', targetDir.path],
         workingDirectory: frameworkRepoPath,
+        environment: {'FRAMEWORK_CLI_TEST_MODE': 'true'},
       );
       expect(result.exitCode, 0, reason: 'Bootstrap should succeed: stdout=${result.stdout}\nstderr=${result.stderr}');
       expect(result.stdout.toString(), contains('BOOTSTRAP_COMPLETE'));
