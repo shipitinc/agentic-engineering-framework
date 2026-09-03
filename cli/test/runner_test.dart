@@ -5,24 +5,24 @@ void main() {
   final runner = FrameworkCliRunner();
 
   group('command parsing', () {
-    test('parses each known command', () {
+    test('parses each known command', () async {
       for (final name in CommandNames.all) {
-        final invocation = runner.run([name]);
+        final invocation = await runner.run([name]);
         expect(invocation.result.command, name);
       }
     });
 
-    test('parses --json flag per command', () {
-      final human = runner.run(['status']);
-      final json = runner.run(['status', '--json']);
+    test('parses --json flag per command', () async {
+      final human = await runner.run(['status']);
+      final json = await runner.run(['status', '--json']);
       expect(human.output, isNot(equals(json.output)));
       expect(json.output.trimLeft(), startsWith('{'));
     });
   });
 
   group('version command', () {
-    test('reports success with exit code 0', () {
-      final invocation = runner.run(['version']);
+    test('reports success with exit code 0', () async {
+      final invocation = await runner.run(['version']);
       expect(invocation.result.success, isTrue);
       expect(invocation.exitCode, 0);
       expect(invocation.output, contains(frameworkCliVersion));
@@ -30,9 +30,9 @@ void main() {
   });
 
   group('stub commands do not report success', () {
-    for (final name in ['upgrade', 'status', 'doctor']) {
-      test('$name is NOT_IMPLEMENTED, non-success, non-zero exit', () {
-        final invocation = runner.run([name]);
+    for (final name in ['status', 'doctor']) {
+      test('$name is NOT_IMPLEMENTED, non-success, non-zero exit', () async {
+        final invocation = await runner.run([name]);
         expect(invocation.result.family, ResultFamily.notImplemented);
         expect(invocation.result.success, isFalse);
         expect(invocation.result.blocking, isTrue);
@@ -42,9 +42,19 @@ void main() {
     }
     test(
       'bootstrap is bootstrapBlocked (Phase 3 preflight), non-success, non-zero exit',
-      () {
-        final invocation = runner.run(['bootstrap']);
+      () async {
+        final invocation = await runner.run(['bootstrap']);
         expect(invocation.result.family, ResultFamily.bootstrapBlocked);
+        expect(invocation.result.success, isFalse);
+        expect(invocation.result.blocking, isTrue);
+        expect(invocation.exitCode, isNot(0));
+      },
+    );
+    test(
+      'upgrade is UPGRADE_BLOCKED (Phase 4 preflight), non-success, non-zero exit',
+      () async {
+        final invocation = await runner.run(['upgrade']);
+        expect(invocation.result.family, ResultFamily.upgradeBlocked);
         expect(invocation.result.success, isFalse);
         expect(invocation.result.blocking, isTrue);
         expect(invocation.exitCode, isNot(0));
@@ -53,21 +63,21 @@ void main() {
   });
 
   group('invalid / unknown command handling', () {
-    test('unknown command => INTERNAL_ERROR, non-zero exit', () {
-      final invocation = runner.run(['frobnicate']);
+    test('unknown command => INTERNAL_ERROR, non-zero exit', () async {
+      final invocation = await runner.run(['frobnicate']);
       expect(invocation.result.family, ResultFamily.internalError);
       expect(invocation.result.success, isFalse);
       expect(invocation.exitCode, 40);
     });
 
-    test('no command => INTERNAL_ERROR, non-zero exit', () {
-      final invocation = runner.run([]);
+    test('no command => INTERNAL_ERROR, non-zero exit', () async {
+      final invocation = await runner.run([]);
       expect(invocation.result.family, ResultFamily.internalError);
       expect(invocation.exitCode, 40);
     });
 
-    test('unknown flag => INTERNAL_ERROR', () {
-      final invocation = runner.run(['status', '--nope']);
+    test('unknown flag => INTERNAL_ERROR', () async {
+      final invocation = await runner.run(['status', '--nope']);
       expect(invocation.result.family, ResultFamily.internalError);
       expect(invocation.exitCode, 40);
     });

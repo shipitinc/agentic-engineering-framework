@@ -16,4 +16,5 @@ export 'src/manifest/path_safety.dart';
 export 'src/output_renderer.dart';
 export 'src/result_family.dart';
 export 'src/runner.dart';
+export 'src/upgrade/upgrade.dart';
 export 'src/version.dart';

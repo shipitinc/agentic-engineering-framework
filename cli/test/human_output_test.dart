@@ -33,9 +33,9 @@ void main() {
       expect(json['exit_category'], result.exitCategory.categoryName);
     });
 
-    test('success result renders OK, blocking renders BLOCKED', () {
-      final ok = renderer.renderHuman(runVersion());
-      final blocked = renderer.renderHuman(runBootstrap());
+    test('success result renders OK, blocking renders BLOCKED', () async {
+      final ok = renderer.renderHuman(await runVersion());
+      final blocked = renderer.renderHuman(await runBootstrap());
       expect(ok, startsWith('[OK]'));
       expect(blocked, startsWith('[BLOCKED]'));
     });

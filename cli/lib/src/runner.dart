@@ -43,6 +43,20 @@ class FrameworkCliRunner {
           negatable: false,
           help: 'Emit deterministic machine-readable JSON output.',
         );
+      // Add --target for upgrade command
+      if (name == CommandNames.upgrade) {
+        sub.addOption(
+          'target',
+          help: 'Target framework revision to upgrade to (required for upgrade).',
+        );
+      }
+      // Add --target for bootstrap command
+      if (name == CommandNames.bootstrap) {
+        sub.addOption(
+          'target',
+          help: 'Target directory to bootstrap into.',
+        );
+      }
       parser.addCommand(name, sub);
     }
     return parser;
@@ -53,7 +67,7 @@ class FrameworkCliRunner {
   /// Never throws for user-facing errors: parse failures and unknown commands
   /// are converted into an [ResultFamily.internalError] domain result so the
   /// caller can render and exit deterministically.
-  CliInvocation run(List<String> args) {
+  Future<CliInvocation> run(List<String> args) async {
     final parser = buildParser();
     final ArgResults parsed;
     try {
@@ -72,16 +86,18 @@ class FrameworkCliRunner {
     }
 
     final useJson = command['json'] as bool;
-    final result = _dispatch(command.name!);
+    final result = await _dispatch(command.name!, command);
     return _render(result, useJson: useJson);
   }
 
-  CommandResult _dispatch(String name) {
+  Future<CommandResult> _dispatch(String name, ArgResults command) async {
     switch (name) {
       case CommandNames.bootstrap:
-        return runBootstrap();
+        final target = command['target'] as String?;
+        return runBootstrap(target: target);
       case CommandNames.upgrade:
-        return runUpgrade();
+        final target = command['target'] as String?;
+        return await runUpgrade(target: target);
       case CommandNames.status:
         return runStatus();
       case CommandNames.doctor:

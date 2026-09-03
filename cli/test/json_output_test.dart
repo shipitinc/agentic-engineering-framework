@@ -49,18 +49,18 @@ void main() {
       expect(json['human_action_required'], isFalse);
     });
 
-    test('is valid, round-trippable JSON via the renderer', () {
+    test('is valid, round-trippable JSON via the renderer', () async {
       final runner = FrameworkCliRunner();
-      final invocation = runner.run(['upgrade', '--json']);
+      final invocation = await runner.run(['upgrade', '--json']);
       final decoded = jsonDecode(invocation.output) as Map<String, Object?>;
-      expect(decoded['result'], 'NOT_IMPLEMENTED');
+      expect(decoded['result'], 'UPGRADE_BLOCKED');
       expect(decoded['command'], 'upgrade');
     });
 
-    test('--json output is deterministic across runs', () {
+    test('--json output is deterministic across runs', () async {
       final runner = FrameworkCliRunner();
-      final first = runner.run(['status', '--json']).output;
-      final second = runner.run(['status', '--json']).output;
+      final first = (await runner.run(['status', '--json'])).output;
+      final second = (await runner.run(['status', '--json'])).output;
       expect(first, second);
     });
 

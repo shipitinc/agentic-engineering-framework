@@ -8,6 +8,7 @@ import 'manifest/framework_manifest.dart';
 import 'manifest/managed_artifact.dart';
 import 'manifest/path_safety.dart';
 import 'result_family.dart';
+import 'upgrade/upgrade.dart';
 import 'version.dart';
 
 /// Names of all supported framework commands.
@@ -296,8 +297,36 @@ String _generateManifestSkeleton(String revision) {
   return manifest.write();
 }
 
-/// The `upgrade` stub (Phase 1: NOT_IMPLEMENTED, no side effects).
-CommandResult runUpgrade() => notImplementedResult(CommandNames.upgrade);
+/// Full Phase 4 upgrade: isolated worktree, render base/incoming, Git 3-way merge,
+/// add/delete/rename classification, conflict detection, reviewable diff.
+/// Takes optional --target for the target framework revision.
+Future<CommandResult> runUpgrade({String? target}) async {
+  if (target == null) {
+    // No target provided: blocked, need explicit revision
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Upgrade requires --target <revision> to specify the incoming framework revision.',
+      blockers: ['Missing required --target argument'],
+      humanActionRequired: true,
+    );
+  }
+
+  // Run preflight checks (dirty tree, repo validation, trusted source)
+  final preflightIssues = _runPreflightChecks();
+  if (preflightIssues.isNotEmpty) {
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Preflight checks failed',
+      blockers: preflightIssues,
+      humanActionRequired: true,
+    );
+  }
+
+  final productRepo = Directory.current.absolute;
+  return await runUpgradeCore(productRepo: productRepo, targetRevision: target);
+}
 
 /// The `status` stub (Phase 1: NOT_IMPLEMENTED, no side effects).
 CommandResult runStatus() => notImplementedResult(CommandNames.status);

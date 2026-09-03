@@ -30,7 +30,7 @@ void main() {
       }
     });
 
-    test('running every stub leaves the working tree unchanged', () {
+    test('running every stub leaves the working tree unchanged', () async {
       final before = _snapshot(sandbox);
       final runner = FrameworkCliRunner();
 
@@ -39,7 +39,7 @@ void main() {
           [name],
           [name, '--json'],
         ]) {
-          final invocation = runner.run(args);
+          final invocation = await runner.run(args);
           // Sanity: stubs never report success.
           expect(invocation.result.success, isFalse);
         }
@@ -50,11 +50,11 @@ void main() {
       expect(after, isEmpty);
     });
 
-    test('direct stub builders create no files', () {
-      runBootstrap();
-      runUpgrade();
-      runStatus();
-      runDoctor();
+    test('direct stub builders create no files', () async {
+      await runBootstrap();
+      await runUpgrade();
+      await runStatus();
+      await runDoctor();
       expect(_snapshot(sandbox), isEmpty);
     });
   });

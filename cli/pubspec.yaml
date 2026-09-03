@@ -11,6 +11,14 @@ publish_to: none
 environment:
   sdk: ^3.12.0
 
+# Cross-platform support (Phase 7)
+# "windows" and "linux" are optional; the CLI uses dart:io and Process
+# arg lists for maximum compatibility. "macos" is the primary dev platform.
+platforms:
+  - macos
+  - linux
+  - windows
+
 dependencies:
   args: ^2.5.0
   crypto: ^3.0.0
