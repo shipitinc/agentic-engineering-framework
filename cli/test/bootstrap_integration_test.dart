@@ -5,7 +5,8 @@ import 'package:test/test.dart';
 
 /// Integration regression tests for bootstrap defects.
 ///
-/// These tests use a real disposable product repository to verify the fixes for:
+/// These tests use a real disposable product repository and run the CLI
+/// as a subprocess (via `dart run`) to verify the fixes for:
 /// - KNOWN DEFECT A: Managed artifact ownership (pre-existing product files not claimed)
 /// - KNOWN DEFECT B: Git internal files exclusion (.git/** never managed)
 /// - KNOWN DEFECT C: Revision provenance (framework source revision recorded)
@@ -15,16 +16,12 @@ void main() {
   group('bootstrap integration regression', () {
     late Directory sandbox;
     late Directory previousCwd;
-    late String frameworkRepoPath;
+    final String frameworkRepoPath = '/Users/alkebut/air/agentic-engineering-framework';
 
     setUp(() {
       previousCwd = Directory.current;
       sandbox = Directory.systemTemp.createTempSync('framework_bootstrap_test_');
       Directory.current = sandbox;
-      // Framework repo path (where the CLI should run from for preflight checks)
-      frameworkRepoPath = '/Users/alkebut/air/agentic-engineering-framework';
-      // Enable test mode to skip dirty tree check (framework repo may have uncommitted test files)
-      Platform.environment['FRAMEWORK_CLI_TEST_MODE'] = 'true';
     });
 
     tearDown(() {
@@ -60,20 +57,15 @@ void main() {
       return productDir;
     }
 
-    /// Runs bootstrap via the CLI runner from the framework repo context.
-    /// The CLI must run from the framework repo for preflight checks to pass.
+    /// Runs bootstrap via `dart run` from the framework repo context.
     Future<void> _runBootstrap(Directory targetDir) async {
-      // Run from framework repo directory
-      Directory.current = Directory(frameworkRepoPath);
-
-      final runner = FrameworkCliRunner();
-      final result = await runner.run(['bootstrap', '--target', targetDir.path]);
-
-      // Restore working directory for test assertions
-      Directory.current = sandbox;
-
-      expect(result.exitCode, 0, reason: 'Bootstrap should succeed: ${result.output}');
-      expect(result.result.family, ResultFamily.bootstrapComplete);
+      final result = await Process.run(
+        'dart',
+        ['run', 'cli/bin/framework.dart', 'bootstrap', '--target', targetDir.path],
+        workingDirectory: frameworkRepoPath,
+      );
+      expect(result.exitCode, 0, reason: 'Bootstrap should succeed: stdout=${result.stdout}\nstderr=${result.stderr}');
+      expect(result.stdout.toString(), contains('BOOTSTRAP_COMPLETE'));
     }
 
     /// Reads and parses the framework-manifest.yaml from the target directory.
