@@ -30,7 +30,7 @@ void main() {
   });
 
   group('stub commands do not report success', () {
-    for (final name in ['bootstrap', 'upgrade', 'status', 'doctor']) {
+    for (final name in ['upgrade', 'status', 'doctor']) {
       test('$name is NOT_IMPLEMENTED, non-success, non-zero exit', () {
         final invocation = runner.run([name]);
         expect(invocation.result.family, ResultFamily.notImplemented);
@@ -40,6 +40,16 @@ void main() {
         expect(invocation.exitCode, 50);
       });
     }
+    test(
+      'bootstrap is bootstrapBlocked (Phase 3 preflight), non-success, non-zero exit',
+      () {
+        final invocation = runner.run(['bootstrap']);
+        expect(invocation.result.family, ResultFamily.bootstrapBlocked);
+        expect(invocation.result.success, isFalse);
+        expect(invocation.result.blocking, isTrue);
+        expect(invocation.exitCode, isNot(0));
+      },
+    );
   });
 
   group('invalid / unknown command handling', () {
