@@ -547,35 +547,22 @@ CommandResult runVersion() {
 class FrameworkSourceContext {
   /// Creates a context by resolving from the canonical framework source.
   ///
-  /// For development: derives from Platform.script location.
-  /// For distributed CLI: uses bundled template hashes for validation.
+  /// Two modes:
+  /// 1. Development: Platform.script points into framework repo -> derive all from there
+  /// 2. Distributed CLI: FRAMEWORK_BRICK_PATH set -> validate against known hashes
   ///
-  /// Throws [StateError] if the canonical framework source cannot be located
-  /// or if provided FRAMEWORK_BRICK_PATH fails integrity validation.
+  /// Throws [StateError] if neither mode works or validation fails.
   factory FrameworkSourceContext.resolve() {
-    // 1. Determine canonical framework source root
-    final frameworkRoot = _resolveFrameworkRoot();
-    
-    // 2. Resolve exact revision from framework source
-    final revision = _resolveRevisionFrom(frameworkRoot);
-    
-    // 3. Resolve brick path and validate integrity
-    final brickPath = _resolveBrickPathFrom(frameworkRoot);
-    _validateBrickIntegrity(brickPath, revision);
-    
-    // 4. Pre-compute expected template output paths from brick
-    final expectedPaths = _computeExpectedTemplatePaths(brickPath);
-    
-    return FrameworkSourceContext._(
-      source: approvedFrameworkSource,
-      revision: revision,
-      frameworkRoot: frameworkRoot,
-      brickPath: brickPath,
-      expectedTemplatePaths: expectedPaths,
-    );
+    // Try development mode first: derive from Platform.script
+    try {
+      return _resolveFromFrameworkRepo();
+    } on StateError catch (_) {
+      // Development mode failed, try distributed CLI mode
+      return _resolveFromBrickPath();
+    }
   }
 
-  /// Internal constructor - only creatable via [resolve]
+  /// Internal constructor - only creatable via factory
   const FrameworkSourceContext._({
     required this.source,
     required this.revision,
@@ -614,12 +601,89 @@ class FrameworkSourceContext {
   }
 }
 
+/// Resolves FrameworkSourceContext from the framework repository (development mode).
+FrameworkSourceContext _resolveFromFrameworkRepo() {
+  final frameworkRoot = _resolveFrameworkRoot();
+  final revision = _resolveRevisionFrom(frameworkRoot);
+  final brickPath = _resolveBrickPathFrom(frameworkRoot);
+  _validateBrickIntegrity(brickPath, revision);
+  final expectedPaths = _computeExpectedTemplatePaths(brickPath);
+  
+  return FrameworkSourceContext._(
+    source: approvedFrameworkSource,
+    revision: revision,
+    frameworkRoot: frameworkRoot,
+    brickPath: brickPath,
+    expectedTemplatePaths: expectedPaths,
+  );
+}
+
+/// Resolves FrameworkSourceContext from FRAMEWORK_BRICK_PATH (distributed CLI mode).
+FrameworkSourceContext _resolveFromBrickPath() {
+  final envPath = Platform.environment['FRAMEWORK_BRICK_PATH'];
+  if (envPath == null || envPath.isEmpty) {
+    throw StateError(
+        'FRAMEWORK_BRICK_PATH environment variable not set. '
+        'Required for distributed CLI execution outside framework repo.');
+  }
+  
+  final brickDir = Directory(envPath);
+  if (!brickDir.existsSync()) {
+    throw StateError('FRAMEWORK_BRICK_PATH does not exist: $envPath');
+  }
+  
+  final brickPath = brickDir.absolute.path;
+  
+  // For distributed CLI, we don't have the framework git repo to get revision.
+  // The revision must be embedded in the CLI or passed via env.
+  final revision = _resolveRevisionFromBrick(brickPath);
+  _validateBrickIntegrity(brickPath, revision);
+  final expectedPaths = _computeExpectedTemplatePaths(brickPath);
+  
+  // frameworkRoot is the parent of framework/templates
+  final frameworkRoot = Directory('$brickPath/../..');
+  
+  return FrameworkSourceContext._(
+    source: approvedFrameworkSource,
+    revision: revision,
+    frameworkRoot: frameworkRoot,
+    brickPath: brickPath,
+    expectedTemplatePaths: expectedPaths,
+  );
+}
+
+/// Resolves revision from the brick directory (for distributed CLI).
+/// Reads from a version file or uses FRAMEWORK_REVISION env var.
+String _resolveRevisionFromBrick(String brickPath) {
+  // 1. Try FRAMEWORK_REVISION env var
+  final envRevision = Platform.environment['FRAMEWORK_REVISION'];
+  if (envRevision != null && envRevision.isNotEmpty) {
+    return envRevision;
+  }
+  
+  // 2. Try to read from brick metadata file
+  final versionFile = File('$brickPath/../.framework_revision');
+  if (versionFile.existsSync()) {
+    return versionFile.readAsStringSync().trim();
+  }
+  
+  // 3. If we're still in a git repo somehow, try that
+  try {
+    final rev = Process.runSync('git', ['rev-parse', 'HEAD']);
+    if (rev.exitCode == 0) {
+      return (rev.stdout as String).trim();
+    }
+  } catch (_) {}
+  
+  return 'unknown-revision';
+}
+
 /// Resolves the canonical framework source root directory.
 ///
 /// Strategy:
 /// - Development: derive from Platform.script (cli/bin/framework.dart)
 /// - Compiled exe: same derivation works if exe is in framework repo
-/// - If not in framework repo structure, throws (no FRAMEWORK_BRICK_PATH fallback)
+/// - If not in framework repo structure, throws
 Directory _resolveFrameworkRoot() {
   final scriptUri = Platform.script;
   String scriptPath;
