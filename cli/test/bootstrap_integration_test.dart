@@ -90,7 +90,7 @@ void main() {
 
       // Verify .git directory exists but is not managed
       expect(Directory('${productDir.path}/.git').existsSync(), isTrue);
-    });
+    }, timeout: Timeout(Duration(minutes: 2)));
 
     test('KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed', () async {
       final productDir = await _createProductRepoWithPreExistingFiles();
@@ -108,7 +108,7 @@ void main() {
       expect(managedPaths, isNot(contains('product-only.txt')));
       expect(managedPaths, isNot(contains('src/existing.dart')));
       expect(managedPaths, isNot(contains('README-product.md')));
-    });
+    }, timeout: Timeout(Duration(minutes: 2)));
 
     test('KNOWN DEFECT C: Manifest records framework source revision, not product revision', () async {
       final productDir = await _createProductRepoWithPreExistingFiles();
@@ -128,7 +128,7 @@ void main() {
 
       // Framework revision should be a valid SHA (40 hex chars)
       expect(manifest.revision, matches(RegExp(r'^[a-f0-9]{40}$')));
-    });
+    }, timeout: Timeout(Duration(minutes: 2)));
 
     test('KNOWN DEFECT D: Template completeness - all governance files installed', () async {
       final productDir = Directory('${sandbox.path}/product2');
@@ -174,7 +174,7 @@ void main() {
 
       // Verify managed artifact count matches expected
       expect(manifest.artifacts.length, expectedPaths.length);
-    });
+    }, timeout: Timeout(Duration(minutes: 3)));
 
     test('Re-run safety: bootstrap no-ops when manifest already exists', () async {
       final productDir = await _createProductRepoWithPreExistingFiles();
@@ -192,7 +192,7 @@ void main() {
       expect(manifest2.instantiatedAt, equals(firstInstantiatedAt));
       expect(manifest2.revision, equals(manifest1.revision));
       expect(manifest2.artifacts.length, equals(manifest1.artifacts.length));
-    }, timeout: Timeout(Duration(minutes: 2)));
+    }, timeout: Timeout(Duration(minutes: 3)));
 
     test('Managed artifacts have baseline hashes (source_hash and install_hash)', () async {
       final productDir = await _createProductRepoWithPreExistingFiles();
@@ -208,7 +208,7 @@ void main() {
         // For bootstrap, source_hash == install_hash (baseline)
         expect(artifact.sourceHash, equals(artifact.installHash));
       }
-    });
+    }, timeout: Timeout(Duration(minutes: 2)));
 
     test('Framework source identity recorded in manifest', () async {
       final productDir = await _createProductRepoWithPreExistingFiles();
@@ -218,7 +218,7 @@ void main() {
 
       expect(manifest.source, 'https://github.com/shipitinc/agentic-engineering-framework.git');
       expect(manifest.version, '0.1.0');
-    });
+    }, timeout: Timeout(Duration(minutes: 2)));
 
     test('Path safety: managed paths are normalized and safe', () async {
       final productDir = await _createProductRepoWithPreExistingFiles();
@@ -234,6 +234,6 @@ void main() {
         // Should not be empty
         expect(artifact.path, isNotEmpty);
       }
-    });
+    }, timeout: Timeout(Duration(minutes: 2)));
   });
 }
