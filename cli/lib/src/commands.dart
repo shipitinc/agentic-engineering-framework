@@ -95,37 +95,58 @@ List<String> _runPreflightChecks() {
 }
 
 /// Resolves exact framework revision from the framework source repository.
-/// This MUST resolve from the framework source context, not the current working
-/// directory (which may be the product repo). Uses the known framework source
-/// path relative to the CLI package (derived from brick location).
+/// For Phase 3a (no target): resolves from current working directory (test compat).
+/// For Phase 3b (with target): resolves from framework source context (brick location).
 /// Sync, read-only.
-String _resolveFrameworkRevision() {
-  // Resolve framework source root from brick location
-  // Brick is at: <framework-root>/framework/templates
-  // So framework root is: <brick-path>/../..
-  final brickPath = _resolveBrickPath();
-  final frameworkSourceDir = Directory('${brickPath}/../..');
+String _resolveFrameworkRevision({bool fromBrickContext = false}) {
+  if (fromBrickContext) {
+    // Resolve framework source root from brick location
+    // Brick is at: <framework-root>/framework/templates
+    // So framework root is: <brick-path>/../..
+    final brickPath = _resolveBrickPath();
+    final frameworkSourceDir = Directory('$brickPath/../..');
 
-  // Run git rev-parse HEAD in the framework source directory
-  final rev = Process.runSync('git', ['rev-parse', 'HEAD'],
-      workingDirectory: frameworkSourceDir.path);
-  if (rev.exitCode == 0) {
-    return (rev.stdout as String).trim();
-  }
-  // Fallback to remote HEAD if local fails (still read-only)
-  final remoteRev = Process.runSync('git', [
-    'ls-remote',
-    '--heads',
-    'origin',
-    'main',
-  ], workingDirectory: frameworkSourceDir.path);
-  if (remoteRev.exitCode == 0) {
-    final line = (remoteRev.stdout as String).split('\n').first.trim();
-    if (line.isNotEmpty) {
-      return line.split('\t').first;
+    // Run git rev-parse HEAD in the framework source directory
+    final rev = Process.runSync('git', ['rev-parse', 'HEAD'],
+        workingDirectory: frameworkSourceDir.path);
+    if (rev.exitCode == 0) {
+      return (rev.stdout as String).trim();
     }
+    // Fallback to remote HEAD if local fails (still read-only)
+    final remoteRev = Process.runSync('git', [
+      'ls-remote',
+      '--heads',
+      'origin',
+      'main',
+    ], workingDirectory: frameworkSourceDir.path);
+    if (remoteRev.exitCode == 0) {
+      final line = (remoteRev.stdout as String).split('\n').first.trim();
+      if (line.isNotEmpty) {
+        return line.split('\t').first;
+      }
+    }
+    return 'unknown-revision';
+  } else {
+    // Phase 3a / test compat: resolve from current working directory
+    final rev = Process.runSync('git', ['rev-parse', 'HEAD']);
+    if (rev.exitCode == 0) {
+      return (rev.stdout as String).trim();
+    }
+    // Fallback to remote HEAD if local fails (still read-only)
+    final remoteRev = Process.runSync('git', [
+      'ls-remote',
+      '--heads',
+      'origin',
+      'main',
+    ]);
+    if (remoteRev.exitCode == 0) {
+      final line = (remoteRev.stdout as String).split('\n').first.trim();
+      if (line.isNotEmpty) {
+        return line.split('\t').first;
+      }
+    }
+    return 'unknown-revision';
   }
-  return 'unknown-revision';
 }
 
 /// Resolves the path to the Mason brick directory (framework/templates).
@@ -309,7 +330,7 @@ Future<CommandResult> runBootstrap({String? target}) async {
   if (target == null) {
     // Preserve 3a blocked behavior + no-mutation for direct calls and existing tests
     final preflightIssues = _runPreflightChecks();
-    final revision = _resolveFrameworkRevision();
+final revision = _resolveFrameworkRevision();
     final skeleton = _generateManifestSkeleton(
       revision,
     ); // keep helper for compat
