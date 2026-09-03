@@ -1,0 +1,11 @@
+name: agentic_engineering_framework
+description: Canonical reusable agentic engineering framework (hook-free Mason brick)
+version: 0.1.0
+environment:
+  mason: ">=0.1.0 <0.2.0"
+vars:
+  frameworkRevision:
+    type: string
+    description: Authoritative framework revision for provenance (immutable)
+    default: TBD
+    prompt: Framework revision (git SHA or tag)

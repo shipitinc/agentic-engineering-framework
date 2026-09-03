@@ -1,0 +1,43 @@
+# Placeholder manifest for instantiated framework artifacts.
+# PURPOSE: record deterministic PROVENANCE of which framework revision produced a
+#          product repo's copies, plus per-artifact baseline hashes.
+#
+# Architecture: see docs/engineering/adr/0001-framework-distribution-and-versioning.md
+#   - Versioned copy-based installation with deterministic provenance and
+#     reviewable, isolated 3-way-merge upgrades.
+#
+# AUTHORITY & SCOPE RULES (authoritative per ADR 0001):
+#   - `framework.revision` is the AUTHORITATIVE, IMMUTABLE provenance identifier.
+#     `framework.version` is human-readable metadata only. If the two ever
+#     disagree, `framework.revision` controls provenance.
+#   - This manifest records FRAMEWORK PROVENANCE ONLY. It MUST NOT store template
+#     answers (instantiation inputs). If template answers become necessary, keep
+#     them in a SEPARATE, machine-managed answers artifact.
+#   - Local-modification state is NOT persisted as an authoritative boolean.
+#     It is DERIVED by comparing an artifact's current hash against its recorded
+#     install/source baseline hash below.
+#
+# NOTE: The concrete framework DRIVER/TOOL (e.g., Copier vs. a custom/thin driver),
+#       the exact hash algorithm, and any release/distribution mechanism are NOT
+#       yet decided (deferred implementation decisions; see ADR 0001).
+
+framework:
+  # Source framework repository (do not depend on at runtime; copies are versioned).
+  source: "agentic-engineering-framework"
+  # AUTHORITATIVE immutable provenance identifier (e.g. git commit of the framework
+  # at instantiation time). Controls provenance if it disagrees with `version`.
+  revision: "{{frameworkRevision}}"
+  # Human-readable metadata only (NOT authoritative for provenance).
+  version: "TBD"
+product:
+  name: "TBD"
+  instantiated_at: "TBD"
+# List of files instantiated into the product repo, each with its baseline hash.
+# The baseline hash is the source/install hash at instantiation time; comparing an
+# artifact's CURRENT hash against this baseline DERIVES whether it was locally
+# modified (no separate `locally_modified` flag is stored).
+# Example (algorithm TBD; illustrative only):
+#   - path: "AGENTS.md"
+#     source_hash: "TBD"   # hash of the framework-side source at instantiation
+#     install_hash: "TBD"  # hash of the file as written into the product repo
+artifacts: []
