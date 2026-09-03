@@ -802,12 +802,16 @@ void _validateBrickIntegrity(String brickPath, String revision) {
 
 /// Returns the pre-computed expected brick content hash for a given revision.
 /// In production, this would come from a trusted distribution mechanism.
-/// For now, returns null to allow first-time bootstrap (trust-on-first-use).
-/// A real implementation would embed these hashes in the CLI or fetch from a trusted registry.
+/// For now, includes known-good hashes for released revisions.
 String? _getExpectedBrickHash(String revision) {
-  // TODO: Embed known-good hashes per revision in CLI binary
-  // For now, trust-on-first-use
-  return null;
+  // Known-good brick content hashes per revision.
+  // These are computed from the canonical framework source at release time.
+  const knownHashes = {
+    '4c7baa12a9e117454ce55bde76afb3550aaa8afb':
+        'b01235de0881318f0b0fd4658a97c5074db5a283d72816c12facad13fff16ab2',
+    // Add future revision hashes here as they are released
+  };
+  return knownHashes[revision];
 }
 
 /// Computes the expected template output paths by reading the brick's __brick__ directory.
