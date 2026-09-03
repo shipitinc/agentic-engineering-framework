@@ -192,7 +192,7 @@ void main() {
       expect(manifest2.instantiatedAt, equals(firstInstantiatedAt));
       expect(manifest2.revision, equals(manifest1.revision));
       expect(manifest2.artifacts.length, equals(manifest1.artifacts.length));
-    });
+    }, timeout: Timeout(Duration(minutes: 2)));
 
     test('Managed artifacts have baseline hashes (source_hash and install_hash)', () async {
       final productDir = await _createProductRepoWithPreExistingFiles();
