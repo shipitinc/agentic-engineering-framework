@@ -53,8 +53,8 @@ void main() {
     test('direct stub builders create no files', () async {
       await runBootstrap();
       await runUpgrade();
-      await runStatus();
-      await runDoctor();
+      runStatus();
+      runDoctor();
       expect(_snapshot(sandbox), isEmpty);
     });
   });

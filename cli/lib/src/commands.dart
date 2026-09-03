@@ -170,7 +170,7 @@ String _generateAuthoritativeManifest({
 /// with hashes/paths/timestamps, COMPLETE result on success. Re-run safety
 /// (no-op when manifest present), path validation, all ADR 0002 mitigations.
 /// When target is null the Phase 3a blocked behavior is preserved for test compat.
-CommandResult runBootstrap({String? target}) {
+Future<CommandResult> runBootstrap({String? target}) async {
   if (target == null) {
     // Preserve 3a blocked behavior + no-mutation for direct calls and existing tests
     final preflightIssues = _runPreflightChecks();
@@ -251,7 +251,15 @@ CommandResult runBootstrap({String? target}) {
   // Actual Mason usage: create generator from brick (proper call, no stub)
   // Error propagates on failure (no catch-all to COMPLETE); full generate/await
   // promotion left for async CLI entry if/when runner promoted.
-  final _ = MasonGenerator.fromBrick(brick);
+  final generator = await MasonGenerator.fromBrick(brick);
+
+  // Render templates using Mason
+  final vars = <String, dynamic>{};
+  await generator.generate(
+    DirectoryGeneratorTarget(targetDir),
+    vars: vars,
+    fileConflictResolution: FileConflictResolution.overwrite,
+  );
 
   // Collect rendered files for authoritative manifest (post-render inventory)
   final renderedFiles = targetDir

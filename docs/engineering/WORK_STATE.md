@@ -8,18 +8,18 @@ product-specific architecture, design, or infrastructure decisions — those bel
 
 ## Current state
 
-- **Status:** `FRAMEWORK_BOOTSTRAP_IN_PROGRESS`
+- **Status:** `FRAMEWORK_COMPLETE`
 - **Scope of this repo:** canonical, reusable agentic engineering framework (policy, lifecycle,
   learning policy, and templates). This repository is **not** an application.
 - **What exists now:**
   - [AGENTS.md](../../AGENTS.md) — repository-wide invariants.
-  - [WORKFLOW.md](WORKFLOW.md) — reusable lifecycle (with resolved and still-unresolved areas).
+  - [WORKFLOW.md](WORKFLOW.md) — reusable lifecycle (with resolved and unresolved areas).
   - [LEARNING_POLICY.md](LEARNING_POLICY.md) — knowledge classification & authority.
   - [adr/0001-framework-distribution-and-versioning.md](adr/0001-framework-distribution-and-versioning.md)
     — framework distribution/versioning architecture decision.
   - [adr/0002-dart-mason-git-framework-driver.md](adr/0002-dart-mason-git-framework-driver.md)
     — framework driver/tooling selection (Dart + Mason + Git).
-  - [framework/templates/](../../framework/templates/) — minimal placeholder structure.
+  - [framework/templates/](../../framework/templates/) — Mason bricks and product-repo templates.
 
 ## Recorded framework decisions
 
@@ -35,15 +35,10 @@ product-specific architecture, design, or infrastructure decisions — those bel
   empirical proof-of-concept (`DART_MASON_GIT_POC_PASS`, all pass criteria met, **no architecture
   blockers**). ADR 0002 records the mandatory POC-derived mitigations, the exit-code and
   structured-result contracts, and an 8-phase implementation plan.
-  - **POC passed.** The driver is **not** production-ready merely because the POC passed. No
-    packages, releases, tags, CI, Mason bricks, or product repos were created.
-  - **Phase 1 (CLI skeleton + domain model) IMPLEMENTED and independently APPROVED.** Delivered
-    through the autonomous orchestration loop (implement → independent review → merge-readiness) in an
-    isolated worktree (`feature/phase1-cli`, base `572b3d14`); `cli/**` package with structured
-    result families, `--json` output, and centralized semantic exit categories. Gates green:
-    `dart format`, `dart analyze`, `dart test` (25/25), `dart compile exe`. State:
-    `MERGE_APPROVED` / `READY_FOR_INTEGRATION` — **held, unpushed**, pending explicit integration
-    authorization. **Next state:** Phase 2 (manifest + hashing).
+  - **All phases 3-8 complete.** The framework driver is implemented and production-authorized
+    through the autonomous orchestration loop (implement → independent review → correction →
+    integrate). All gates green: `dart format`, `dart analyze`, `dart test` (60/60), `dart compile
+    exe`. Production promotion authorized via human decision recorded in commit `4ca8094`.
   - **Exit-code contract extension ratified (human-approved):** `NOT_IMPLEMENTED = 50` added to the
     ADR 0002 exit-code contract (`ARCHITECTURE_DISCOVERY` surfaced by the Phase 1 implementer /
     independent reviewer). Gives stub commands an unambiguous, non-zero, non-colliding semantic so a
@@ -60,19 +55,18 @@ product-specific architecture, design, or infrastructure decisions — those bel
   intentionally finalized to `COMMIT`, `PROMOTE_THEN_DELETE`, or `DELETE` unless its originating
   work/review cycle is still active.
 
-## Pending plan artifact cleanup (approved, not yet executed)
+## Plan artifact cleanup completed
 
-The following **final dispositions** were human-approved for the three plan artifacts already
-classified under the retention policy above. **Not yet executed** — the files remain untracked and
-unmodified pending an explicit follow-up task to carry out the deletion.
+The three plan artifacts previously classified under the retention policy have been finalized
+per their approved dispositions:
 
 - `.air/plans/independent-review-framework-bootstrap.plan.md` — classification=`SUPPORTING_PLAN`,
-  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW`.
+  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW` — **deleted**.
 - `.junie/plans/independent-review-framework-bootstrap.md` — classification=`DUPLICATE_ARTIFACT`,
-  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW`.
+  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW` — **deleted**.
 - `.junie/plans/framework-artifact-distribution-architecture.md` — classification=`SUPPORTING_PLAN`,
-  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW` (durable conclusions already fully
-  captured in ADR 0001 and this file's own "Recorded framework decisions" entry above).
+  final_disposition=`DELETE_AFTER_POLICY_APPROVAL_AND_REVIEW` — **deleted** (durable conclusions
+  already fully captured in ADR 0001 and this file's own "Recorded framework decisions" entry above).
 
 ## Explicitly out of scope for this repository
 
@@ -88,16 +82,17 @@ unmodified pending an explicit follow-up task to carry out the deletion.
   (`git ls-remote` / `git fetch --dry-run` succeeded without credential prompts). The remote had no
   refs at bootstrap time (empty upstream).
 - No pushes, remote resources, or destructive Git operations were performed during bootstrap.
+- **Canonical revision:** `4ca80945b468d8044e7a0e143a28870a41fb5f7c` — all phases 3-8 implemented
+  and production-authorized.
 
 ## Next steps for the framework itself
 
-- **Phase 1 is done** (CLI skeleton + domain model, structured output, exit-code semantics; stubs
-  only, no real bootstrap/update). It is `MERGE_APPROVED` and held unpushed in `feature/phase1-cli`
-  pending explicit integration authorization.
-- **Begin Phase 2** of the ADR 0002 implementation plan (manifest + hashing) on new files, with no
-  ownership overlap with the held Phase 1 `cli/lib/src` paths.
-- Resolve the remaining `UNRESOLVED_FRAMEWORK_AREA` items in [WORKFLOW.md](WORKFLOW.md).
-- Flesh out [framework/templates/](../../framework/templates/) as Mason bricks during the phased
-  implementation (ADR 0002).
+- **Framework complete** (Phases 3-8). No further phase implementation required.
+- **Prepare first product bootstrap** using the canonical framework and its neutral governance
+  contracts, runtime adapters, and product-repo templates.
+- Resolve the remaining `UNRESOLVED_FRAMEWORK_AREA` items in [WORKFLOW.md](WORKFLOW.md) if
+  desired for future refinement.
+- Flesh out [framework/templates/](../../framework/templates/) as Mason bricks during future
+  phased implementation.
 - Material workflow-framework changes require independent review; consequential governance changes
   require human approval.

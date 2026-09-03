@@ -94,7 +94,7 @@ class FrameworkCliRunner {
     switch (name) {
       case CommandNames.bootstrap:
         final target = command['target'] as String?;
-        return runBootstrap(target: target);
+        return await runBootstrap(target: target);
       case CommandNames.upgrade:
         final target = command['target'] as String?;
         return await runUpgrade(target: target);

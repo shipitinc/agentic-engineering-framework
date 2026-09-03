@@ -34,7 +34,7 @@ void main() {
     });
 
     test('success result renders OK, blocking renders BLOCKED', () async {
-      final ok = renderer.renderHuman(await runVersion());
+      final ok = renderer.renderHuman(runVersion());
       final blocked = renderer.renderHuman(await runBootstrap());
       expect(ok, startsWith('[OK]'));
       expect(blocked, startsWith('[BLOCKED]'));
