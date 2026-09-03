@@ -390,7 +390,9 @@ Future<CommandResult> runBootstrap({String? target}) async {
   final generator = await MasonGenerator.fromBrick(brick);
 
   // Render templates using Mason
-  final vars = <String, dynamic>{};
+  final vars = <String, dynamic>{
+    'frameworkRevision': revision,
+  };
   await generator.generate(
     DirectoryGeneratorTarget(targetDir),
     vars: vars,
