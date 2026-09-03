@@ -97,14 +97,14 @@ List<String> _runPreflightChecks() {
 /// Resolves exact framework revision from the framework source repository.
 /// This MUST resolve from the framework source context, not the current working
 /// directory (which may be the product repo). Uses the known framework source
-/// path relative to the CLI package.
+/// path relative to the CLI package (derived from brick location).
 /// Sync, read-only.
 String _resolveFrameworkRevision() {
-  // Resolve framework source root from CLI package location
-  final scriptFile = File(Platform.script.toFilePath());
-  final cliDir = scriptFile.parent.parent; // bin/ -> cli/
-  final repoRoot = cliDir.parent;
-  final frameworkSourceDir = Directory(repoRoot.path);
+  // Resolve framework source root from brick location
+  // Brick is at: <framework-root>/framework/templates
+  // So framework root is: <brick-path>/../..
+  final brickPath = _resolveBrickPath();
+  final frameworkSourceDir = Directory('${brickPath}/../..');
 
   // Run git rev-parse HEAD in the framework source directory
   final rev = Process.runSync('git', ['rev-parse', 'HEAD'],
