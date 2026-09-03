@@ -32,7 +32,7 @@ void main() {
     });
 
     /// Creates a fresh product repo with pre-existing files and .git directory.
-    Future<Directory> _createProductRepoWithPreExistingFiles() async {
+    Future<Directory> createProductRepoWithPreExistingFiles() async {
       final productDir = Directory('${sandbox.path}/product');
       productDir.createSync(recursive: true);
 
@@ -58,7 +58,7 @@ void main() {
     }
 
     /// Runs bootstrap via `dart run` from the framework repo context.
-    Future<void> _runBootstrap(Directory targetDir) async {
+    Future<void> runBootstrap(Directory targetDir) async {
       final result = await Process.run(
         'dart',
         ['run', 'cli/bin/framework.dart', 'bootstrap', '--target', targetDir.path],
@@ -69,7 +69,7 @@ void main() {
     }
 
     /// Reads and parses the framework-manifest.yaml from the target directory.
-    FrameworkManifest _readManifest(Directory targetDir) {
+    FrameworkManifest readManifest(Directory targetDir) {
       final manifestFile = File('${targetDir.path}/framework-manifest.yaml');
       expect(manifestFile.existsSync(), isTrue, reason: 'Manifest should exist');
       final yamlText = manifestFile.readAsStringSync();
@@ -77,10 +77,10 @@ void main() {
     }
 
     test('KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts', () async {
-      final productDir = await _createProductRepoWithPreExistingFiles();
-      await _runBootstrap(productDir);
+      final productDir = await createProductRepoWithPreExistingFiles();
+      await runBootstrap(productDir);
 
-      final manifest = _readManifest(productDir);
+      final manifest = readManifest(productDir);
 
       // Verify no .git/** paths in managed artifacts
       for (final artifact in manifest.artifacts) {
@@ -93,10 +93,10 @@ void main() {
     }, timeout: Timeout(Duration(minutes: 2)));
 
     test('KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed', () async {
-      final productDir = await _createProductRepoWithPreExistingFiles();
-      await _runBootstrap(productDir);
+      final productDir = await createProductRepoWithPreExistingFiles();
+      await runBootstrap(productDir);
 
-      final manifest = _readManifest(productDir);
+      final manifest = readManifest(productDir);
 
       // Verify pre-existing files still exist
       expect(File('${productDir.path}/product-only.txt').existsSync(), isTrue);
@@ -111,16 +111,16 @@ void main() {
     }, timeout: Timeout(Duration(minutes: 2)));
 
     test('KNOWN DEFECT C: Manifest records framework source revision, not product revision', () async {
-      final productDir = await _createProductRepoWithPreExistingFiles();
+      final productDir = await createProductRepoWithPreExistingFiles();
 
       // Get product repo HEAD before bootstrap
       final productHeadResult = Process.runSync('git', ['rev-parse', 'HEAD'],
           workingDirectory: productDir.path);
       final productHead = productHeadResult.stdout.toString().trim();
 
-      await _runBootstrap(productDir);
+      await runBootstrap(productDir);
 
-      final manifest = _readManifest(productDir);
+      final manifest = readManifest(productDir);
 
       // Manifest revision should be the framework source revision, not product HEAD
       expect(manifest.revision, isNot(equals(productHead)),
@@ -141,9 +141,9 @@ void main() {
       Process.runSync('git', ['commit', '--allow-empty', '-m', 'Initial commit'],
           workingDirectory: productDir.path);
 
-      await _runBootstrap(productDir);
+      await runBootstrap(productDir);
 
-      final manifest = _readManifest(productDir);
+      final manifest = readManifest(productDir);
 
       // Verify expected governance files are present
       final expectedPaths = [
@@ -177,16 +177,16 @@ void main() {
     }, timeout: Timeout(Duration(minutes: 3)));
 
     test('Re-run safety: bootstrap no-ops when manifest already exists', () async {
-      final productDir = await _createProductRepoWithPreExistingFiles();
-      await _runBootstrap(productDir);
+      final productDir = await createProductRepoWithPreExistingFiles();
+      await runBootstrap(productDir);
 
-      final manifest1 = _readManifest(productDir);
+      final manifest1 = readManifest(productDir);
       final firstInstantiatedAt = manifest1.instantiatedAt;
 
       // Run bootstrap again
-      await _runBootstrap(productDir);
+      await runBootstrap(productDir);
 
-      final manifest2 = _readManifest(productDir);
+      final manifest2 = readManifest(productDir);
 
       // Manifest should be unchanged (same instantiation timestamp)
       expect(manifest2.instantiatedAt, equals(firstInstantiatedAt));
@@ -195,10 +195,10 @@ void main() {
     }, timeout: Timeout(Duration(minutes: 3)));
 
     test('Managed artifacts have baseline hashes (source_hash and install_hash)', () async {
-      final productDir = await _createProductRepoWithPreExistingFiles();
-      await _runBootstrap(productDir);
+      final productDir = await createProductRepoWithPreExistingFiles();
+      await runBootstrap(productDir);
 
-      final manifest = _readManifest(productDir);
+      final manifest = readManifest(productDir);
 
       for (final artifact in manifest.artifacts) {
         expect(artifact.sourceHash.hex, isNotEmpty);
@@ -211,20 +211,20 @@ void main() {
     }, timeout: Timeout(Duration(minutes: 2)));
 
     test('Framework source identity recorded in manifest', () async {
-      final productDir = await _createProductRepoWithPreExistingFiles();
-      await _runBootstrap(productDir);
+      final productDir = await createProductRepoWithPreExistingFiles();
+      await runBootstrap(productDir);
 
-      final manifest = _readManifest(productDir);
+      final manifest = readManifest(productDir);
 
       expect(manifest.source, 'https://github.com/shipitinc/agentic-engineering-framework.git');
       expect(manifest.version, '0.1.0');
     }, timeout: Timeout(Duration(minutes: 2)));
 
     test('Path safety: managed paths are normalized and safe', () async {
-      final productDir = await _createProductRepoWithPreExistingFiles();
-      await _runBootstrap(productDir);
+      final productDir = await createProductRepoWithPreExistingFiles();
+      await runBootstrap(productDir);
 
-      final manifest = _readManifest(productDir);
+      final manifest = readManifest(productDir);
 
       for (final artifact in manifest.artifacts) {
         // Paths should be POSIX-style, relative, no ..

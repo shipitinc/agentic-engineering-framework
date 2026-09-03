@@ -104,7 +104,7 @@ String _resolveFrameworkRevision() {
   final scriptFile = File(Platform.script.toFilePath());
   final cliDir = scriptFile.parent.parent; // bin/ -> cli/
   final repoRoot = cliDir.parent;
-  final frameworkSourceDir = Directory('${repoRoot.path}');
+  final frameworkSourceDir = Directory(repoRoot.path);
 
   // Run git rev-parse HEAD in the framework source directory
   final rev = Process.runSync('git', ['rev-parse', 'HEAD'],
