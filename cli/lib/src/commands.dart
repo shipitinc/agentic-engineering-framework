@@ -128,6 +128,57 @@ String _resolveFrameworkRevision() {
   return 'unknown-revision';
 }
 
+/// Resolves the path to the Mason brick directory (framework/templates).
+/// Priority order:
+/// 1. FRAMEWORK_BRICK_PATH environment variable (for installed/distributed CLI)
+/// 2. Derived from Platform.script (for development: dart run or compiled exe in repo)
+String _resolveBrickPath() {
+  // 1. Check environment variable (for distributed CLI with bundled brick)
+  final envPath = Platform.environment['FRAMEWORK_BRICK_PATH'];
+  if (envPath != null && envPath.isNotEmpty) {
+    final dir = Directory(envPath);
+    if (dir.existsSync()) {
+      return dir.absolute.path;
+    }
+  }
+
+  // 2. Derive from Platform.script (development mode)
+  // Platform.script returns a URI; for file:// URIs we need to extract the path.
+  final scriptUri = Platform.script;
+  String scriptPath;
+  if (scriptUri.isScheme('file')) {
+    // file:///path/to/file -> /path/to/file
+    scriptPath = scriptUri.toFilePath();
+  } else {
+    scriptPath = scriptUri.toFilePath();
+  }
+
+  final scriptFile = File(scriptPath);
+  if (!scriptFile.existsSync()) {
+    throw StateError('Cannot resolve CLI script location: $scriptPath');
+  }
+
+  // Navigate from script location to framework root
+  // script is at: <repo>/cli/bin/framework.dart (source) or <install>/bin/framework (compiled)
+  final cliDir = scriptFile.parent.parent; // bin/ -> cli/ (or install root)
+  final repoRoot = cliDir.parent; // cli/ -> repo root (or install parent)
+  final brickDir = Directory('${repoRoot.path}/framework/templates');
+
+  if (brickDir.existsSync()) {
+    return brickDir.absolute.path;
+  }
+
+  // Fallback: check if we're in a framework repo structure (cli/ sibling of framework/)
+  final altBrickDir = Directory('${cliDir.path}/../framework/templates');
+  if (altBrickDir.existsSync()) {
+    return altBrickDir.absolute.path;
+  }
+
+  throw StateError(
+      'Cannot locate framework brick directory. Tried: ${brickDir.path}, ${altBrickDir.path}. '
+      'Set FRAMEWORK_BRICK_PATH environment variable if brick is installed elsewhere.');
+}
+
 /// Snapshots all regular files in [dir] recursively, returning a map of
 /// relative POSIX path -> file modification time (for change detection).
 /// Excludes .git/** and framework-manifest.yaml from the snapshot.
@@ -329,11 +380,9 @@ Future<CommandResult> runBootstrap({String? target}) async {
   final preRenderFiles = _snapshotTargetFiles(targetDir);
 
   // Perform full Mason rendering using brick in framework/templates/
-  // Robust absolute path from CLI package root (resolves relative fragility)
-  final scriptFile = File(Platform.script.toFilePath());
-  final cliDir = scriptFile.parent.parent; // bin/ -> cli/
-  final repoRoot = cliDir.parent;
-  final brickDirPath = '${repoRoot.path}/framework/templates';
+  // Resolve brick path: prefer FRAMEWORK_BRICK_PATH env var (for installed CLI),
+  // otherwise derive from Platform.script (for development/dart run).
+  final brickDirPath = _resolveBrickPath();
   final brick = Brick.path(brickDirPath);
   // Actual Mason usage: create generator from brick (proper call, no stub)
   // Error propagates on failure (no catch-all to COMPLETE); full generate/await
