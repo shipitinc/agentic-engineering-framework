@@ -21,6 +21,53 @@ These invariants are authoritative for any agent operating under this framework.
 - **Implementers never approve their own work.**
 - **Independent reviewers are read-only** with respect to production code under review.
 
+#### Design Governance
+- **Design Agent ≠ Independent Design Reviewer** — separate agents, no overlap.
+- **Design Agent never approves own work** — every Design Revision requires Independent Design Review.
+- **Independent Design Reviewer is read-only** — never modifies design artifacts.
+- **Substantial UI changes require an approved Design Revision** — implementers must not invent consequential UX.
+- **Implementation-discovered UI gaps route back via DCR** — not resolved in implementation lane.
+
+#### QA Governance
+- **QA Architect ≠ QA Executor** — separate agents, no overlap.
+- **QA Contract required before implementation completion** — no implementation can claim `IMPLEMENTED` without a frozen QA Contract.
+- **Deterministic evidence is authoritative over reviewer opinion** — passing tests cannot be vetoed by subjective review.
+- **Implementation agents cannot approve changed visual golden baselines** — only QA Architect or Human QA.
+- **QA artifacts must be preserved as evidence** — pinned to exact revision, retained per policy.
+- **Regressions require regression tests** — no re-verification without test.
+- **Every QA failure classified exactly once** — `IMPLEMENTATION_DEFECT`, `DESIGN_DEFECT`, `REQUIREMENT_GAP`, `ENVIRONMENT_DEFECT`.
+- **QA Executor is read-only wrt production code and baselines** — never modifies implementation or approves baselines.
+
+#### Human Decision Governance
+- **Every consequential human gate = a Human Decision object** — no exceptions.
+- **Human Decision objects are durable, versioned, and queryable** — not chat ephemera.
+- **Agents park cleanly while waiting** — emit structured `BLOCKED` result, no hanging processes.
+- **Workflow is resumable from persisted state** — Manager reads decision, validates, continues.
+- **Structured question UI is mandatory** — never free-form prose.
+- **Each question/option is atomic** — no bundling.
+- **Research first** — Orchestrator discovers facts before asking.
+- **Only Engineering Manager creates/resolves Human Decisions** — specialists cannot bypass.
+- **Decision audit trail is immutable** — state transitions are commits.
+- **Routine transitions remain automatic** — Human Decisions only for consequential gates.
+
+#### Deployment Governance
+- **Build once, promote same artifact** — no rebuilds between environments.
+- **Production Candidates are immutable** — new candidate = new build.
+- **Deployment Authority is separate from implementation/QA/design** — no credential sharing.
+- **Coding agents never receive unrestricted production credentials** — hard boundary.
+- **Destructive migrations always require Human Decision** — no exceptions.
+- **Infrastructure destruction always requires Human Decision** — no exceptions.
+- **Automatic rollback prefers known-good artifact** — never AI debugging in production.
+- **Mobile API backward compatibility is mandatory consideration** — documented in every Deployment Request.
+- **Deployment execution is a distinct, auditable step** — not conflated with implementation.
+
+#### Structured Results
+- **Every agent result must be a machine-readable structured result** per `STRUCTURED_RESULTS.md`.
+- **Provenance is mandatory** — agent_id, branch, base_sha, head_sha, timestamp.
+- **Results are parsed and validated by the Engineering Manager** before advancing workflow state.
+- **Invalid/malformed results are rejected** — agent must re-emit.
+- **No workflow transition depends on scraping conversational prose**.
+
 #### Junie orchestration binding
 - The **main Junie session is the authoritative Engineering Manager / Orchestrator**. It is the only
   Manager; a competing `engineering-manager` subagent must **not** be created.
@@ -43,12 +90,16 @@ These invariants are authoritative for any agent operating under this framework.
   **`PROHIBITED_PATHS`**.
 - **Concurrent writers cannot have overlapping ownership.** If ownership would overlap, work must be
   serialized or re-partitioned before proceeding.
+- Design, QA, and Deployment agents must declare ownership per their domain artifacts.
+- Design artifacts, QA Contracts/baselines/results, Deployment Plans/Candidates/Requests are distinct ownership domains.
 
 ### Validation & evidence
 - **Required deterministic validation must pass before success is claimed** (e.g., builds, linters,
   type checks, tests, and any project-declared required gates).
 - **Runtime/browser evidence must correspond to the exact code revision being reviewed** (pin to the
   commit/revision; stale evidence is invalid).
+- **QA evidence must correspond to the exact revision under test** — pinned via `target_revision` in QA Result.
+- **Deployment evidence must correspond to the exact Production Candidate** — immutable artifact reference.
 
 ### Automation vs. human authority
 - **Routine workflow transitions proceed automatically.**
@@ -66,6 +117,7 @@ These invariants are authoritative for any agent operating under this framework.
   policy permits.
 - **Production promotion should remain human-authorized** unless a human-approved project policy
   explicitly changes that.
+- **Design Brief approval, Level 2/3 DCR, Human QA initiation, destructive migrations, production promotion = Human Decisions.**
 
 ### Human questions & clarifications
 - **Always surface questions to the human through the structured question UI**, never as free-form
@@ -103,6 +155,11 @@ These invariants are authoritative for any agent operating under this framework.
 - [docs/engineering/WORKFLOW.md](docs/engineering/WORKFLOW.md) — the reusable lifecycle.
 - [docs/engineering/WORK_STATE.md](docs/engineering/WORK_STATE.md) — state of **this** framework repo.
 - [docs/engineering/LEARNING_POLICY.md](docs/engineering/LEARNING_POLICY.md) — knowledge classification & authority.
+- [docs/engineering/DESIGN_GOVERNANCE.md](docs/engineering/DESIGN_GOVERNANCE.md) — Design Agent, Design Reviewer, Design Brief, Design Revision, DCR, risk levels.
+- [docs/engineering/QA_GOVERNANCE.md](docs/engineering/QA_GOVERNANCE.md) — QA Architect, QA Executor, QA Contract, QA Result, failure classifications.
+- [docs/engineering/HUMAN_DECISIONS.md](docs/engineering/HUMAN_DECISIONS.md) — Human Decision objects, state persistence, structured question UI.
+- [docs/engineering/DEPLOYMENT_GOVERNANCE.md](docs/engineering/DEPLOYMENT_GOVERNANCE.md) — Staging, production candidates, deployment plans, migration classification, rollback.
+- [docs/engineering/STRUCTURED_RESULTS.md](docs/engineering/STRUCTURED_RESULTS.md) — Machine-readable result contracts for all roles and workflows.
 - [framework/templates/](framework/templates/) — placeholder structure for versioned product artifacts.
 
 > Note: This repository intentionally does **not** contain `.junie/AGENTS.md`.

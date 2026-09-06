@@ -1,0 +1,39 @@
+# Deployment Result — {{result_id}}
+
+<!--
+  TEMPLATE: Deployment Result
+  Produced by Deployment Authority per DEPLOYMENT_GOVERNANCE.md
+  Machine-readable record of deployment execution outcome.
+-->
+
+result_id: "{{result_id}}"
+request_id: "{{request_id}}"
+candidate_id: "{{candidate_id}}"
+target_environment: "{{target_environment}}"  # STAGING | PRODUCTION
+executed_by: "{{authority_id}}"  # Deployment Authority ID
+executed_at: "{{executed_at}}"
+duration_seconds: {{duration_seconds}}
+status: "{{status}}"  # SUCCESS | FAILED | ROLLED_BACK | PARTIAL
+
+steps_executed:
+  - step_id: "{{step_id_1}}"
+    status: "{{step_status_1}}"  # SUCCESS | FAILED | SKIPPED
+    started_at: "{{started_at_1}}"
+    completed_at: "{{completed_at_1}}"
+    output: "{{output_1}}"
+    evidence_refs:
+      - "{{evidence_ref_1}}"
+  # Add more steps as needed
+
+rollback_triggered: {{rollback_triggered}}
+rollback_reason: "{{rollback_reason}}"
+rollback_result: "{{rollback_result}}"  # SUCCESS | FAILED | PARTIAL
+
+post_deployment_validation:
+  health_checks: "{{health_checks}}"  # PASS | FAIL
+  synthetic_transactions: "{{synthetic_transactions}}"  # PASS | FAIL
+  key_metrics: "{{key_metrics}}"  # PASS | FAIL
+  error_rates: "{{error_rates}}"  # PASS | FAIL
+  mobile_compatibility: "{{mobile_compatibility}}"  # PASS | FAIL | NOT_APPLICABLE
+
+overall_verdict: "{{overall_verdict}}"  # DEPLOYMENT_SUCCESSFUL | ROLLED_BACK | REQUIRES_INTERVENTION

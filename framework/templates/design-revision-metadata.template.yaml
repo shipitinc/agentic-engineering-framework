@@ -1,0 +1,33 @@
+# Design Revision Metadata Template
+# Instantiated by Design Agent per DESIGN_GOVERNANCE.md
+# One file per Design Revision, stored alongside design artifacts
+
+revision_id: "{{revision_id}}"
+brief_id: "{{brief_id}}"
+revision_number: {{revision_number}}
+status: "DRAFT"  # DRAFT | UNDER_REVIEW | APPROVED | REJECTED | SUPERSEDED
+risk_level: {{risk_level}}  # 0 | 1 | 2 | 3
+risk_rationale: "{{risk_rationale}}"
+changelog:
+  - "{{change_1}}"
+  - "{{change_2}}"
+  # Add/remove as needed
+traceability:
+  requirements_covered:
+    - "{{req_id_1}}"
+    - "{{req_id_2}}"
+  requirements_gaps:
+    - "{{req_id_gap_1}}"
+design_system_compliance: "UNKNOWN"  # PASS | PARTIAL | FAIL | UNKNOWN
+ux_accessibility_score: "UNKNOWN"    # PASS | PARTIAL | FAIL | UNKNOWN
+implementation_feasibility: "UNKNOWN" # HIGH | MEDIUM | LOW | UNKNOWN
+created_by: "{{agent_id}}"
+created_at: "{{created_at}}"  # ISO8601
+reviewed_by: ""  # Reviewer ID (filled after review)
+reviewed_at: ""  # ISO8601 (filled after review)
+approved_by: ""  # Human ID (filled for Level 2+ after approval)
+approved_at: ""  # ISO8601 (filled for Level 2+ after approval)
+artifact_paths:
+  - "{{artifact_path_1}}"
+  - "{{artifact_path_2}}"
+# Add/remove as needed

@@ -1,0 +1,70 @@
+# Human Decision — {{decision_id}}
+
+<!--
+  TEMPLATE: Human Decision Object
+  Created by Engineering Manager per HUMAN_DECISIONS.md
+  Durable, versioned, queryable record of consequential human gates.
+  State machine: PENDING → IN_PROGRESS → RESOLVED | ESCALATED | DEFERRED | CANCELLED
+-->
+
+decision_id: "{{decision_id}}"
+type: "{{type}}"  # PRODUCT | ARCHITECTURE | DESIGN | SECURITY | INFRASTRUCTURE | DESTRUCTIVE_OPERATION | DEPLOYMENT_AUTHORITY | OTHER_CONSEQUENTIAL
+status: "PENDING"  # PENDING | IN_PROGRESS | RESOLVED | ESCALATED | DEFERRED | CANCELLED
+question: "{{question}}"
+
+context:
+  summary: "{{context_summary}}"
+  blocking_work_item:
+    item_type: "{{item_type}}"  # FEATURE | DESIGN_REVISION | DCR | QA_CONTRACT | DEPLOYMENT | MIGRATION | ARCHITECTURE_CHOICE | OTHER
+    item_id: "{{item_id}}"
+    item_ref: "{{item_ref}}"
+  evidence:
+    documents:
+      - type: "{{doc_type_1}}"  # DESIGN_BRIEF | DESIGN_REVISION | DCR | QA_CONTRACT | QA_RESULT | ADR | DEPLOYMENT_PLAN | OTHER
+        id: "{{doc_id_1}}"
+        url: "{{doc_url_1}}"
+      # Add more as needed
+    quantitative_data:
+      - metric: "{{metric_1}}"
+        value: "{{value_1}}"
+        source: "{{source_1}}"
+      # Add more as needed
+    qualitative_tradeoffs:
+      - dimension: "{{dimension_1}}"
+        option_a: "{{option_a_1}}"
+        option_b: "{{option_b_1}}"
+        assessment: "{{assessment_1}}"
+      # Add more as needed
+  recommendation:
+    recommended_option: "{{recommended_option}}"
+    rationale: "{{recommendation_rationale}}"
+    confidence: "{{confidence}}"  # HIGH | MEDIUM | LOW
+
+options:
+  - option_id: "OPTION_A"
+    label: "{{option_a_label}}"
+    description: "{{option_a_description}}"
+    implications: "{{option_a_implications}}"
+    estimated_effort: "{{option_a_effort}}"
+    risk_level: "{{option_a_risk}}"  # LOW | MEDIUM | HIGH | CRITICAL
+  - option_id: "OPTION_B"
+    label: "{{option_b_label}}"
+    description: "{{option_b_description}}"
+    implications: "{{option_b_implications}}"
+    estimated_effort: "{{option_b_effort}}"
+    risk_level: "{{option_b_risk}}"
+  # Add up to 4 options (OPTION_C, OPTION_D)
+
+resolution:  # Filled when status=RESOLVED
+  selected_option: ""
+  decided_by: ""
+  decided_at: ""
+  rationale: ""
+  follow_up_actions:
+    - action: ""
+      owner: ""
+      due_date: ""
+
+created_by: "{{manager_id}}"
+created_at: "{{created_at}}"
+updated_at: "{{updated_at}}"

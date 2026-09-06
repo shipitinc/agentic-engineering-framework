@@ -1,0 +1,61 @@
+# Deployment Request — {{request_id}}
+
+<!--
+  TEMPLATE: Deployment Request
+  Created by Release Engineer per DEPLOYMENT_GOVERNANCE.md
+  Formal request to deploy a Production Candidate to target environment.
+  Status: DRAFT → UNDER_REVIEW → APPROVED → EXECUTING → COMPLETED | FAILED | ROLLED_BACK
+-->
+
+request_id: "{{request_id}}"
+candidate_id: "{{candidate_id}}"
+target_environment: "{{target_environment}}"  # STAGING | PRODUCTION
+deployment_strategy: "{{deployment_strategy}}"  # BLUE_GREEN | ROLLING | CANARY | RECREATE | HELM | TERRAFORM | CUSTOM
+
+deployment_plan:
+  steps:
+    - step_id: "{{step_id_1}}"
+      description: "{{step_description_1}}"
+      type: "{{step_type_1}}"  # MIGRATION | CONFIG_CHANGE | SERVICE_DEPLOY | HEALTH_CHECK | SMOKE_TEST | VALIDATION
+      migration_classification: "{{migration_class_1}}"  # SAFE | RISKY | DESTRUCTIVE
+      migration_details: "{{migration_details_1}}"
+      rollback_step: "{{rollback_step_ref_1}}"
+      estimated_duration_seconds: {{duration_1}}
+      depends_on: []
+    # Add more steps as needed
+  rollback_plan:
+    trigger_conditions:
+      - "{{trigger_condition_1}}"
+      - "{{trigger_condition_2}}"
+    steps:
+      - step_id: "{{rollback_step_1}}"
+        description: "{{rollback_description_1}}"
+        type: "{{rollback_type_1}}"  # REVERT_DEPLOYMENT | REVERT_MIGRATION | REVERT_CONFIG | TRAFFIC_SWITCH
+        target_artifact: "{{known_good_artifact_ref}}"
+        estimated_duration_seconds: {{rollback_duration_1}}
+      # Add more rollback steps as needed
+    max_rollback_time_seconds: {{max_rollback_time}}
+    prefers_known_good_artifact: true
+
+pre_deployment_checks:
+  - check: "MIGRATION_CLASSIFICATION_REVIEW"
+    status: "PENDING"  # PASS | PENDING | FAIL
+  - check: "ROLLBACK_PLAN_VALIDATED"
+    status: "PENDING"
+  - check: "MOBILE_API_BACKWARD_COMPATIBILITY"
+    status: "PENDING"  # PASS | PENDING | FAIL | NOT_APPLICABLE
+    details: "{{mobile_compat_details}}"
+  - check: "INFRASTRUCTURE_DESTRUCTION_REVIEW"
+    status: "PENDING"  # PASS | PENDING | FAIL | NOT_APPLICABLE
+    details: "{{infra_destruction_details}}"
+
+human_approval_required: {{human_approval_required}}
+human_approval_ref: "{{human_approval_ref}}"  # Human Decision ID if required
+
+created_by: "{{release_engineer_id}}"
+created_at: "{{created_at}}"
+reviewed_by: ""
+reviewed_at: ""
+approved_by: ""
+approved_at: ""
+status: "DRAFT"

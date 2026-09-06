@@ -33,6 +33,18 @@ Each discovery must be tagged with exactly one category:
 - **`DESIGN_DISCOVERY`**
   A finding affecting UI/design or the Design Contract.
 
+- **`QA_DISCOVERY`**
+  A finding affecting QA strategy, QA Contracts, test evidence standards, golden baseline management,
+  or failure classification practices.
+
+- **`DEPLOYMENT_DISCOVERY`**
+  A finding affecting deployment processes, migration classification, rollback procedures, production
+  validation, mobile API compatibility, or credential management.
+
+- **`HUMAN_DECISION_RECORD`**
+  A persisted human decision with full context, rationale, and follow-up actions. Serves as audit
+  trail and precedent for future similar decisions.
+
 - **`WORKFLOW_IMPROVEMENT`**
   A finding that would improve the reusable workflow/framework itself.
 
@@ -50,7 +62,7 @@ Each discovery must be tagged with exactly one category:
 Persisting knowledge requires the appropriate authority:
 
 1. **Automatic (verified operational knowledge)**
-   `PROJECT_FACT`, `RUNTIME_DISCOVERY`, and other verified operational knowledge **may be persisted
+   `PROJECT_FACT`, `RUNTIME_DISCOVERY`, `DESIGN_DISCOVERY`, `QA_DISCOVERY`, `DEPLOYMENT_DISCOVERY`, and other verified operational knowledge **may be persisted
    automatically** when supported by evidence.
 
 2. **Independent review (reusable workflow changes)**
@@ -58,7 +70,7 @@ Persisting knowledge requires the appropriate authority:
    independent review** before being adopted into the framework.
 
 3. **Human decision (consequential architecture/governance)**
-   `ARCHITECTURE_DISCOVERY` and other **consequential architecture/governance changes require a human
+   `ARCHITECTURE_DISCOVERY`, `HUMAN_DECISION_RECORD`, and other **consequential architecture/governance changes require a human
    decision**. `CONTRADICTION` involving governance/architecture escalates to this level.
 
 ---
@@ -111,6 +123,32 @@ This is a `WORKFLOW_IMPROVEMENT` derived from observed behavior. The reusable le
   visible** (do not hide it via ignore rules) until the framework determines the correct policy.
 
 This finding follows the **independent-review** authority level for `WORKFLOW_IMPROVEMENT`.
+
+### Worked example — QA discovery: flaky test pattern indicates environment issue
+
+A QA Executor observes that a specific e2e test fails intermittently only in the QA environment,
+correlating with a shared database connection pool exhaustion. The root cause is an environment
+configuration issue (connection pool size), not the test or implementation.
+
+- This is a `QA_DISCOVERY` (environment defect pattern) and `ENVIRONMENT_DEFECT` classification for the specific failures.
+- The **larger lesson** — that QA Contracts should specify environment stability prerequisites and connection pool sizing — is a `WORKFLOW_IMPROVEMENT` requiring independent review.
+- The immediate finding updates the product's QA Contract (product-specific) automatically.
+
+### Worked example — Deployment discovery: blue-green rollback timing
+
+A Deployment Authority observes that the blue-green traffic switch takes 45 seconds due to load balancer health check intervals, exceeding the 30-second rollback SLA. The fix is to adjust health check intervals in the deployment infrastructure config.
+
+- This is a `DEPLOYMENT_DISCOVERY` (operational knowledge about rollback timing).
+- The **larger lesson** — that Deployment Requests must include measured rollback timing validation in staging — is a `WORKFLOW_IMPROVEMENT` requiring independent review.
+- The immediate finding updates the product's deployment infrastructure config (product-specific) automatically.
+
+### Worked example — Human Decision Record as precedent
+
+A Human Decision resolves a Level 3 DCR (major navigation change) by approving Option B with rationale about user mental model preservation. The decision object is persisted.
+
+- The decision itself is a `HUMAN_DECISION_RECORD` (audit trail).
+- The **precedent** — that navigation IA changes require mental model analysis in the DCR — becomes a `DESIGN_DISCOVERY` for the product and a `WORKFLOW_IMPROVEMENT` candidate for the framework (independent review).
+- Future similar DCRs can reference this decision as precedent.
 
 ### Worked example — validate framework tooling with a disposable POC before adoption
 

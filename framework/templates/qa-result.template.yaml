@@ -1,0 +1,68 @@
+# QA Result — {{result_id}}
+
+<!--
+  TEMPLATE: QA Result
+  Produced by QA Executor per QA_GOVERNANCE.md
+  One per QA execution (automated, visual, human, or combined).
+  Pinned to exact target_revision.
+-->
+
+result_id: "{{result_id}}"
+contract_id: "{{contract_id}}"
+execution_type: "{{execution_type}}"  # AUTOMATED | VISUAL | HUMAN | COMBINED
+target_revision: "{{target_revision}}"  # git SHA
+target_environment: "{{target_environment}}"  # QA | STAGING | PRODUCTION
+status: "{{status}}"  # PASS | FAIL | PARTIAL | BLOCKED
+executed_by: "{{executor_id}}"  # QA Executor agent ID
+executed_at: "{{executed_at}}"  # ISO8601
+duration_seconds: {{duration_seconds}}
+
+summary:
+  total_tests: {{total_tests}}
+  passed: {{passed}}
+  failed: {{failed}}
+  skipped: {{skipped}}
+  flaky: {{flaky}}
+
+evidence:
+  test_reports:
+    - "{{test_report_1}}"
+    - "{{test_report_2}}"
+  screenshots:
+    - "{{screenshot_1}}"
+    - "{{screenshot_2}}"
+  videos:
+    - "{{video_1}}"
+  logs:
+    - "{{log_1}}"
+  traces:
+    - "{{trace_1}}"
+
+failures:
+  - failure_id: "{{failure_id_1}}"
+    classification: "{{classification_1}}"  # IMPLEMENTATION_DEFECT | DESIGN_DEFECT | REQUIREMENT_GAP | ENVIRONMENT_DEFECT
+    severity: "{{severity_1}}"  # CRITICAL | HIGH | MEDIUM | LOW
+    description: "{{description_1}}"
+    evidence_refs:
+      - "{{evidence_ref_1}}"
+    suggested_remediation_lane: "{{remediation_lane_1}}"  # CORRECTION | DCR | REQUIREMENTS_CLARIFICATION | INFRA_REMEDIATION
+    regression_test_added: {{regression_test_added_1}}
+    regression_test_ref: "{{regression_test_ref_1}}"
+  # Add more failures as needed
+
+golden_baseline_changes:
+  - baseline_id: "{{baseline_id_1}}"
+    change_type: "{{change_type_1}}"  # NEW | UPDATED | REMOVED
+    approved_by: "{{approved_by_1}}"  # QA_ARCHITECT | HUMAN_QA
+    approval_ref: "{{approval_ref_1}}"
+  # Add more as needed
+
+gate_results:
+  unit: "{{unit_gate}}"  # PASS | FAIL | N/A
+  integration: "{{integration_gate}}"  # PASS | FAIL | N/A
+  contract: "{{contract_gate}}"  # PASS | FAIL | N/A
+  e2e: "{{e2e_gate}}"  # PASS | FAIL | N/A
+  visual: "{{visual_gate}}"  # PASS | FAIL | N/A
+  human: "{{human_gate}}"  # PASS | FAIL | N/A
+
+overall_verdict: "{{overall_verdict}}"  # READY_FOR_MERGE | BLOCKED | HUMAN_DECISION_REQUIRED
