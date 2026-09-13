@@ -267,7 +267,19 @@ Every structured result **must** conform to this top-level envelope:
     },
     "evidence_standards_defined": true,
     "golden_baselines_defined": true,
-    "regression_requirements_defined": true
+    "regression_requirements_defined": true,
+    "evidence_rows": [
+      {
+        "evidence_id": "STRING",  // E-01, E-02, … (E_* rows)
+        "required": "REQUIRED | OPTIONAL | NOT_APPLICABLE",
+        "test_method": "AUTOMATED | VISUAL | HUMAN | COMBINED",
+        "artifact_ref": "STRING",  // feature-specific artifact/URL satisfying the row
+        "params": "STRING",        // run parameters, e.g. --dart-define=E2E_VERIFICATION_CODE
+        "prerequisites": "STRING", // lane/services/device required to run
+        "contract_determination": "EXPECTED_TO_EXECUTE | CONTINGENT | SKIPPED_BY_CONTRACT",
+        "determination_reasons": "STRING"
+      }
+    ]
   },
   "evidence": {
     "traceability_matrix": "STRING"
@@ -295,13 +307,25 @@ Every structured result **must** conform to this top-level envelope:
       "flaky": "INTEGER"
     },
     "gate_results": {
-      "unit": "PASS | FAIL | N/A",
-      "integration": "PASS | FAIL | N/A",
-      "contract": "PASS | FAIL | N/A",
-      "e2e": "PASS | FAIL | N/A",
-      "visual": "PASS | FAIL | N/A",
-      "human": "PASS | FAIL | N/A"
+      "unit": "PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED",
+      "integration": "PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED",
+      "contract": "PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED",
+      "e2e": "PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED",
+      "visual": "PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED",
+      "human": "PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED"
     },
+    "evidence_determinations": [
+      {
+        "evidence_id": "STRING",  // E_* row reference from the QA Contract
+        "determination": "EXECUTED | READY_NOT_EXECUTED | SKIPPED",
+        "artifact_ref": "STRING",
+        "params": "STRING",
+        "prerequisites": "STRING",
+        "reasons": "STRING",      // mandatory unless EXECUTED
+        "authority_ref": "STRING",// required for SKIPPED
+        "evidence_refs": ["STRING"]
+      }
+    ],
     "failures": [
       {
         "failure_id": "STRING",

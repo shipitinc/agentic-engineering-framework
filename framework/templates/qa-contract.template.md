@@ -58,6 +58,10 @@
 - **Environments**: {{e2e_environments}}
 - **Tools**: {{e2e_tools}}
 - **Required**: {{e2e_required}}
+- **Evidence Rows**: Each journey is declared as an `E_*` evidence row below with
+  `artifact_ref`, `params`, and `prerequisites`. A row whose lane does not exist
+  (no CI device job, no headless device) is either made runnable or formally
+  determined per its contract determination — never silently asserted.
 
 ### Visual Tests
 - **Pages/Components**: {{visual_components}}
@@ -77,6 +81,30 @@
 - **Deterministic Evidence Required**: {{deterministic_evidence_required}}
 - **Revision Pinning Required**: {{revision_pinning_required}} (evidence must correspond to exact code revision)
 - **Artifact Retention Policy**: {{artifact_retention_policy}} (duration, storage location)
+
+## Evidence Rows
+
+Each `E_*` row binds a contract-mandated evidence requirement to the
+**feature-specific artifact(s)** and run prerequisites that will satisfy it —
+declared by the QA Architect at contract time, never improvised after freeze.
+The QA Result reports each row's determination against these declarations.
+
+{{#each evidence_rows}}
+### E-{{id}}: {{title}}
+- **Required**: {{required}} (REQUIRED \| OPTIONAL \| NOT_APPLICABLE)
+- **Test Method**: {{test_method}} (AUTOMATED \| VISUAL \| HUMAN \| COMBINED)
+- **Artifact Ref**: {{artifact_ref}} (feature-specific file/URL satisfying this row)
+- **Run Params**: {{params}} (e.g. `--dart-define=E2E_VERIFICATION_CODE`, target device, env vars)
+- **Prerequisites**: {{prerequisites}} (lane/services/devices required to run; e.g. a CI device job or headless device)
+- **Traceability**: {{traceability_refs}} (requirements/design refs evidenced)
+- **Contract Determination**: {{determination}} (EXPECTED_TO_EXECUTE \| CONTINGENT \| SKIPPED_BY_CONTRACT)
+- **Determination Reasons**: {{determination_reasons}} (mandatory unless EXPECTED_TO_EXECUTE)
+{{/each}}
+
+> A `REQUIRED` row must reach `EXECUTED` or a formal `SKIPPED`. An `OPTIONAL` /
+> `NOT_IN_DEFAULT_PIPELINE` row may rest at `READY_NOT_EXECUTED` without a
+> decision. Nothing here is silently asserted — see QA_GOVERNANCE.md
+> "Evidence Rows & Determinations".
 
 ## Golden Baselines
 
@@ -104,6 +132,12 @@
 | E2E | {{e2e_gate}} |
 | Visual | {{visual_gate}} |
 | Human | {{human_gate}} |
+
+**Gate determination semantics**: each `E_*` evidence row resolves to
+`EXECUTED` (evidence at the pinned revision) or a formal `SKIPPED`
+(`reasons` + `authority_ref`); `READY_NOT_EXECUTED` is interim only and never a
+resting state for a `REQUIRED` row. Gates report `PASS | FAIL | N/A |
+NOT_EXECUTED | SKIPPED` in the QA Result.
 
 ---
 

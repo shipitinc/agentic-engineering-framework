@@ -37,6 +37,8 @@ These invariants are authoritative for any agent operating under this framework.
 - **Regressions require regression tests** — no re-verification without test.
 - **Every QA failure classified exactly once** — `IMPLEMENTATION_DEFECT`, `DESIGN_DEFECT`, `REQUIREMENT_GAP`, `ENVIRONMENT_DEFECT`.
 - **QA Executor is read-only wrt production code and baselines** — never modifies implementation or approves baselines.
+- **Every `E_*` evidence row is explicitly determined** — bound to a feature-specific `artifact_ref`/`params`/`prerequisites` at contract time and reported with a determination; never silently asserted.
+- **A permanently-unrunnable `REQUIRED` gate must be formally determined** — made runnable, declared `SKIPPED` with reasons + authority, or revised; never left `REQUIRED` + `READY_NOT_EXECUTED` forever.
 
 #### Human Decision Governance
 - **Every consequential human gate = a Human Decision object** — no exceptions.

@@ -38,6 +38,18 @@ evidence:
   traces:
     - "{{trace_1}}"
 
+evidence_determinations:
+  - evidence_id: "{{evidence_id_1}}"  # E_* row from the QA Contract
+    determination: "{{determination_1}}"  # EXECUTED | READY_NOT_EXECUTED | SKIPPED
+    artifact_ref: "{{artifact_ref_1}}"  # feature-specific artifact that satisfies / would satisfy the row
+    params: "{{params_1}}"  # e.g. --dart-define=E2E_VERIFICATION_CODE
+    prerequisites: "{{prerequisites_1}}"
+    reasons: "{{determination_reasons_1}}"  # mandatory unless EXECUTED
+    authority_ref: "{{authority_ref_1}}"  # required for SKIPPED
+    evidence_refs:
+      - "{{evidence_ref_1}}"
+  # Add more evidence-row determinations as needed
+
 failures:
   - failure_id: "{{failure_id_1}}"
     classification: "{{classification_1}}"  # IMPLEMENTATION_DEFECT | DESIGN_DEFECT | REQUIREMENT_GAP | ENVIRONMENT_DEFECT
@@ -58,11 +70,11 @@ golden_baseline_changes:
   # Add more as needed
 
 gate_results:
-  unit: "{{unit_gate}}"  # PASS | FAIL | N/A
-  integration: "{{integration_gate}}"  # PASS | FAIL | N/A
-  contract: "{{contract_gate}}"  # PASS | FAIL | N/A
-  e2e: "{{e2e_gate}}"  # PASS | FAIL | N/A
-  visual: "{{visual_gate}}"  # PASS | FAIL | N/A
-  human: "{{human_gate}}"  # PASS | FAIL | N/A
+  unit: "{{unit_gate}}"  # PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  integration: "{{integration_gate}}"  # PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  contract: "{{contract_gate}}"  # PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  e2e: "{{e2e_gate}}"  # PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  visual: "{{visual_gate}}"  # PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  human: "{{human_gate}}"  # PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
 
 overall_verdict: "{{overall_verdict}}"  # READY_FOR_MERGE | BLOCKED | HUMAN_DECISION_REQUIRED

@@ -44,6 +44,21 @@ product-specific architecture, design, or infrastructure decisions — those bel
     independent reviewer). Gives stub commands an unambiguous, non-zero, non-colliding semantic so a
     stub can never be mistaken for `SUCCESS`.
 
+- **QA evidence rows + unrunnable-gate determinations (issues #1/#2 resolved):** QA Contracts now
+  declare **`E_*` evidence rows** binding feature-specific artifacts
+  (`artifact_ref` / `params` / `prerequisites`) with contract-time determinations
+  (`EXPECTED_TO_EXECUTE | CONTINGENT | SKIPPED_BY_CONTRACT`); QA Results report per-row
+  determinations (`EXECUTED | READY_NOT_EXECUTED | SKIPPED`) and gates may be
+  `NOT_EXECUTED` / `SKIPPED`. Rules: **nothing is silently asserted**; a `REQUIRED` row that
+  cannot run must be formally determined (made runnable, `SKIPPED` with reasons + `authority_ref`,
+  or contract revision) — never left `REQUIRED` + `READY_NOT_EXECUTED` forever;
+  `OPTIONAL` / `NOT_IN_DEFAULT_PIPELINE` rows are non-blocking. Filed as
+  `shipitinc/agentic-engineering-framework#1` and `#2` (QA Contract feature-specific artifact
+  binding; ShipIt headless-device/CI E2E lane gap). The framework resolution covers the
+  governance/template side; the concrete CI E2E device lane for a product stays a per-product
+  platform decision, now expressible as a first-class `prerequisites` declaration on each `E_*`
+  row. Resolved 2026-09-13.
+
 - **Plan artifact retention policy (APPROVED WITH REFINEMENT):** agent-generated plan artifacts
   (`.air/plans/`, `.junie/plans/`, or equivalent) are **visible/versionable but not automatically
   committed** by default. See [LEARNING_POLICY.md — Plan artifact retention

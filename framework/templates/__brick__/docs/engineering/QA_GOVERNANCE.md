@@ -102,6 +102,15 @@ evidence:
   videos: array of paths/URLs
   logs: array of paths/URLs
   traces: array of paths/URLs
+evidence_determinations:
+  - evidence_id: string (E_* row reference from the QA Contract)
+    determination: EXECUTED | READY_NOT_EXECUTED | SKIPPED
+    artifact_ref: string (feature-specific artifact that satisfies / would satisfy the row)
+    params: string (run parameters, e.g. `--dart-define=E2E_VERIFICATION_CODE`)
+    prerequisites: string (lane/services/device required to run)
+    reasons: string (mandatory unless determination is EXECUTED)
+    authority_ref: string (required for SKIPPED; references the recorded decision)
+    evidence_refs: array of evidence IDs
 failures:
   - failure_id: UUID
     classification: IMPLEMENTATION_DEFECT | DESIGN_DEFECT | REQUIREMENT_GAP | ENVIRONMENT_DEFECT
@@ -117,14 +126,87 @@ golden_baseline_changes:
     approved_by: QA_ARCHITECT | HUMAN_QA
     approval_ref: string
 gate_results:
-  unit: PASS | FAIL | N/A
-  integration: PASS | FAIL | N/A
-  contract: PASS | FAIL | N/A
-  e2e: PASS | FAIL | N/A
-  visual: PASS | FAIL | N/A
-  human: PASS | FAIL | N/A
+  unit: PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  integration: PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  contract: PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  e2e: PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  visual: PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
+  human: PASS | FAIL | N/A | NOT_EXECUTED | SKIPPED
 overall_verdict: READY_FOR_MERGE | BLOCKED | HUMAN_DECISION_REQUIRED
 ```
+
+---
+
+## Evidence Rows & Determinations (`E_*`)
+
+QA Contracts declare **evidence rows** (`E_*`). Each row is a first-class,
+attributable line binding a contract-mandated evidence requirement to the
+**feature-specific artifact(s)** and run prerequisites that will satisfy it.
+Generic evidence slots (test reports, screenshots, logs) are placeholders; an
+`E_*` row is the binding the QA Architect declares at **contract time** and the
+QA Executor reports against in the **QA Result**. This gives feature-specific
+artifacts a standard home without hand-editing a frozen contract or shipping
+prose that no agent can act on.
+
+### Evidence row model
+
+A QA Contract evidence row carries:
+
+- `evidence_id`: `E-01`, `E-02`, … (unique within the contract)
+- `title` / `scope`: the requirement the row evidences
+- `required`: `REQUIRED | OPTIONAL | NOT_APPLICABLE`
+- `test_method`: `AUTOMATED | VISUAL | HUMAN | COMBINED`
+- `artifact_ref`: **feature-specific** file/URL the row resolves to (e.g.
+  `apps/app/integration_test/app_journey_test.dart`)
+- `params`: run parameters the artifact needs (e.g. `--dart-define=
+  E2E_VERIFICATION_CODE`, target device, environment variables)
+- `prerequisites`: runnable-lane facts the row depends on (a CI device job, a
+  headless device, services, credentials, platform)
+- `traceability_refs`: requirements/design refs the row evidences
+- `contract_determination`: `EXPECTED_TO_EXECUTE | CONTINGENT |
+  SKIPPED_BY_CONTRACT` (declared at contract freeze)
+- `determination_reasons`: mandatory prose when the contract declares anything
+  other than `EXPECTED_TO_EXECUTE`
+
+### Determinations (QA Result time)
+
+| Determination | Meaning | When valid |
+|---------------|---------|------------|
+| `EXECUTED` | The row ran against the pinned revision and produced artifact-tracked evidence. | After successful execution with evidence. |
+| `READY_NOT_EXECUTED` | The row is ready but has **not yet** run — the lane exists and the run is pending. | Interim state only; must transition to `EXECUTED` or a formal determination. |
+| `SKIPPED` | The row is formally not executed, with recorded `reasons` + `authority_ref`. | Only with a recorded decision (`authority_ref`: managed determination or Human Decision). |
+
+Gate results (`gate_results` in the QA Result) use `NOT_EXECUTED` for a gate
+that has not run in this execution and `SKIPPED` for a gate whose evidence rows
+were formally determined skipped.
+
+### Rules
+
+1. **Nothing is silently asserted.** No `E_*` row may carry a passing claim
+   (`EXECUTED` / gate `PASS`) without artifact-tracked evidence pinned to the
+   exact revision under test.
+2. **Feature-specific bindings are first-class.** A row that needs a specific
+   artifact must reference it via `artifact_ref` + `params` + `prerequisites`
+   in the frozen contract — never hand-edited into a frozen contract or
+   documented only in prose.
+3. **A `REQUIRED` row that cannot run must be formally determined.** When the
+   lane is unattainable (no CI device job, no headless device, missing
+   platform/service), the row resolves to exactly one of:
+   - make it runnable (add the lane), then `EXECUTED`;
+   - `SKIPPED` with `reasons` + `authority_ref` (a consequential skip is a
+     Human Decision);
+   - or a contract revision that changes `required` (never silently).
+4. **`READY_NOT_EXECUTED` is terminal-invalid as a resting state.** A row may
+   not persist indefinitely as `REQUIRED` + `READY_NOT_EXECUTED`; it must reach
+   `EXECUTED` or a formal `SKIPPED`. The Engineering Manager routes unattainable
+   `REQUIRED` gates to the determination lane rather than leaving the gate open
+   forever by default.
+5. **`OPTIONAL` / `NOT_IN_DEFAULT_PIPELINE` rows are non-blocking by
+   construction** and never imply a passing claim; they may rest at
+   `READY_NOT_EXECUTED` without a formal decision.
+6. **Determination changes are recorded** on the QA Result
+   (`evidence_determinations`) and in the QA Contract status ledger; the same
+   `E_*` row id is used across both.
 
 ---
 
@@ -219,6 +301,10 @@ Every QA failure **must** be classified as exactly one of:
 - **Trigger**: Post-integration deployment to QA environment.
 - **Executor**: QA Executor.
 - **Criteria**: All required automated tests pass per QA Contract gate criteria.
+- **Unrunnable-gate handling**: a `REQUIRED` gate that cannot execute is **not**
+  silently skipped — the Executor records `NOT_EXECUTED` + reasons, and the
+  Manager resolves it per the [Evidence Rows & Determinations](#evidence-rows--determinations-e_)
+  rules (`EXECUTED`, formal `SKIPPED`, or contract revision).
 - **Output**: QA Result with `overall_verdict`.
 
 ### Gate Q4: Visual QA Execution
@@ -252,6 +338,12 @@ Every QA failure **must** be classified as exactly one of:
 7. **Every failure classified exactly once** — `IMPLEMENTATION_DEFECT`, `DESIGN_DEFECT`, `REQUIREMENT_GAP`, `ENVIRONMENT_DEFECT`.
 8. **QA Executor is read-only wrt production code and baselines** — never modifies implementation or approves baselines.
 9. **Only Engineering Manager advances lifecycle state** — QA agents produce results; Manager consumes and transitions.
+10. **Every `E_*` evidence row is explicitly determined** — bound to
+    feature-specific `artifact_ref`/`params`/`prerequisites` and reported with
+    a determination. Nothing is silently asserted.
+11. **A permanently-unrunnable `REQUIRED` gate must be formally determined** —
+    made runnable, declared `SKIPPED` with reasons + `authority_ref`, or
+    revised; it is never left as `REQUIRED` + `READY_NOT_EXECUTED` indefinitely.
 
 ---
 
