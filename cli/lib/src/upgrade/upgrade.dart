@@ -36,7 +36,13 @@ class UpgradeClassification {
   /// Content moves detected within the framework's own change (from -> to).
   final List<MapEntry<String, String>> renamed;
 
-  /// Paths whose content differs from the base render.
+  /// Paths whose merged content differs from the base render — the framework
+  /// changed them, a local customization survived on top of them, or both. This
+  /// deliberately overlaps [productPreserved]: when the framework changed a path
+  /// the product also had changed, the path is reported as both an upstream
+  /// modification and a preserved customization. Making the two buckets
+  /// exclusive would hide such a path from [hasChanges] and wrongly report a
+  /// delivered upgrade as a no-op.
   final List<String> modified;
 
   /// Paths that require human resolution: real three-way conflicts, plus a
@@ -47,6 +53,9 @@ class UpgradeClassification {
   final List<String> unmodified;
 
   /// Locally customized artifacts whose local content survived the merge.
+  ///
+  /// Disjoint from [unmodified]; overlaps [modified] whenever the framework also
+  /// changed the path (see [modified]).
   final List<String> productPreserved;
 
   /// Paths the product's manifest claims as framework-managed that **neither**
@@ -125,7 +134,7 @@ class _UpgradeScratch {
   /// inspection.
   final Directory localDir;
 
-  /// Scratch state is always discarded (ADR 0004 § 6): the deliverable is a ref
+  /// Scratch state is always discarded (ADR 0004 § 9): the deliverable is a ref
   /// in the product repository, so nothing needs to survive the process.
   void dispose() {
     if (root.existsSync()) {
@@ -155,12 +164,20 @@ class _UpgradeScratch {
 /// 8. Return the structured result; always discard the scratch state.
 ///
 /// [frameworkRootOverride] selects the framework checkout used as the render
-/// source; when null the CLI's own framework checkout is used if it contains the
-/// requested revision, otherwise the canonical source.
+/// source. It is authoritative: when supplied, the render never falls back to
+/// the canonical network source, so a caller that pinned a framework checkout
+/// cannot silently end up rendering a different one. When null the CLI's own
+/// framework checkout is used if it contains the requested revision, otherwise
+/// the canonical source.
+///
+/// [gitVersionSupported] overrides the `git >= 2.38` gate (see [_createScratch]).
+/// Production callers pass null; it exists so the gate can be tested where the
+/// installed git can never fail it.
 Future<CommandResult> runUpgradeCore({
   required Directory productRepo,
   required String targetRevision,
   String? frameworkRootOverride,
+  bool Function()? gitVersionSupported,
 }) async {
   // 1. Read current manifest (revision A)
   final manifestFile = File('${productRepo.path}/framework-manifest.yaml');
@@ -205,27 +222,36 @@ Future<CommandResult> runUpgradeCore({
   final branch = 'framework/upgrade-${_shortRevision(revisionA)}-'
       '${_shortRevision(revisionB)}';
 
-  // Re-run safety: never overwrite an upgrade that is already awaiting review.
-  final existing = _git(
-    productRepo,
-    ['show-ref', '--verify', '--quiet', 'refs/heads/$branch'],
-  );
-  if (existing.exitCode == 0) {
-    return CommandResult(
-      family: ResultFamily.upgradeBlocked,
-      command: CommandNames.upgrade,
-      message: 'Upgrade branch $branch already exists.',
-      blockers: [
-        'Branch $branch already exists in the product repository. '
-        'Review or delete it before re-running the upgrade.',
-      ],
-      humanActionRequired: true,
+  // Re-run safety: never overwrite an upgrade that is already awaiting review —
+  // neither one that exists locally nor one that exists only on the remote. A
+  // branch known only through its remote-tracking ref is refused here with this
+  // message, instead of being pushed onto later and failing as a
+  // non-fast-forward push with a far less useful error.
+  for (final ref in ['refs/heads/$branch', 'refs/remotes/origin/$branch']) {
+    final existing = _git(
+      productRepo,
+      ['show-ref', '--verify', '--quiet', ref],
     );
+    if (existing.exitCode == 0) {
+      return CommandResult(
+        family: ResultFamily.upgradeBlocked,
+        command: CommandNames.upgrade,
+        message: 'Upgrade branch $branch already exists.',
+        blockers: [
+          'Branch $branch already exists in the product repository ($ref). '
+          'Review or delete it before re-running the upgrade.',
+        ],
+        humanActionRequired: true,
+      );
+    }
   }
 
   _UpgradeScratch? scratch;
   try {
-    scratch = _createScratch(productRepo);
+    scratch = _createScratch(
+      productRepo,
+      gitVersionSupported: gitVersionSupported,
+    );
 
     // 4. Render both framework revisions with Mason.
     final baseRender = await _renderFrameworkRevision(
@@ -480,7 +506,28 @@ Future<CommandResult> runUpgradeCore({
 /// Clones the product repository into the system temp directory. The clone lives
 /// outside the product repository so that no operation can ever copy a directory
 /// into itself (ADR 0004 § 3).
-_UpgradeScratch _createScratch(Directory productRepo) {
+///
+/// [gitVersionSupported] overrides the git version gate; production callers pass
+/// null and the real `git --version` is probed. It exists so the gate itself can
+/// be tested on a machine whose git is new enough that it can never fail.
+_UpgradeScratch _createScratch(
+  Directory productRepo, {
+  bool Function()? gitVersionSupported,
+}) {
+  // The version gate runs BEFORE anything is created, so an unsupported git
+  // never leaves a scratch clone behind and never needs an unguarded delete.
+  final supported = gitVersionSupported?.call() ??
+      _gitSupportsWriteTreeMerge(Directory.systemTemp);
+  if (!supported) {
+    throw _UpgradeFailure(
+      [
+        'git >= 2.38 is required for `git merge-tree --write-tree`, which '
+            'computes the upgrade merge without a working tree.',
+      ],
+      message: 'Unsupported git version',
+    );
+  }
+
   final root = Directory.systemTemp.createTempSync('aef_upgrade_');
   final repo = Directory('${root.path}/product');
   final clone = Process.runSync(
@@ -506,21 +553,12 @@ _UpgradeScratch _createScratch(Directory productRepo) {
       baseStagingDir: Directory('${root.path}/staging_base'),
       incomingStagingDir: Directory('${root.path}/staging_incoming'),
     );
+    // Dispose rather than delete: a cleanup failure must never mask the clone
+    // failure as an internal error.
     scratch.dispose();
     throw _UpgradeFailure(
       ['Could not clone the product repository: ${_stderrOf(clone)}'],
       message: 'Failed to create the upgrade scratch clone',
-    );
-  }
-
-  if (!_gitSupportsWriteTreeMerge(repo)) {
-    root.deleteSync(recursive: true);
-    throw _UpgradeFailure(
-      [
-        'git >= 2.38 is required for `git merge-tree --write-tree`, which '
-            'computes the upgrade merge without a working tree.',
-      ],
-      message: 'Unsupported git version',
     );
   }
 
@@ -549,6 +587,9 @@ _UpgradeScratch _createScratch(Directory productRepo) {
 }
 
 /// `git merge-tree --write-tree` landed in git 2.38.
+///
+/// [cwd] only supplies a working directory that is guaranteed to exist; the
+/// version of `git` itself is not repository dependent.
 bool _gitSupportsWriteTreeMerge(Directory cwd) {
   final version = _git(cwd, ['--version']);
   final match = RegExp(r'(\d+)\.(\d+)').firstMatch(_stdoutOf(version));
@@ -560,9 +601,10 @@ bool _gitSupportsWriteTreeMerge(Directory cwd) {
 
 /// Renders a framework revision with Mason.
 ///
-/// Prefers the CLI's own framework checkout when it already contains [revision]
-/// (no network round-trip, hermetic under test), otherwise clones the canonical
-/// source. The clone always carries full history because an upgrade renders the
+/// An explicit [frameworkRoot] is used verbatim. Otherwise this prefers the CLI's
+/// own framework checkout when it already contains [revision] (no network
+/// round-trip, hermetic under test), and clones the canonical source when it does
+/// not. The clone always carries full history because an upgrade renders the
 /// pinned base revision as well as the incoming one, and a shallow clone cannot
 /// check out any revision other than the branch tip (ADR 0004 § 2).
 ///
@@ -711,10 +753,19 @@ Set<String> _copyBrickStagingFiles(Directory brickDir, Directory stagingDir) {
   return staged;
 }
 
-/// The local framework checkout when it contains [revision], otherwise the
-/// canonical source.
+/// The render source for [revision].
+///
+/// An explicit [frameworkRoot] is authoritative and is returned as-is: a caller
+/// that pinned a framework checkout must render from exactly that checkout, so a
+/// revision it does not contain fails loudly here instead of silently falling
+/// back to the canonical network source (ADR 0004 § 2).
+///
+/// Without one, the CLI's own framework checkout is used when it already
+/// contains [revision] (no network round-trip, hermetic under test), otherwise
+/// the canonical source.
 String _resolveRenderSource(String revision, {String? frameworkRoot}) {
-  final localRoot = frameworkRoot ?? resolveFrameworkSourceRoot();
+  if (frameworkRoot != null) return frameworkRoot;
+  final localRoot = resolveFrameworkSourceRoot();
   if (localRoot != null && Directory(localRoot).existsSync()) {
     final hasRevision = Process.runSync(
       'git',
@@ -928,9 +979,14 @@ void _writeUpgradedManifest({
     ..._collectFiles(baseRender).keys,
     ..._collectFiles(incomingRender).keys,
   }..remove('framework-manifest.yaml');
+  // Directory listing order is filesystem dependent and differs between runs and
+  // machines. Sorting here keeps artifact construction independent of it, so the
+  // refreshed manifest cannot churn just because a directory enumerated
+  // differently.
+  final sortedPaths = managedPaths.toList()..sort();
 
   final artifacts = <ManagedArtifact>[];
-  for (final path in managedPaths) {
+  for (final path in sortedPaths) {
     final mergedFile = File('${mergedDir.path}/$path');
     if (!mergedFile.existsSync()) continue; // deleted by this upgrade
     final incomingFile = File('${incomingRender.path}/$path');
@@ -1076,11 +1132,18 @@ UpgradeClassification _classifyChanges({
   }
 
   // Content that moved within the framework's own change is a rename, not a
-  // delete plus an add.
+  // delete plus an add. A candidate base path only qualifies when the incoming
+  // revision does not render it: otherwise a genuinely deleted artifact would be
+  // reclassified as a rename and its deletion silently suppressed. This mirrors
+  // the guard the delete branch above already applies.
   for (final entry in List<String>.from(added)) {
     final addedHash = ContentHash.ofFile(incomingFiles[entry]!);
     for (final candidate in baseFiles.entries) {
       if (candidate.key == entry) continue;
+      if (incomingFiles.containsKey(candidate.key)) continue;
+      // Also skip a base path that survived into the merged tree (it was kept
+      // locally), which is still its own file and not a move.
+      if (mergedFiles.containsKey(candidate.key)) continue;
       if (ContentHash.ofFile(candidate.value) == addedHash) {
         renamed.add(MapEntry(candidate.key, entry));
         added.remove(entry);

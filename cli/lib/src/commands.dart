@@ -47,34 +47,71 @@ CommandResult notImplementedResult(String command) {
 const String approvedFrameworkSource =
     'https://github.com/shipitinc/agentic-engineering-framework.git';
 
+/// URL schemes a git remote is written in as a URL rather than in scp-like form.
+///
+/// The list is explicit because the scp-like form is itself ambiguous with a
+/// URI: in `github.com:owner/repo` the prefix `github.com` is a syntactically
+/// valid scheme, so "does this string have a scheme?" can never tell the two
+/// forms apart. Only the schemes below are treated as URLs; everything else is
+/// parsed as scp-like.
+final RegExp _remoteUrlScheme =
+    RegExp(r'^(?:https?|ssh|git|file):', caseSensitive: false);
+
 /// Normalizes a git remote URL to a comparable repository identity.
 ///
-/// Accepts the SSH (`git@host:owner/repo.git`), scp-like, and HTTPS forms and the
-/// optional trailing `.git`, so equivalent spellings of one repository compare
-/// equal. Returns the `host/owner/repo` identity, or null when [url] cannot be
-/// parsed as a git remote.
-String? _remoteIdentity(String url) {
+/// Accepts the URL forms (`https://`, `http://`, `ssh://`, `git://`, `file://`,
+/// each with an optional `user[:password]@` and `:port`) and the scp-like forms
+/// (`[user@]host:owner/repo`), and returns the `host/owner/repo` identity with
+/// the host lowercased, userinfo and port dropped, redundant separators
+/// collapsed and any trailing `/` or `.git` removed. Every spelling of one
+/// repository therefore yields the same identity.
+///
+/// Returns null when [url] cannot be parsed as a git remote at all — including
+/// for a bare local path, which is not a repository identity and must never
+/// satisfy the trusted-source check.
+///
+/// Public because it is the whole substance of the trusted-framework-source
+/// comparison (ADR 0004 § 1): tests must be able to assert that every spelling
+/// of the approved repository normalizes alike, and that a different repository
+/// does not.
+String? normalizeRemoteIdentity(String url) {
   final trimmed = url.trim();
   if (trimmed.isEmpty) return null;
 
-  // scp-like / SSH: [user@]host:owner/repo(.git)
-  final scp = RegExp(r'^(?:[^@/]+@)?([^:/]+):(?!\d)(.+)$').firstMatch(trimmed);
-  if (scp != null) {
-    return '${scp.group(1)}/${scp.group(2)}';
+  // URL form first: scheme://[user[:pass]@]host[:port]/path
+  if (_remoteUrlScheme.hasMatch(trimmed)) {
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null || uri.host.isEmpty) return null;
+    return _joinRemoteIdentity(uri.host, uri.path);
   }
 
-  // URL form: scheme://[user[:pass]@]host[:port]/path
-  final uri = Uri.tryParse(trimmed);
-  if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
-  var path = uri.path;
-  return '${uri.host}/$path';
+  // scp-like / SSH: [user@]host:owner/repo(.git)
+  final scp = RegExp(r'^(?:[^@/]+@)?([^:/]+):(?!\d)(.+)$').firstMatch(trimmed);
+  if (scp == null) return null;
+  return _joinRemoteIdentity(scp.group(1)!, scp.group(2)!);
 }
 
-/// Strips a trailing `.git` from a normalized [identity] path.
-String _stripGitSuffix(String identity) {
-  return identity.endsWith('.git')
-      ? identity.substring(0, identity.length - 4)
-      : identity;
+/// Joins a [host] and a repository [path] into one `host/owner/repo` identity.
+///
+/// Empty segments are dropped, so neither a leading slash from a URL path nor a
+/// doubled separator can produce a double slash, and a trailing `.git` is
+/// removed. A path that carries no repository at all collapses to the bare host,
+/// which can never equal a real repository identity.
+String _joinRemoteIdentity(String host, String path) {
+  final segments = <String>[
+    for (final segment in path.split('/'))
+      if (segment.isNotEmpty) segment,
+  ];
+  if (segments.isNotEmpty &&
+      segments.last.endsWith('.git') &&
+      segments.last.length > '.git'.length) {
+    segments[segments.length - 1] =
+        segments.last.substring(0, segments.last.length - '.git'.length);
+  }
+  return [
+    host.toLowerCase(),
+    ...segments.where((segment) => segment.isNotEmpty),
+  ].join('/');
 }
 
 /// Performs Git/repository preflight checks (dirty-tree guard, repo validation,
@@ -126,10 +163,11 @@ List<String> _runPreflightChecks() {
       );
     } else {
       final url = (frameworkRemote.stdout as String).trim();
-      final expected =
-          _stripGitSuffix(_remoteIdentity(approvedFrameworkSource) ?? '');
-      final actualIdentity = _remoteIdentity(url);
-      if (actualIdentity == null || _stripGitSuffix(actualIdentity) != expected) {
+      // Both sides go through the same normalization, so every accepted spelling
+      // of the approved repository compares equal and nothing else does.
+      final expected = normalizeRemoteIdentity(approvedFrameworkSource) ?? '';
+      final actualIdentity = normalizeRemoteIdentity(url);
+      if (actualIdentity == null || actualIdentity != expected) {
         issues.add(
           'Untrusted framework source: $url (expected $approvedFrameworkSource)',
         );

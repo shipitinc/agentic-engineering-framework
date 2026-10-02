@@ -59,8 +59,23 @@ topology encodes the three inputs, and delivered as a **single review commit on 
 The approved-source rule is unchanged in substance: what gets rendered must come from the approved
 canonical framework. It is evaluated against the **framework checkout that owns the resolved brick**
 (`<brick>/../..`), not the product repository. A product repository needs only an existing `origin`.
-Under `FRAMEWORK_CLI_TEST_MODE=true` this check is skipped, like the existing dirty-tree guard, so tests
-can render from a sandbox framework.
+The remote is compared as a **repository identity** (`host/owner/repo`), not as a string: the URL and
+scp-like forms are normalized first — host lowercased, `user[:password]@` and `:port` dropped,
+trailing `/` and `.git` removed, redundant separators collapsed — so every spelling of the approved
+repository
+(`https://github.com/shipitinc/agentic-engineering-framework.git`,
+`https://token@github.com/…`, `ssh://git@github.com/…`, `git@github.com:…`,
+`github.com:shipitinc/…`) is accepted, while a different repository or a local path is not.
+
+**`FRAMEWORK_CLI_TEST_MODE` is a deliberate test-only seam.** When it is set to `true`, a production
+build of this CLI skips **both** the trusted-framework-source check **and** the dirty-tree guard.
+That is the price of hermetic sandbox tests, and it is a seam, not a policy: the flag exists so tests
+can render from a sandbox framework and run in intentionally dirty or non-repository sandboxes.
+Neither check is weakened for any caller that does not set it.
+
+**Open question, deliberately unresolved here.** Whether a framework source that is *not* a checkout
+of this repository may be accepted — and therefore how the ADR-0002 brick-content hash applies to it
+— remains an open `HUMAN_DECISION`. This ADR changes neither the rule nor its evaluation point.
 
 ### 2. Rendering prefers a local framework checkout, and uses full history
 
@@ -68,6 +83,11 @@ Rendering clones the framework **with full history** (no `--depth`), then checks
 revision. When the CLI's own framework checkout already contains the requested revision, that checkout is
 used as the clone source instead of the network URL. This removes the network round-trip for local
 upgrades and makes the operation hermetic under test.
+
+An explicitly selected framework root (`frameworkRootOverride`) is **authoritative**: it is used
+verbatim and never falls back to the network, so a caller that pinned a framework checkout cannot
+silently end up rendering the canonical source instead. A revision that checkout does not contain fails
+loudly here, which is what keeps the test suite off the network.
 
 ### 3. The merge is computed by `git merge-tree` over synthetic refs
 
@@ -91,6 +111,12 @@ rendered framework paths (e.g. `.claude/`).
 exit status `0` (clean) or `1` (conflicts). Conflicted files carry inline conflict markers in the merged
 tree, which is what makes them reviewable and fixable by ordinary editing.
 
+Content classification on top of the merged tree follows git: a base path the incoming revision no longer
+renders is a candidate rename source, and a rename is recorded **only** when the candidate is absent from
+the incoming render (and absent from the merged tree). Otherwise upstream merely *copied* a path's old
+content elsewhere, and reporting that as a rename would erase the original path's own change from the
+report and suppress its deletion.
+
 ### 4. Delivery is one commit on the product's real history
 
 The merged tree is delivered as a single commit whose **first parent is the product's real `HEAD`**,
@@ -106,7 +132,10 @@ pushed to the product repository as `framework/upgrade-<revisionA>-<revisionB>`.
 
 The upgrade branch is pushed **last**, after the merge and the manifest update have succeeded, so a
 failed upgrade leaves no ref behind. An upgrade branch that already exists is refused rather than
-overwritten, so a re-run cannot silently discard a review in progress.
+overwritten, so a re-run cannot silently discard a review in progress. The check probes both
+`refs/heads/<branch>` and `refs/remotes/origin/<branch>`, so a branch that exists only on the remote is
+refused with the same clear message instead of being pushed onto later and failing as a
+non-fast-forward push.
 
 ### 5. The delivered commit refreshes the manifest
 
@@ -158,19 +187,33 @@ The temporary scratch clone and both render directories are deleted on every exi
 failure. Because the deliverable is a ref in the product repository, keeping scratch state is never
 necessary for a human to continue the work.
 
+The `git >= 2.38` gate is evaluated **before** the scratch clone is created, so an unsupported git
+leaves nothing behind at all and no cleanup can fail; every later cleanup path goes through the same
+best-effort disposal that swallows `FileSystemException` instead of letting it escape as an
+`internalError`.
+
 ## Consequences
 
-- `upgrade` becomes executable and testable end-to-end; a new hermetic test covers a clean merge, a
-  conflicting merge, product-state preservation, manifest refresh, re-run refusal, and scratch cleanup.
+- `upgrade` becomes executable and testable end-to-end; the hermetic suite covers a clean merge, a
+  conflicting merge, product-state preservation, manifest refresh, re-run refusal (local *and*
+  remote-only branch), the git version gate, the `git add -A -f` defense against a product `.gitignore`,
+  rename-vs-copy classification, stale manifest entries, and scratch cleanup.
+- The upgrade tests perform **no network access**: an explicitly selected framework root is
+  authoritative, so an absent revision fails from the sandbox framework instead of cloning the canonical
+  source. The failure-path test asserts that the reported source is the sandbox, not the canonical URL.
 - The upgrade cannot silently lose product changes: product-local edits participate in the merge as the
   `local` side, and the delivered commit's parent is the product's real `HEAD`.
 - A conflict is no longer a dead end — the branch exists and is reviewable, and the result family stays
   `upgradeConflict` with `humanActionRequired`, so automation still stops.
 - Requires `git >= 2.38` for `git merge-tree --write-tree` (macOS git 2.54 and ubuntu-latest both
-  satisfy this); the CLI fails with a clear blocker otherwise.
+  satisfy this); the CLI fails with a clear blocker otherwise, before creating any state.
 - `merge-tree` reports only content/path conflicts. A file deleted upstream while modified locally
   surfaces as a modify/delete conflict, and a locally modified artifact that upstream deletes is
   additionally reported by the change classifier, so deletion is never applied silently.
+- The `modified` and `product-customizations-preserved` buckets deliberately **overlap**: a path the
+  framework changed that the product had also changed is both an upstream modification and a preserved
+  customization. Making them exclusive would drop such a path out of "did anything change?", and a
+  delivered upgrade would be reported as a no-op.
 - The manifest is now rewritten on upgrade; a product that keeps its manifest untouched after accepting
   the branch will still be detected as pinned to the old revision.
 - A product bootstrapped from the brick directory is repaired by the upgrade rather than reported as

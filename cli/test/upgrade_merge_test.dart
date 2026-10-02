@@ -56,9 +56,11 @@ class _Fixture {
 }
 
 /// Builds a framework repo with two revisions and a product repo bootstrapped
-/// from [revA]. [incomingFiles] are the `__brick__` files at [revB];
+/// from [revA]. [baseFiles] are the `__brick__` files at [revA];
+/// [incomingFiles] are the `__brick__` files added or changed at [revB];
 /// [productFiles] are extra product-owned files added on top of the render.
 _Fixture _createFixture({
+  Map<String, String> baseFiles = _baseFiles,
   Map<String, String> incomingFiles = const {},
   Map<String, String> productFiles = const {},
   List<String> removedAtIncoming = const [],
@@ -69,25 +71,25 @@ _Fixture _createFixture({
   final productRepo = Directory('${root.path}/product')..createSync();
   final remote = Directory('${root.path}/remote')..createSync();
 
-  _writeBrick(frameworkRepo, _baseFiles);
+  _writeBrick(frameworkRepo, baseFiles);
   _git(frameworkRepo, ['init', '-q', '-b', 'main', '.']);
   _configureIdentity(frameworkRepo);
-  _git(frameworkRepo, ['add', '-A']);
+  _git(frameworkRepo, ['add', '-A', '-f']);
   _git(frameworkRepo, ['commit', '-qm', 'framework revision A']);
   final revA = _gitOut(frameworkRepo, ['rev-parse', 'HEAD']);
 
-  final nextBrick = <String, String>{..._baseFiles, ...incomingFiles};
+  final nextBrick = <String, String>{...baseFiles, ...incomingFiles};
   for (final removed in removedAtIncoming) {
     nextBrick.remove(removed);
   }
   // Guarantee revision B differs from revision A: without a real change git
   // records no second commit and both revisions would be the same SHA, which
   // would exercise the same-revision no-op instead of an upgrade.
-  if (_sameContent(nextBrick, _baseFiles)) {
+  if (_sameContent(nextBrick, baseFiles)) {
     nextBrick['CHANGELOG.md'] = 'revision B\n';
   }
   _writeBrick(frameworkRepo, nextBrick);
-  _git(frameworkRepo, ['add', '-A']);
+  _git(frameworkRepo, ['add', '-A', '-f']);
   _git(frameworkRepo, ['commit', '-qm', 'framework revision B']);
   final revB = _gitOut(frameworkRepo, ['rev-parse', 'HEAD']);
 
@@ -97,16 +99,19 @@ _Fixture _createFixture({
   _git(productRepo, ['init', '-q', '-b', 'main', '.']);
   _configureIdentity(productRepo);
   _git(productRepo, ['remote', 'add', 'origin', remote.path]);
-  _renderInto(productRepo, _baseFiles);
+  _renderInto(productRepo, baseFiles);
   productFiles.forEach((path, content) => _writeFile(productRepo, path, content));
 
   // The manifest records the rendered hashes, so an overlaid artifact is
   // detectable as locally modified.
-  _writeProductManifest(productRepo, revA, _baseFiles);
+  _writeProductManifest(productRepo, revA, baseFiles);
   productOverlays.forEach((path, content) {
     _writeFile(productRepo, path, content);
   });
-  _git(productRepo, ['add', '-A']);
+  // `-f` for the same reason the engine stages its trees with it: a rendered
+  // `.gitignore` that excludes a path the framework also renders must not cost
+  // the product that artifact.
+  _git(productRepo, ['add', '-A', '-f']);
   _git(productRepo, ['commit', '-qm', 'product bootstrapped at revision A']);
 
   return _Fixture(
@@ -290,6 +295,25 @@ List<Directory> _scratchDirs() => Directory.systemTemp
     .where((d) => d.path.split('/').last.startsWith('aef_upgrade_'))
     .toList();
 
+/// Scratch directories that appeared since [before] was captured.
+///
+/// The system temp directory is shared, so counting `aef_upgrade_*` directories
+/// cannot tell this run's leftovers from a concurrent run's or from a previously
+/// interrupted one. Comparing against the set captured before the run makes the
+/// assertion about state this run actually created.
+List<Directory> _newScratchDirs(Set<String> before) => _scratchDirs()
+    .where((d) => !before.contains(d.path))
+    .toList();
+
+Set<String> _scratchDirPaths() =>
+    {for (final dir in _scratchDirs()) dir.path};
+
+/// Every test here drives real git and a real Mason render. A slow machine can
+/// legitimately blow the default 30s per-test budget without anything being
+/// wrong, and a gate that fails for that reason hides the regressions it exists
+/// to catch, so the budget is generous by design.
+const _e2eTimeout = Timeout(Duration(minutes: 2));
+
 void main() {
   test('clean merge delivers one review commit and preserves local edits',
       () async {
@@ -344,7 +368,7 @@ void main() {
       File('${fixture.productRepo.path}/AGENTS.md').readAsStringSync(),
       _customizedAgents,
     );
-  });
+  }, timeout: _e2eTimeout);
 
   test('merged framework change and local edit combine in one file', () async {
     final fixture = _createFixture(
@@ -368,7 +392,7 @@ void main() {
     expect(merged, contains('product line'));
     expect(merged, contains('upstream line'));
     expect(merged, isNot(contains('<<<<<<<')));
-  });
+  }, timeout: _e2eTimeout);
 
   test('conflicting merge is reported, delivered with markers, and blocks',
       () async {
@@ -396,7 +420,7 @@ void main() {
     // Paths git merged cleanly are still delivered.
     expect(_fileOnBranch(fixture, branch, 'docs/engineering/WORK_STATE.md'),
         'base work state\n');
-  });
+  }, timeout: _e2eTimeout);
 
   test('upstream deletion of a locally modified artifact is a conflict',
       () async {
@@ -415,7 +439,7 @@ void main() {
       result.blockers.join(' '),
       contains('docs/engineering/WORK_STATE.md'),
     );
-  });
+  }, timeout: _e2eTimeout);
 
   test('unmodified artifact deleted upstream is deleted, not flagged',
       () async {
@@ -433,7 +457,7 @@ void main() {
     final exists = _git(fixture.productRepo,
         ['cat-file', '-e', '$branch:docs/engineering/WORK_STATE.md']);
     expect(exists.exitCode, isNot(0));
-  });
+  }, timeout: _e2eTimeout);
 
   test('delivered commit refreshes the manifest to the incoming revision',
       () async {
@@ -468,7 +492,7 @@ void main() {
 
     // The product file itself was never added to the manifest.
     expect(manifest.managedPaths, isNot(contains('apps/mobile/lib/main.dart')));
-  });
+  }, timeout: _e2eTimeout);
 
   test('re-run is refused while the previous upgrade awaits review', () async {
     final fixture = _createFixture();
@@ -480,7 +504,7 @@ void main() {
     final second = await _runUpgrade(fixture);
     expect(second.family, ResultFamily.upgradeBlocked);
     expect(second.blockers.join(' '), contains('already exists'));
-  });
+  }, timeout: _e2eTimeout);
 
   test('upgrading to the pinned revision is a no-op', () async {
     final fixture = _createFixture();
@@ -492,18 +516,20 @@ void main() {
     );
 
     expect(result.family, ResultFamily.upgradeNoop);
-  });
+  }, timeout: _e2eTimeout);
 
   test('scratch state is discarded on success and on failure', () async {
-    final before = _scratchDirs().length;
+    final before = _scratchDirPaths();
 
     final success = _createFixture();
     addTearDown(() => success.root.deleteSync(recursive: true));
     await _runUpgrade(success);
-    expect(_scratchDirs().length, before,
+    expect(_newScratchDirs(before), isEmpty,
         reason: 'a successful upgrade must not leave scratch state');
 
     // Failure path: target revision that the framework source does not contain.
+    // The render source is the sandbox framework, so this stays hermetic — the
+    // engine must not fall back to the network to look for an absent revision.
     final failure = _createFixture();
     addTearDown(() => failure.root.deleteSync(recursive: true));
     final result = await _runUpgrade(
@@ -511,9 +537,150 @@ void main() {
       targetRevision: '0000000000000000000000000000000000000000',
     );
     expect(result.family, ResultFamily.upgradeBlocked);
-    expect(_scratchDirs().length, before,
+    expect(result.blockers.join(' '), contains(failure.frameworkRepo.path),
+        reason: 'the failure must come from the sandbox framework source, not '
+            'from a clone of the canonical network source');
+    expect(result.blockers.join(' '), isNot(contains('github.com')),
+        reason: 'no test may reach the network');
+    expect(_newScratchDirs(before), isEmpty,
         reason: 'a failed upgrade must not leave scratch state');
-  });
+  }, timeout: _e2eTimeout);
+
+  test('an unsupported git version is refused before anything is cloned',
+      () async {
+    final before = _scratchDirPaths();
+    final fixture = _createFixture();
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    // Scratch directories that exist at the moment the gate is probed. Tests
+    // inside one file run sequentially, so anything here was created by this
+    // call before the gate ran.
+    final scratchAtProbe = <String>[];
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+
+    final result = await runUpgradeCore(
+      productRepo: fixture.productRepo,
+      targetRevision: fixture.revB,
+      frameworkRootOverride: fixture.frameworkRepo.path,
+      // Only the machine's git version is faked; everything else is the real
+      // engine, so this exercises the gate itself.
+      gitVersionSupported: () {
+        scratchAtProbe
+            .addAll(_newScratchDirs(before).map((dir) => dir.path));
+        return false;
+      },
+    );
+
+    expect(result.family, ResultFamily.upgradeBlocked);
+    expect(result.humanActionRequired, isTrue);
+    expect(result.blockers.join(' '), contains('git >= 2.38'));
+    expect(scratchAtProbe, isEmpty,
+        reason: 'the version gate must run before the scratch clone exists');
+    expect(
+      _git(fixture.productRepo, ['rev-parse', '--verify', '--quiet',
+            'refs/heads/$branch'])
+          .exitCode,
+      isNot(0),
+      reason: 'nothing may be delivered when the git version is unsupported',
+    );
+  }, timeout: _e2eTimeout);
+
+  test('an upgrade branch that exists only on the remote is refused up front',
+      () async {
+    final fixture = _createFixture();
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+
+    // Visible only as a remote-tracking ref: the local branch does not exist, so
+    // probing only refs/heads would let the push fail later as a
+    // non-fast-forward.
+    _gitOut(fixture.productRepo,
+        ['update-ref', 'refs/remotes/origin/$branch', 'HEAD']);
+
+    final result = await _runUpgrade(fixture);
+
+    expect(result.family, ResultFamily.upgradeBlocked);
+    expect(result.humanActionRequired, isTrue);
+    expect(result.blockers.join(' '), contains('already exists'));
+    expect(result.blockers.join(' '), contains('refs/remotes/origin/$branch'));
+  }, timeout: _e2eTimeout);
+
+  test('a copied artifact is an add, not a rename of the file that still '
+      'exists', () async {
+    // Upstream copies the *old* content of AGENTS.md to a new path and edits
+    // AGENTS.md itself. Content alone cannot tell this from a rename, but the
+    // base path is still rendered at revision B, so it was never moved: pairing
+    // them would erase AGENTS.md's own upstream change from the report.
+    final fixture = _createFixture(
+      incomingFiles: {
+        'AGENTS.md': 'line one\nshared line\nline three\nupstream line\n',
+        'docs/engineering/LEGACY.md': _baseFiles['AGENTS.md']!,
+      },
+    );
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    final result = await _runUpgrade(fixture);
+
+    expect(result.family, ResultFamily.upgradeReadyForReview,
+        reason: '${result.message} ${result.blockers}');
+    expect(result.message, contains('Renamed: 0'));
+    expect(result.message, contains('Added: 1'));
+
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+    expect(_fileOnBranch(fixture, branch, 'AGENTS.md'),
+        'line one\nshared line\nline three\nupstream line\n',
+        reason: 'the file that still exists must receive its own upstream change');
+    expect(_fileOnBranch(fixture, branch, 'docs/engineering/LEGACY.md'),
+        _baseFiles['AGENTS.md']);
+  }, timeout: _e2eTimeout);
+
+  test('a framework artifact the product ignores is still merged in', () async {
+    // The render ships a `.gitignore` that excludes `.claude/`, and ships
+    // `.claude/` itself. The product carries both from revision A, so the path
+    // the framework now changes is a path the product's ignore rules exclude.
+    const ignored = '.claude/settings.json';
+    final fixture = _createFixture(
+      baseFiles: {
+        ..._baseFiles,
+        '.gitignore': '.claude/\n',
+        ignored: 'claude adapter v1\n',
+      },
+      incomingFiles: const {
+        ignored: 'claude adapter v2\n',
+        'docs/engineering/ROADMAP.md': 'upstream roadmap\n',
+      },
+    );
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    final result = await _runUpgrade(fixture);
+
+    expect(result.family, ResultFamily.upgradeReadyForReview,
+        reason: '${result.message} ${result.blockers}');
+
+    // The ignore rule is real, so this is not a vacuous test: staging the render
+    // without `-f` would silently drop the artifact from the merge input.
+    // `--no-index` because the product tracks the path, and check-ignore does
+    // not report a tracked path as ignored.
+    expect(
+      _git(fixture.productRepo, ['check-ignore', '--no-index', '-q', ignored])
+          .exitCode,
+      0,
+      reason: 'the product .gitignore really does exclude $ignored',
+    );
+
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+    expect(_fileOnBranch(fixture, branch, ignored), 'claude adapter v2\n',
+        reason: 'an ignored framework artifact must still get the upstream '
+            'change');
+    expect(_fileOnBranch(fixture, branch, '.gitignore'), '.claude/\n');
+    expect(_fileOnBranch(fixture, branch, 'docs/engineering/ROADMAP.md'),
+        'upstream roadmap\n');
+    expect(_gitOut(fixture.productRepo, ['status', '--porcelain']), isEmpty);
+  }, timeout: _e2eTimeout);
 
   test('upgrade never writes into the product working tree', () async {
     final fixture = _createFixture(
@@ -540,7 +707,7 @@ void main() {
           .where((f) => f.path.endsWith('.patch')),
       isEmpty,
     );
-  });
+  }, timeout: _e2eTimeout);
 
   test('previous product revision stays reachable from the delivered commit',
       () async {
@@ -563,7 +730,7 @@ void main() {
     ]);
     expect(merged.exitCode, 0);
     expect((merged.stdout as String).trim(), isNotEmpty);
-  });
+  }, timeout: _e2eTimeout);
 
   test('an abbreviated target pins the full revision in the refreshed manifest',
       () async {
@@ -583,7 +750,7 @@ void main() {
       fixture.revB,
       reason: 'the product must be pinned to an unambiguous object id',
     );
-  });
+  }, timeout: _e2eTimeout);
 
   test('brick staging copies are removed from the delivered tree and reported',
       () async {
@@ -627,7 +794,7 @@ void main() {
       isTrue,
     );
     expect(_gitOut(fixture.productRepo, ['status', '--porcelain']), isEmpty);
-  });
+  }, timeout: _e2eTimeout);
 
   test('a product with its own customized artifact conflicts on that artifact '
       'only, and still receives the whole render', () async {
@@ -657,7 +824,7 @@ void main() {
     expect(delivered, contains('agents/implementer.md'));
     expect(delivered, contains('docs/engineering/WORK_STATE.md'));
     expect(_fileOnBranch(fixture, branch, 'AGENTS.md'), contains('<<<<<<<'));
-  });
+  }, timeout: _e2eTimeout);
 
   test('a staging-shaped file the product actually owns is not removed',
       () async {
@@ -678,6 +845,74 @@ void main() {
     expect(stagingBlocker, isNot(contains('README.md')),
         reason: 'the product owns this file; the brick merely ships one too');
     expect(_fileOnBranch(fixture, branch, 'README.md'), 'our own readme\n');
+
+    // Preserving the file is only half the contract: the manifest must stop
+    // claiming a framework artifact the framework never ships, and the drop must
+    // be reported so a human can decide what the entry was.
+    final manifest = FrameworkManifest.parse(
+      _fileOnBranch(fixture, branch, 'framework-manifest.yaml'),
+    );
+    expect(manifest.managedPaths, isNot(contains('README.md')),
+        reason: 'a product-owned file is not a framework-managed artifact');
+    expect(manifest.managedPaths, contains('agents/implementer.md'),
+        reason: 'the render the product does adopt is still managed');
+
+    final staleBlocker = result.blockers
+        .where((b) => b.contains('manifest entr'))
+        .join('\n');
+    expect(staleBlocker, isNotEmpty,
+        reason: 'a stale manifest entry must be reported, never silently dropped');
+    expect(staleBlocker, contains('README.md'));
+  }, timeout: _e2eTimeout);
+
+  group('git remote identity normalization', () {
+    const expected = 'github.com/shipitinc/agentic-engineering-framework';
+
+    test('every spelling of the approved repository normalizes identically',
+        () {
+      const spellings = [
+        'https://github.com/shipitinc/agentic-engineering-framework.git',
+        'https://github.com/shipitinc/agentic-engineering-framework',
+        'https://github.com/shipitinc/agentic-engineering-framework/',
+        'https://token@github.com/shipitinc/agentic-engineering-framework.git',
+        'https://user:password@github.com:8443'
+            '/shipitinc/agentic-engineering-framework.git',
+        'http://github.com/shipitinc/agentic-engineering-framework.git',
+        'ssh://git@github.com/shipitinc/agentic-engineering-framework.git',
+        'git://github.com/shipitinc/agentic-engineering-framework.git',
+        'https://GitHub.com/shipitinc/agentic-engineering-framework.git',
+        'git@github.com:shipitinc/agentic-engineering-framework.git',
+        'github.com:shipitinc/agentic-engineering-framework.git',
+      ];
+      for (final url in spellings) {
+        expect(normalizeRemoteIdentity(url), expected, reason: url);
+      }
+      expect(
+        normalizeRemoteIdentity(approvedFrameworkSource),
+        expected,
+        reason: 'the gate compares against the approved source itself',
+      );
+    });
+
+    test('a different repository or a non-remote is not that identity', () {
+      const rejected = [
+        'https://github.com/evil/agentic-engineering-framework.git',
+        'https://github.com/shipitinc/agentic-engineering-frameworkX.git',
+        'https://github.com/shipitinc/agentic-engineering',
+        'https://evil.example.com/shipitinc/agentic-engineering-framework.git',
+        'git@github.com:evil/agentic-engineering-framework.git',
+        // A local path is not a repository identity and must never satisfy the
+        // trusted-source check.
+        '/Users/me/src/agentic-engineering-framework',
+        './agentic-engineering-framework',
+        'file:///Users/me/src/agentic-engineering-framework.git',
+        '',
+        '   ',
+      ];
+      for (final url in rejected) {
+        expect(normalizeRemoteIdentity(url), isNot(expected), reason: '"$url"');
+      }
+    });
   });
 }
 
