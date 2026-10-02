@@ -216,6 +216,144 @@ Design Agent and Independent Design Reviewer must emit machine-readable structur
 
 ---
 
+## Design Authority & AI-Assisted Design Governance
+
+This section encodes empirical lessons from real design-agent bake-offs. It governs
+AI-assisted design workflows where a **project-designated canonical visual tool** is the
+authoritative design surface.
+
+### Canonical Visual Authority
+
+- **The project-designated canonical visual tool is the canonical visual authority**.
+  Design artifacts (pages, components, design tokens) exist in the canonical visual tool.
+  Markdown/YAML artifacts are metadata and traceability only; they do not represent visual truth.
+- **Visual correctness is determined by human visual inspection of the canonical design artifacts**,
+  not by document checks, layer counts, tool success responses, or model self-assessment.
+
+### Source-Artifact Immutability
+
+- **Known-good / human-approved design artifacts are immutable during AI revision**.
+- AI agents must **never write directly to canonical source artifacts** (artifacts referenced by a
+  frozen Design Contract or previously human-approved).
+- Any AI-driven change targeting a canonical artifact **must create a new revision candidate
+  artifact** in the canonical visual tool, leaving the source untouched.
+
+### Revision-Candidate Workflow
+
+- **All AI design work produces disposable revision candidates**, not in-place edits.
+- A revision candidate is a complete, self-contained design artifact that can be
+  independently reviewed, compared, and either promoted or discarded.
+- **Promotion** = human visual approval → candidate becomes the new canonical artifact (via
+  recorded operation in the canonical visual tool, recorded in Design Revision metadata).
+- **Discard** = candidate is abandoned; canonical source remains unchanged.
+
+### Artifact Write Verification
+
+- **AI must verify artifact state after every write operation to the canonical visual tool**.
+- Verification requires **reading back the written artifact** and confirming:
+  - Artifact exists and is accessible.
+  - Expected components/layers are present with correct properties.
+  - Visual content matches intent (via screenshot or deterministic property checks).
+- **Artifact names, layer/component counts, and successful tool responses do not prove visual correctness**.
+  A tool may report success while the document is blank, corrupted, or visually wrong.
+- Failed verification = candidate is marked `FAILED` and discarded; source artifact is
+  never repaired in place.
+
+### Deterministic vs. Visual Validation Responsibilities
+
+| Validation Type | Responsible Party | Evidence Standard |
+|-----------------|-------------------|-------------------|
+| Document/schema compliance (metadata, traceability, risk level) | Independent Design Reviewer | Deterministic — machine-checkable |
+| Design system token/component usage | Independent Design Reviewer | Deterministic — token/component reference verification |
+| UX/accessibility/IA integrity | Independent Design Reviewer | Qualitative — structured review with evidence |
+| **Visual correctness (layout, rendering, interaction fidelity)** | **Human (Visual Approval)** | **Human visual inspection of canonical artifact** |
+| **Model self-QA / AI visual assessment** | **Advisory only** | **Non-authoritative — never grants approval** |
+
+- **Model self-review cannot grant design approval**. AI-reported "all checks passing" while
+  visible defects remain is a known failure mode.
+- Visual approval is a **Human Decision** (type `DESIGN`) per [HUMAN_DECISIONS.md](HUMAN_DECISIONS.md).
+
+### Human Visual Approval Gate
+
+- **Human visual approval is required before canonical promotion** of any revision candidate.
+- The approval is a `HUMAN_DECISION_REQUIRED` gate (Level 2 or 3 per risk assessment).
+- The Human Decision presents the candidate artifact (via canonical tool link/screenshot) alongside the
+  current canonical artifact for direct comparison.
+- Options are atomic: `APPROVE_CANDIDATE`, `REJECT_CANDIDATE`, `REQUEST_REVISION`.
+
+### Design-System Asset Reuse
+
+- **Existing design-system assets (logos, icons, navigation, typography, spacing,
+  established components) must be reused via component instances or shared libraries** in the
+  canonical visual tool, not recreated or approximated.
+- Design Revision metadata must declare `design_system_asset_refs` listing reused component
+  IDs/library references.
+- Independent Design Reviewer verifies reuse compliance deterministically.
+
+### Safe-Abort on Invalid Source Preconditions
+
+- **If a revision candidate's source precondition is invalid (source artifact corrupted,
+  missing, or visually degraded), the AI must abort the revision and report a structured
+  blocker with reason `SOURCE_PRECONDITION_FAILED`**.
+- The AI must **not** attempt to "repair" the canonical source artifact in place.
+- The Engineering Manager escalates to a Human Decision (type `DESIGN`) to authorize
+  source-artifact recovery from version history or human re-creation.
+- This prevents compounding damage (empirically: a surgical correction damaged previously-good
+  artifacts; the correct model detected corruption and safely aborted).
+
+### Model Routing as Replaceable Execution Policy
+
+- **Model routing is a configurable execution policy, not workflow authority**.
+- Current empirical routing defaults (subject to change without workflow modification):
+  - **First-pass design**: Gemini 3.1 Pro (cost-effective exploration) — *ShipIt example*
+  - **Precision / high-complexity escalation**: Opus 5 (surgical correction, difficult designs) — *ShipIt example*
+- Routing configuration lives in project-level policy (e.g., `.design-routing.yaml`), not in
+  DESIGN_GOVERNANCE.md or WORKFLOW.md.
+- Workflow semantics (gates, invariants, approval paths) remain unchanged regardless of
+  which model executes a given step.
+
+### Escalation After Repeated Revision Failures
+
+- **After two consecutive meaningful revision failures on the same Design Brief** (where
+  "meaningful" = distinct approach/changelog, not trivial re-tries), the Engineering Manager
+  must escalate via a Human Decision (type `DESIGN`).
+- Escalation options:
+  - Re-scope the Design Brief (reduce complexity, split into smaller briefs).
+  - Engage human designer for the specific challenge.
+  - Switch to a different model/routing configuration.
+  - Accept current best candidate with documented trade-offs.
+- This prevents infinite AI revision loops and ensures human judgment intervenes when
+  automated exploration stalls.
+
+### Structured Result Extensions — Penpot Binding Example
+
+This section shows how the tool-agnostic structured result fields (authoritative in
+[STRUCTURED_RESULTS.md](STRUCTURED_RESULTS.md)) map to Penpot concepts when Penpot is the
+canonical visual authority. This is a **project/tool binding example**, not a framework dependency.
+
+| Generic Field (STRUCTURED_RESULTS.md) | Penpot Binding |
+|----------------------------------------|----------------|
+| `design_artifact_ref` | Penpot file ID (e.g., `figma:abc123` or Penpot file URL) |
+| `source_design_artifact_ref` | Source board/page ID (canonical, human-approved) |
+| `candidate_design_artifact_ref` | Candidate board/page ID (disposable revision) |
+| `canonical_design_artifact_ref` | Canonical board/page ID (frozen Design Contract) |
+| `verification.write_verified` | Penpot API write acknowledged + readback confirmed |
+| `verification.deterministic_checks_passed` | Layer/component count > 0, expected components present |
+| `verification.deterministic_checks_total` | Total deterministic checks configured |
+| `verification.evidence_ref` | Penpot screenshot URL or exported image reference |
+| `verification.verification_status` | `UNVERIFIED` \| `VERIFIED` \| `FAILED` \| `INCOMPLETE` |
+| `design_system_asset_refs` | Penpot component instance IDs / shared library references |
+| `routing_policy.routing_class` | `EXPLORATION` \| `PRECISION` \| `SPECIALIZED` |
+
+**Penpot-specific execution guidance** (project-level, not framework):
+
+- **Candidate board naming**: `Feature/Revision-{{revision_number}}/Candidate-{{uuid}}`
+- **Source board write prohibition**: Enforced via Penpot permissions / agent policy
+- **Asset libraries**: Project-configured (e.g., `design-system-core`, `icons`, `typography`, `navigation`)
+- **Verification checks**: Board exists, layer count > 0, expected component instances present, screenshot captured
+
+---
+
 ## Cross-References
 
 - [WORKFLOW.md](WORKFLOW.md) — Lifecycle stages 12-19

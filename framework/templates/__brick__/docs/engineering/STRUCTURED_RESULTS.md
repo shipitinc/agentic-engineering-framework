@@ -17,7 +17,7 @@ Every structured result **must** conform to this top-level envelope:
   "schema_version": "1.0",                    // Contract version for forward compatibility
   "provenance": {                             // Mandatory provenance block
     "agent_id": "STRING",                     // Unique agent identifier
-    "agent_role": "STRING",                   // Role: IMPLEMENTER, ENGINEERING_REVIEWER, DESIGN_AGENT, DESIGN_REVIEWER, QA_ARCHITECT, QA_EXECUTOR, RELEASE_ENGINEER, DEPLOYMENT_AUTHORITY, CORRECTION_IMPLEMENTER, FOCUSED_REVIEWER, INTEGRATOR
+    "agent_role": "STRING",                   // Role: IMPLEMENTER, ENGINEERING_REVIEWER, DESIGN_AGENT, DESIGN_REVIEWER, QA_ARCHITECT, QA_EXECUTOR, RELEASE_ENGINEER, DEPLOYMENT_AUTHORITY, CORRECTION_IMPLEMENTER, FOCUSED_REVIEWER, INTEGRATOR, ENGINEERING_MANAGER
     "work_item_id": "STRING",                 // Feature/change ID this result pertains to
     "work_item_type": "STRING",               // FEATURE, DESIGN_REVISION, DCR, QA_CONTRACT, DEPLOYMENT, etc.
     "branch": "STRING",                       // Git branch name
@@ -64,6 +64,7 @@ Every structured result **must** conform to this top-level envelope:
 | `DEPLOYMENT_RESULT` | Deployment Authority | Deployment execution outcome |
 | `PRODUCTION_VALIDATION` | Deployment Authority / Manager | Post-deployment production validation |
 | `INTEGRATION_READINESS` | Integrator | Merge-readiness verification |
+| `ORCHESTRATION_RESULT` | Engineering Manager | Work-item orchestration outcome (lanes, gates, blockers) |
 
 ### Status Values (Enum)
 
@@ -199,7 +200,22 @@ Every structured result **must** conform to this top-level envelope:
     },
     "design_system_compliance": "PASS | PARTIAL | FAIL",
     "ux_accessibility_score": "PASS | PARTIAL | FAIL",
-    "implementation_feasibility": "HIGH | MEDIUM | LOW | UNKNOWN"
+    "implementation_feasibility": "HIGH | MEDIUM | LOW | UNKNOWN",
+    "design_artifact_ref": "STRING",
+    "source_design_artifact_ref": "STRING",
+    "candidate_design_artifact_ref": "STRING",
+    "verification": {
+      "write_verified": true,
+      "deterministic_checks_passed": "INTEGER",
+      "deterministic_checks_total": "INTEGER",
+      "evidence_ref": "STRING",
+      "verification_status": "UNVERIFIED | VERIFIED | FAILED | INCOMPLETE"
+    },
+    "design_system_asset_refs": ["STRING"],
+    "routing_policy": {
+      "model_used": "STRING",
+      "routing_class": "STRING"
+    }
   },
   "evidence": {
     "design_files": ["STRING"],
@@ -224,7 +240,7 @@ Every structured result **must** conform to this top-level envelope:
     "findings": [
       {
         "severity": "HIGH | MEDIUM | LOW",
-        "category": "DESIGN_SYSTEM | UX_ACCESSIBILITY | INFORMATION_ARCHITECTURE | IMPLEMENTATION_FEASIBILITY | TRACEABILITY",
+        "category": "DESIGN_SYSTEM | UX_ACCESSIBILITY | INFORMATION_ARCHITECTURE | IMPLEMENTATION_FEASIBILITY | TRACEABILITY | ARTIFACT_VERIFICATION | ASSET_REUSE",
         "description": "STRING",
         "artifact_ref": "STRING"
       }
@@ -232,14 +248,20 @@ Every structured result **must** conform to this top-level envelope:
     "traceability_gaps": ["STRING"],
     "human_decision_required": false,
     "human_decision_type": "DESIGN",
-    "dcr_required": false
+    "dcr_required": false,
+    "visual_approval_required": true,
+    "candidate_design_artifact_ref": "STRING",
+    "canonical_design_artifact_ref": "STRING",
+    "human_decision_ref": "STRING"
   },
   "evidence": {
     "gate_results": {
       "design_system_compliance": "PASS | FAIL",
       "ux_accessibility": "PASS | FAIL",
       "ia_integrity": "PASS | FAIL",
-      "feasibility": "PASS | FAIL"
+      "feasibility": "PASS | FAIL",
+      "artifact_verification": "PASS | FAIL",
+      "asset_reuse_compliance": "PASS | FAIL"
     }
   },
   "next_actions": ["DCR_PROCESS", "HUMAN_APPROVAL", "DESIGN_CONTRACT_FREEZE", "DESIGN_REVISION"]
@@ -552,6 +574,63 @@ Every structured result **must** conform to this top-level envelope:
 
 ---
 
+### 12. ORCHESTRATION_RESULT (Engineering Manager)
+
+Emitted by the Manager lane for a work item when it parks, completes, or blocks. One result per work
+item, never one per subtask; the per-lane results it references are the specialist results above.
+
+The envelope `status` below is **not** the terminal `RESULT:` line the Manager prints when the loop
+ends. That terminal vocabulary is defined solely in the canonical
+`.agents/skills/aef-run-feature/SKILL.md` (or the platform-equivalent adapter that loads that skill) §
+Final Manager Report and is not an envelope field; no other role emits it.
+
+```json
+{
+  "result_type": "ORCHESTRATION_RESULT",
+  "status": "COMPLETE | PARTIAL | BLOCKED | HUMAN_DECISION_REQUIRED",
+  "payload": {
+    "work_item_id": "STRING",
+    "final_state": "STRING",
+    "lanes_dispatched": [
+      {
+        "task_id": "STRING",
+        "task_type": "design-review | implement | review | correct | re-review | integrate | research | design-produce | qa-contract | qa-execute | deploy",
+        "routing_class": "CHEAP_READ | STANDARD | PRECISION",
+        "worktree": "STRING",
+        "branch": "STRING",
+        "base_sha": "STRING",
+        "head_sha": "STRING",
+        "result_ref": "STRING",
+        "verdict": "COMPLETE | PARTIAL | BLOCKED | FAILED | PENDING"
+      }
+    ],
+    "gates": {
+      "independent_review": "NOT_REQUIRED | APPROVED | CHANGES_REQUIRED | BLOCKED",
+      "integration_readiness": "NOT_REQUIRED | READY | NOT_READY | BLOCKED",
+      "qa_contract": "NOT_REQUIRED | FROZEN | BLOCKED",
+      "qa_execution": "NOT_REQUIRED | PASS | FAIL | BLOCKED",
+      "deployment": "NOT_REQUIRED | SUCCESSFUL | ROLLED_BACK | BLOCKED"
+    },
+    "manager_self_edits": ["STRING"],
+    "blockers": [
+      { "type": "STRING", "escalation_path": "AUTO | HUMAN_DECISION | STOP" }
+    ],
+    "open_decision_ids": ["STRING"],
+    "conventions": {
+      "declared_in": "STRING",  // project-declared path + heading of the section that declares the
+                                 // orchestration conventions (e.g. the instantiated AGENTS.md's
+                                 // conventions section). Never hardcoded: heading names differ per repo.
+      "defaulted": ["STRING"]   // convention names taken from defaults, per the orchestrator skill
+    }
+  },
+  "evidence": {
+    "dispatch_records": ["<DISPATCH_STATE_DIR>/tasks/<TASK_ID>/report.md"],
+    "lanes_ledger": "<DISPATCH_STATE_DIR>/LANES.md"
+  },
+  "next_actions": ["ADVANCE_STATE", "DISPATCH_NEXT_LANE", "AWAIT_HUMAN_DECISION", "PARK"]
+}
+```
+
 ## Orchestration Rules for Structured Results
 
 1. **Every agent result must be a valid JSON object** conforming to the standard envelope.
@@ -568,12 +647,23 @@ Every structured result **must** conform to this top-level envelope:
 ## Cross-References
 
 - [WORKFLOW.md](WORKFLOW.md) — Lifecycle gates that require structured results
-- [AGENTS.md](../../AGENTS.md) — "Structured results" invariant, Junie orchestration binding
+- [AGENTS.md](../../AGENTS.md) — "Structured results" invariant, orchestration binding
 - [DESIGN_GOVERNANCE.md](DESIGN_GOVERNANCE.md) — DESIGN_REVISION, DESIGN_REVIEW contracts
 - [QA_GOVERNANCE.md](QA_GOVERNANCE.md) — QA_CONTRACT, QA_RESULT contracts
 - [HUMAN_DECISIONS.md](HUMAN_DECISIONS.md) — HUMAN_DECISION contract
 - [DEPLOYMENT_GOVERNANCE.md](DEPLOYMENT_GOVERNANCE.md) — DEPLOYMENT_REQUEST, DEPLOYMENT_RESULT, PRODUCTION_VALIDATION contracts
 - [LEARNING_POLICY.md](LEARNING_POLICY.md) — Discovery classification in results
+- `aef-orchestrator` skill (`.agents/skills/aef-orchestrator/SKILL.md`) —
+  Manager lane that emits ORCHESTRATION_RESULT. Its canonical source in this framework repository lives
+  under `framework/templates/__brick__/.agents/skills/`. The framework root now also carries a
+  **generated mirror** at `.agents/skills/`, so this path resolves at the root as well — but the mirror
+  is generated output, never a source of truth: fix the brick, never the copy.
+- `aef-run-feature` skill (`.agents/skills/aef-run-feature/SKILL.md`) — single source of the Manager's
+  terminal `RESULT:` vocabulary. On each non-canonical platform it is surfaced through a **generated**
+  command adapter: `.claude/commands/run-feature.md`, `.junie/commands/run-feature.md`, and
+  `.opencode/command/run-feature.md`. Those directories (and `.claude/agents/`, `.junie/agents/`,
+  `.opencode/agents/`) are generated output from the canonical `.agents/` artifacts and are never
+  hand-maintained — see ADR 0003 § Platform matrix and generated adapters.
 
 ---
 

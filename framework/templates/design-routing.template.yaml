@@ -1,0 +1,72 @@
+# Design Agent Model Routing Policy
+# Project-level configuration — replaceable execution policy, NOT workflow authority.
+# Workflow semantics (gates, invariants, approval paths) remain unchanged regardless of model.
+# See DESIGN_GOVERNANCE.md § "Model Routing as Replaceable Execution Policy"
+#
+# Model/provider IDs are PROJECT CONFIGURATION PLACEHOLDERS — not framework defaults.
+# Concrete provider/model IDs (e.g., "gemini-3.1-pro", "opus-5") belong in project config.
+# Framework records only the routing class/capability tier used per revision.
+
+# Routing classes map to design task capability profiles. Each class specifies
+# the capability tier required. Projects configure which model/provider satisfies each class.
+# Example capability tiers (projects define their own):
+# - EXPLORATION: Cost-effective first-pass, broad design space coverage
+# - PRECISION: Targeted correction, high-complexity/difficult designs, surgical edits
+# - SPECIALIZED: Domain-specific capability (e.g., motion, accessibility, IA)
+
+routing_classes:
+  EXPLORATION:
+    capability_tier: "exploration"
+    rationale: "Cost-effective first-pass design; strong initial exploration"
+    max_revisions_before_escalation: 2
+    suitable_for:
+      - "Initial design exploration from Design Brief"
+      - "Broad design space coverage"
+      - "Multiple concept generation"
+  PRECISION:
+    capability_tier: "precision"
+    rationale: "Targeted corrections, difficult designs, surgical edits; detects source corruption"
+    suitable_for:
+      - "Targeted corrections on existing candidates"
+      - "High-complexity interaction/IA challenges"
+      - "Cases where EXPLORATION damaged or failed to converge"
+
+# Escalation triggers
+escalation_policy:
+  max_exploration_revisions: 2
+  triggers:
+    - "Two consecutive meaningful revision failures on same Design Brief"
+    - "Source precondition failure detected (corrupted/missing source artifact)"
+    - "Design Reviewer classifies risk higher than initially assessed"
+    - "Human Design Approval rejects candidate with actionable feedback requiring precision"
+
+# Fallback / human escalation
+human_escalation:
+  after_escalation_failures: 2
+  options:
+    - "Re-scope Design Brief (reduce complexity, split)"
+    - "Engage human designer for specific challenge"
+    - "Switch routing configuration"
+    - "Accept best candidate with documented trade-offs"
+
+# Tool-agnostic execution policy (project configures tool-specific bindings)
+execution_policy:
+  # Always work on disposable revision candidates
+  use_disposable_candidates: true
+  # Never write to canonical source artifacts
+  source_artifact_write_prohibited: true
+  # Mandatory verification after every write
+  mandatory_write_verification: true
+  verification_checks:
+    - "artifact_exists"
+    - "expected_components_present"
+    - "evidence_captured"
+  # Design-system asset reuse enforcement
+  enforce_asset_reuse: true
+
+# Observability / audit
+audit:
+  log_all_design_operations: true
+  log_model_invocations: true
+  log_verification_results: true
+  log_escalation_decisions: true

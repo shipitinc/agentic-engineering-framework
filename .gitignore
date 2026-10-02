@@ -1,12 +1,25 @@
-# Agent-configuration namespaces (.air/ and .junie/) are left fully visible to Git
-# by default.
+# Agent-configuration namespaces (.air/ and .agents/) are left fully visible to Git
+# by default. This includes the generated .claude/, .junie/, and .opencode/ adapters.
 #
-# Do NOT ignore the whole .air/ or .junie/ namespaces, nor their plan directories:
+# Do NOT ignore the whole .air/ or .agents/ namespaces, nor their plan directories:
 # both may contain durable, shareable project artifacts that are intended to be
 # versioned (e.g. worktree setup, Docker environment, MCP configuration, and review
 # prompts under .air/; Skills and other project-scoped agent configuration under
-# .junie/). Air plan files may be useful project artifacts, and Junie plans are
-# explicitly designed to be editable/committable.
+# .agents/). Air plan files may be useful project artifacts, and plan directories
+# are explicitly designed to be editable/committable.
+#
+# .agents/ is the canonical source of truth. .claude/, .junie/, and .opencode/ hold
+# GENERATED platform adapters rendered from it by
+# cli/tool/generate_platform_adapters.dart. They are committed (not ignored) so a
+# product repo receives a working adapter set on bootstrap and so drift is
+# reviewable; never hand-edit them.
+#
+# The same applies at this repository's OWN ROOT: .agents/, .claude/, .junie/, and
+# .opencode/ at the top level are generated too — the root .agents/ is a MIRROR of
+# framework/templates/__brick__/.agents/, not a second source of truth. `--check`
+# covers both roots and fails on any mismatch at either, so an ignored or
+# hand-edited root copy would be invisible drift. Do not add ignore rules for any of
+# them.
 #
 # Generated does not imply transient: do not add ignore rules for tool-owned
 # namespaces or generated artifacts without concrete evidence about their lifecycle

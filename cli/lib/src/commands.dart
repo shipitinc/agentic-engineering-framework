@@ -104,8 +104,7 @@ List<String> _runPreflightChecks() {
 /// NOTE: When [FRAMEWORK_CLI_TEST_MODE] is set to 'true', the resolution is
 /// adjusted to support test sandboxes where Platform.script may not point
 /// into the framework repo.
-String _resolveFrameworkRevision({bool fromBrickContext = false, bool fromCwd = false}) {
-  
+String _resolveFrameworkRevision({bool fromBrickContext = false}) {
   if (fromBrickContext) {
     // Resolve framework source root from brick location
     // Brick is at: <framework-root>/framework/templates
@@ -114,8 +113,10 @@ String _resolveFrameworkRevision({bool fromBrickContext = false, bool fromCwd = 
     final frameworkSourceDir = Directory('$brickPath/../..');
 
     // Run git rev-parse HEAD in the framework source directory
-    final rev = Process.runSync('git', ['rev-parse', 'HEAD'],
-        workingDirectory: frameworkSourceDir.path);
+    final rev = Process.runSync('git', [
+      'rev-parse',
+      'HEAD',
+    ], workingDirectory: frameworkSourceDir.path);
     if (rev.exitCode == 0) {
       return (rev.stdout as String).trim();
     }
@@ -205,8 +206,9 @@ String _resolveBrickPath() {
   }
 
   throw StateError(
-      'Cannot locate framework brick directory. Tried: ${brickDir.path}, ${altBrickDir.path}. '
-      'Set FRAMEWORK_BRICK_PATH environment variable if brick is installed elsewhere.');
+    'Cannot locate framework brick directory. Tried: ${brickDir.path}, ${altBrickDir.path}. '
+    'Set FRAMEWORK_BRICK_PATH environment variable if brick is installed elsewhere.',
+  );
 }
 
 /// Snapshots all regular files in [dir] recursively, returning a map of
@@ -339,7 +341,8 @@ Future<CommandResult> runBootstrap({String? target}) async {
   if (target == null) {
     // Preserve 3a blocked behavior + no-mutation for direct calls and existing tests
     final preflightIssues = _runPreflightChecks();
-    final revision = _resolveFrameworkRevision(); // test compat: resolve from cwd
+    final revision =
+        _resolveFrameworkRevision(); // test compat: resolve from cwd
     final skeleton = _generateManifestSkeleton(
       revision,
     ); // keep helper for compat
@@ -422,8 +425,11 @@ Future<CommandResult> runBootstrap({String? target}) async {
     return CommandResult(
       family: ResultFamily.bootstrapBlocked,
       command: CommandNames.bootstrap,
-      message: 'Collision detected: target directory contains files that would be overwritten by framework template',
-      blockers: collisions.map((p) => 'Pre-existing file would be overwritten: $p').toList(),
+      message:
+          'Collision detected: target directory contains files that would be overwritten by framework template',
+      blockers: collisions
+          .map((p) => 'Pre-existing file would be overwritten: $p')
+          .toList(),
       humanActionRequired: true,
     );
   }
@@ -441,9 +447,7 @@ Future<CommandResult> runBootstrap({String? target}) async {
   final generator = await MasonGenerator.fromBrick(brick);
 
   // Render templates using Mason - FAIL on conflict (error), don't overwrite pre-existing product files.
-  final vars = <String, dynamic>{
-    'frameworkRevision': revision,
-  };
+  final vars = <String, dynamic>{'frameworkRevision': revision};
   await generator.generate(
     DirectoryGeneratorTarget(targetDir),
     vars: vars,
@@ -508,7 +512,8 @@ Future<CommandResult> runUpgrade({String? target}) async {
     return CommandResult(
       family: ResultFamily.upgradeBlocked,
       command: CommandNames.upgrade,
-      message: 'Upgrade requires --target <revision> to specify the incoming framework revision.',
+      message:
+          'Upgrade requires --target <revision> to specify the incoming framework revision.',
       blockers: ['Missing required --target argument'],
       humanActionRequired: true,
     );
@@ -559,7 +564,7 @@ class FrameworkSourceContext {
   /// 2. Distributed CLI: FRAMEWORK_BRICK_PATH set -> validate against known hashes
   ///
   /// Throws [StateError] if neither mode works or validation fails.
-factory FrameworkSourceContext.resolve() {
+  factory FrameworkSourceContext.resolve() {
     // Test mode: when FRAMEWORK_CLI_TEST_MODE is set, use development mode
     // regardless of Platform.script location, so tests can run in sandboxes.
     if (Platform.environment['FRAMEWORK_CLI_TEST_MODE'] == 'true') {
@@ -570,14 +575,14 @@ factory FrameworkSourceContext.resolve() {
         // a default brick path relative to the framework repo
         final frameworkRepo = Platform.environment['FRAMEWORK_REPO_PATH'];
         if (frameworkRepo != null && frameworkRepo.isNotEmpty) {
-// Try to resolve from the specified framework repo path
-        final brickPath = '$frameworkRepo/framework/templates';
-        // When FRAMEWORK_REPO_PATH is set, set the environment variable so
-        // _resolveFromBrickPath can pick it up
-        // Actually, just directly call the internal resolution
-        final env = Platform.environment;
-        env['FRAMEWORK_BRICK_PATH'] = brickPath;
-        return _resolveFromBrickPath();
+          // Try to resolve from the specified framework repo path
+          final brickPath = '$frameworkRepo/framework/templates';
+          // When FRAMEWORK_REPO_PATH is set, set the environment variable so
+          // _resolveFromBrickPath can pick it up
+          // Actually, just directly call the internal resolution
+          final env = Platform.environment;
+          env['FRAMEWORK_BRICK_PATH'] = brickPath;
+          return _resolveFromBrickPath();
         }
         // Re-throw to fall through to normal resolution
         rethrow;
@@ -593,7 +598,7 @@ factory FrameworkSourceContext.resolve() {
     }
   }
 
-/// Internal constructor - only creatable via factory
+  /// Internal constructor - only creatable via factory
   FrameworkSourceContext._({
     required this.source,
     required this.revision,
@@ -644,14 +649,14 @@ FrameworkSourceContext _resolveFromFrameworkRepo() {
   final frameworkRoot = _resolveFrameworkRoot();
   final revision = _resolveRevisionFrom(frameworkRoot);
   final brickPath = _resolveBrickPathFrom(frameworkRoot);
-  
+
   // In test mode, skip brick integrity validation to allow bootstrapping in sandboxes
   if (Platform.environment['FRAMEWORK_CLI_TEST_MODE'] != 'true') {
     _validateBrickIntegrity(brickPath, revision);
   }
-  
+
   final expectedPaths = _computeExpectedTemplatePaths(brickPath);
-  
+
   return FrameworkSourceContext._(
     source: approvedFrameworkSource,
     revision: revision,
@@ -666,26 +671,27 @@ FrameworkSourceContext _resolveFromBrickPath() {
   final envPath = Platform.environment['FRAMEWORK_BRICK_PATH'];
   if (envPath == null || envPath.isEmpty) {
     throw StateError(
-        'FRAMEWORK_BRICK_PATH environment variable not set. '
-        'Required for distributed CLI execution outside framework repo.');
+      'FRAMEWORK_BRICK_PATH environment variable not set. '
+      'Required for distributed CLI execution outside framework repo.',
+    );
   }
-  
+
   final brickDir = Directory(envPath);
   if (!brickDir.existsSync()) {
     throw StateError('FRAMEWORK_BRICK_PATH does not exist: $envPath');
   }
-  
+
   final brickPath = brickDir.absolute.path;
-  
+
   // For distributed CLI, we don't have the framework git repo to get revision.
   // The revision must be embedded in the CLI or passed via env.
   final revision = _resolveRevisionFromBrick(brickPath);
   _validateBrickIntegrity(brickPath, revision);
   final expectedPaths = _computeExpectedTemplatePaths(brickPath);
-  
+
   // frameworkRoot is the parent of framework/templates
   final frameworkRoot = Directory('$brickPath/../..');
-  
+
   return FrameworkSourceContext._(
     source: approvedFrameworkSource,
     revision: revision,
@@ -726,7 +732,7 @@ Directory _resolveFrameworkRoot() {
   // script is at: <repo>/cli/bin/framework.dart or <install>/bin/framework
   final cliDir = scriptFile.parent.parent; // bin/ -> cli/
   final repoRoot = cliDir.parent; // cli/ -> repo root
-  
+
   // Verify this looks like the framework repo (has framework/templates)
   final brickDir = Directory('${repoRoot.path}/framework/templates');
   if (brickDir.existsSync()) {
@@ -740,20 +746,26 @@ Directory _resolveFrameworkRoot() {
   }
 
   throw StateError(
-      'Cannot locate canonical framework source root. '
-      'Expected framework/templates relative to CLI package. '
-      'Script location: $scriptPath');
+    'Cannot locate canonical framework source root. '
+    'Expected framework/templates relative to CLI package. '
+    'Script location: $scriptPath',
+  );
 }
 
 /// Resolves the exact framework revision from the given framework root.
 String _resolveRevisionFrom(Directory frameworkRoot) {
-  final rev = Process.runSync('git', ['rev-parse', 'HEAD'],
-      workingDirectory: frameworkRoot.path);
+  final rev = Process.runSync('git', [
+    'rev-parse',
+    'HEAD',
+  ], workingDirectory: frameworkRoot.path);
   if (rev.exitCode == 0) {
     return (rev.stdout as String).trim();
   }
   final remoteRev = Process.runSync('git', [
-    'ls-remote', '--heads', 'origin', 'main',
+    'ls-remote',
+    '--heads',
+    'origin',
+    'main',
   ], workingDirectory: frameworkRoot.path);
   if (remoteRev.exitCode == 0) {
     final line = (remoteRev.stdout as String).split('\n').first.trim();
@@ -780,7 +792,7 @@ String _computeBrickContentHash(String brickPath) {
   if (!brickDir.existsSync()) {
     throw StateError('Brick directory does not exist: $brickPath');
   }
-  
+
   final hashes = <String>[];
   for (final entity in brickDir.listSync(recursive: true, followLinks: false)) {
     if (entity is File) {
@@ -788,11 +800,17 @@ String _computeBrickContentHash(String brickPath) {
           .replaceFirst(brickDir.absolute.path, '')
           .replaceAll('\\', '/');
       final normalized = rel.startsWith('/') ? rel.substring(1) : rel;
-      
+
       // Skip Mason metadata and .git
-      if (normalized.startsWith('.mason/') || normalized.startsWith('.git/')) continue;
-      if (normalized == 'brick.yaml' || normalized == 'BLOCKS.md' || normalized == 'README.md') continue;
-      
+      if (normalized.startsWith('.mason/') || normalized.startsWith('.git/')) {
+        continue;
+      }
+      if (normalized == 'brick.yaml' ||
+          normalized == 'BLOCKS.md' ||
+          normalized == 'README.md') {
+        continue;
+      }
+
       final fileHash = ContentHash.ofFile(entity);
       hashes.add('$normalized:${fileHash.hex}');
     }
@@ -811,19 +829,21 @@ void _validateBrickIntegrity(String brickPath, String revision) {
   final expectedHash = _getExpectedBrickHash(revision);
   if (expectedHash == null) {
     throw StateError(
-        'Brick integrity validation: unknown revision $revision. '
-        'The FRAMEWORK_BRICK_PATH brick content hash is not recorded for this '
-        'CLI revision (embedded at compile time). Use the canonical framework source '
-        'or update the CLI binary with the correct revision hash.');
+      'Brick integrity validation: unknown revision $revision. '
+      'The FRAMEWORK_BRICK_PATH brick content hash is not recorded for this '
+      'CLI revision (embedded at compile time). Use the canonical framework source '
+      'or update the CLI binary with the correct revision hash.',
+    );
   }
-  
+
   final actualHash = _computeBrickContentHash(brickPath);
   if (actualHash != expectedHash) {
     throw StateError(
-        'Brick integrity validation failed for revision $revision. '
-        'Expected hash: $expectedHash, Actual hash: $actualHash. '
-        'The FRAMEWORK_BRICK_PATH may point to a malicious or corrupted template. '
-        'Use the canonical framework source only.');
+      'Brick integrity validation failed for revision $revision. '
+      'Expected hash: $expectedHash, Actual hash: $actualHash. '
+      'The FRAMEWORK_BRICK_PATH may point to a malicious or corrupted template. '
+      'Use the canonical framework source only.',
+    );
   }
 }
 
@@ -846,28 +866,33 @@ String? _getExpectedBrickHash(String revision) {
 Set<String> _computeExpectedTemplatePaths(String brickPath) {
   final brickDir = Directory(brickPath);
   final expectedPaths = <String>{};
-  
+
   // Read from __brick__ directory which contains the actual template structure
   final templateDir = Directory('${brickDir.path}/__brick__');
   if (!templateDir.existsSync()) {
-    throw StateError('Template directory __brick__ not found in brick at $brickPath');
+    throw StateError(
+      'Template directory __brick__ not found in brick at $brickPath',
+    );
   }
-  
-  for (final entity in templateDir.listSync(recursive: true, followLinks: false)) {
+
+  for (final entity in templateDir.listSync(
+    recursive: true,
+    followLinks: false,
+  )) {
     if (entity is File) {
       final rel = entity.absolute.path
           .replaceFirst(templateDir.absolute.path, '')
           .replaceAll('\\', '/');
       final normalized = rel.startsWith('/') ? rel.substring(1) : rel;
-      
+
       // Skip framework-manifest.yaml (generated by CLI, not Mason)
       if (normalized == 'framework-manifest.yaml') continue;
       // Hard exclusion: never include .git/**
       if (normalized.startsWith('.git/')) continue;
-      
+
       expectedPaths.add(normalized);
     }
   }
-  
+
   return expectedPaths;
 }

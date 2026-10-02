@@ -31,3 +31,17 @@ artifact_paths:
   - "{{artifact_path_1}}"
   - "{{artifact_path_2}}"
 # Add/remove as needed
+# Tool-agnostic design artifact references (Penpot-specific bindings documented in DESIGN_GOVERNANCE.md)
+design_artifact_ref: "{{design_artifact_ref}}"
+source_design_artifact_ref: "{{source_design_artifact_ref}}"
+candidate_design_artifact_ref: "{{candidate_design_artifact_ref}}"
+verification:
+  write_verified: false
+  deterministic_checks_passed: 0
+  deterministic_checks_total: 0
+  evidence_ref: ""
+  verification_status: "UNVERIFIED"  # UNVERIFIED | VERIFIED | FAILED | INCOMPLETE
+design_system_asset_refs: []
+routing_policy:
+  model_used: "{{model_used}}"
+  routing_class: "{{routing_class}}"

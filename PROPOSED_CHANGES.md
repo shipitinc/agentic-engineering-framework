@@ -163,16 +163,16 @@ This document outlines the complete plan to extend the Agentic Engineering Frame
 
 ---
 
-## 6. Junie/OpenCode Artifacts Updates
+## 6. Agent-Platform Artifacts Updates
 
-### New Agents (in `framework/templates/__brick__/.junie/agents/`)
+### New Agents (in `framework/templates/__brick__/.agents/agents/`)
 - `design-agent.md` — Design Agent specialist
 - `design-reviewer.md` — Independent Design Reviewer (read-only)
 - `qa-architect.md` — QA Architect (defines strategy, contracts, baselines)
 - `qa-executor.md` — QA Executor (runs QA, produces evidence)
 - `deployment-authority.md` — Deployment Authority/Controller (executes deployments)
 
-### New Skills (in `framework/templates/__brick__/.junie/skills/`)
+### New Skills (in `framework/templates/__brick__/.agents/skills/`)
 - `design-workflow/SKILL.md` — Design lifecycle procedure
 - `design-review/SKILL.md` — Independent design review checklist
 - `qa-contract/SKILL.md` — QA Contract creation and validation
@@ -181,7 +181,7 @@ This document outlines the complete plan to extend the Agentic Engineering Frame
 - `deployment-execution/SKILL.md` — Deployment plan execution and rollback
 
 ### Updated Command
-- `framework/templates/__brick__/.junie/commands/run-feature.md` — Extended to orchestrate full lifecycle
+- `framework/templates/__brick__/.agents/skills/aef-run-feature/SKILL.md` — Extended to orchestrate full lifecycle
 
 ---
 
@@ -192,7 +192,7 @@ All documents must cross-reference each other correctly:
 - AGENTS.md → all governance documents
 - LEARNING_POLICY.md → new classification categories
 - Templates → governing documents
-- Junie agents/skills → governing documents and STRUCTURED_RESULTS.md
+- Canonical agents/skills (`.agents/`) → governing documents and STRUCTURED_RESULTS.md
 
 ---
 

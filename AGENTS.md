@@ -27,6 +27,16 @@ These invariants are authoritative for any agent operating under this framework.
 - **Independent Design Reviewer is read-only** — never modifies design artifacts.
 - **Substantial UI changes require an approved Design Revision** — implementers must not invent consequential UX.
 - **Implementation-discovered UI gaps route back via DCR** — not resolved in implementation lane.
+- **Project-designated canonical visual authority** — design artifacts live in the canonical visual tool; markdown/YAML are metadata only.
+- **Known-good / human-approved design artifacts are immutable during AI revision** — AI never writes to canonical source artifacts.
+- **Corrections happen on disposable revision candidates** — new artifacts, never in-place edits.
+- **AI must verify artifact state after writes** — readback confirmation mandatory; tool success ≠ visual correctness.
+- **Model self-QA is advisory only** — cannot grant design approval; human visual approval required for promotion.
+- **Design-system assets must be reused via component instances/libraries** — not recreated or approximated.
+- **If revision destroys previously-good content, discard candidate** — never repair canonical source in place.
+- **Deterministic/document checks are separate from visual/design judgment** — different validators, different evidence.
+- **Model routing is replaceable execution policy, not workflow authority** — configurable, not hard-wired.
+- **Escalate after two meaningful revision failures** — Human Decision required, not infinite AI loops.
 
 #### QA Governance
 - **QA Architect ≠ QA Executor** — separate agents, no overlap.
@@ -70,8 +80,8 @@ These invariants are authoritative for any agent operating under this framework.
 - **Invalid/malformed results are rejected** — agent must re-emit.
 - **No workflow transition depends on scraping conversational prose**.
 
-#### Junie orchestration binding
-- The **main Junie session is the authoritative Engineering Manager / Orchestrator**. It is the only
+#### Orchestration binding
+- The **top-level session is the authoritative Engineering Manager / Orchestrator**. It is the only
   Manager; a competing `engineering-manager` subagent must **not** be created.
 - The Manager **delegates production implementation** to specialist subagents rather than reviewing
   its own work, and **consumes their structured results** directly.
@@ -84,8 +94,12 @@ These invariants are authoritative for any agent operating under this framework.
 - Every child result must include **exact repository/worktree/HEAD provenance**, and **only the
   Manager updates workflow state** (`docs/engineering/WORK_STATE.md`). Durable discoveries are
   classified and persisted per `docs/engineering/LEARNING_POLICY.md`.
-- Orchestration artifacts live under `.junie/` (`agents/`, `skills/`, `commands/run-feature.md`); the
-  `/run-feature` command is the single human entry point for the autonomous loop.
+- Orchestration artifacts live under `.agents/skills/` (portable Agent Skills) with canonical
+  agent profiles under `.agents/agents/`. **`.agents/` is the canonical source of truth**; `.claude/`,
+  `.junie/`, and `.opencode/` hold **generated** platform adapters (and are never hand-maintained
+  content) produced by `cli/tool/generate_platform_adapters.dart` and verified by its `--check` drift
+  test. opencode reads `.agents/skills/` natively, so it has no generated skills directory. The
+  `aef-run-feature` skill is the single human entry point for the autonomous loop.
 
 ### Ownership & concurrency
 - Production-writing agents must declare **`OWNED_PATHS`**, **`READ_ONLY_PATHS`**, and
@@ -164,4 +178,4 @@ These invariants are authoritative for any agent operating under this framework.
 - [docs/engineering/STRUCTURED_RESULTS.md](docs/engineering/STRUCTURED_RESULTS.md) — Machine-readable result contracts for all roles and workflows.
 - [framework/templates/](framework/templates/) — placeholder structure for versioned product artifacts.
 
-> Note: This repository intentionally does **not** contain `.junie/AGENTS.md`.
+> Note: This repository intentionally does **not** contain `.agents/AGENTS.md`.

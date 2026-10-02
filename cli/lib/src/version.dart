@@ -10,4 +10,5 @@ const String frameworkCliVersion = '0.1.0';
 /// For distributed CLI execution (outside framework repo), this provides the
 /// authoritative revision for provenance and brick integrity validation.
 /// Updated during release process.
-const String frameworkEmbeddedRevision = '91c0c445b74726850d8a25283c6dc11c2ced7522';
+const String frameworkEmbeddedRevision =
+    '91c0c445b74726850d8a25283c6dc11c2ced7522';

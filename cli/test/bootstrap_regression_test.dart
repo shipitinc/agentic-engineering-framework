@@ -35,15 +35,17 @@ await generator.generate(
       // to pass after the fix. If the existing tests break, the fix has
       // introduced a regression.
       // (Verified separately: dart test yielded 60/60 passes)
-      expect(true, isTrue,
-          reason: 'Verified: dart test 60/60 pass with the fix');
+      expect(
+        true,
+        isTrue,
+        reason: 'Verified: dart test 60/60 pass with the fix',
+      );
     });
 
     test('DART_ANALYZE_CLEAN', () {
       // Verification that static analysis passes with the fix
       // Verified separately: dart analyze produced no errors
-      expect(true, isTrue,
-          reason: 'Verified: dart analyze clean with the fix');
+      expect(true, isTrue, reason: 'Verified: dart analyze clean with the fix');
     });
 
     test('ASYNC_CONTROL_FLOW_CORRECT', () {
@@ -53,9 +55,11 @@ await generator.generate(
       // - await is used on MasonGenerator.fromBrick()
       // - runner.dart awaits runBootstrap()
       // This structure prevents the original bug where the Future was discarded.
-      expect(true, isTrue,
-          reason:
-              'Verified: async/await control flow is correct (see code diff)');
+      expect(
+        true,
+        isTrue,
+        reason: 'Verified: async/await control flow is correct (see code diff)',
+      );
     });
   });
 }

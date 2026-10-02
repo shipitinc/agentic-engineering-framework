@@ -87,6 +87,8 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
     Design Agent produces **Design Revisions** (candidate designs) iteratively.
     Each revision is versioned with metadata: revision number, author, timestamp, changelog,
     risk level assessment, and traceability to Design Brief requirements.
+    **All revisions are disposable revision candidates; canonical source artifacts are immutable.**
+    See DESIGN_GOVERNANCE.md § Source-Artifact Immutability.
 
 16. **Independent Design Review** `GATE`
     Independent Design Reviewer evaluates each Design Revision for:
@@ -94,6 +96,8 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
     - UX coherence and accessibility (Level 2 risk)
     - Information architecture / workflow integrity (Level 3 risk)
     - Implementation feasibility
+    - **Artifact write verification (readback confirmation)**
+    - **Design-system asset reuse compliance**
 
 17. **Design Change Request (DCR) Process** `AUTO` / `HUMAN_DECISION_REQUIRED`
     - Level 0 (Implementation Correction): `AUTO` — routed to implementation lane
@@ -101,60 +105,67 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
     - Level 2 (Feature UX Change): `HUMAN_DECISION_REQUIRED` for product/design approval
     - Level 3 (Major Workflow/Navigation/IA Change): `HUMAN_DECISION_REQUIRED` with architecture review
 
-18. **Approved Design Revision / Design Contract Freeze** `AUTO` (after gate passage)
+18. **Human Visual Approval** `HUMAN_DECISION_REQUIRED` `GATE`
+    **Human visual inspection of the revision candidate artifact is required before canonical
+    promotion.** Model self-QA is advisory only; artifact metadata and tool responses do not
+    prove visual correctness. See DESIGN_GOVERNANCE.md.
+
+19. **Approved Design Revision / Design Contract Freeze** `AUTO` (after gate passage)
     The approved Design Revision becomes the **Design Contract** — a frozen, versioned artifact
     that implementation must satisfy. Substantial UI changes require an approved Design Revision.
     Implementers must not invent consequential UX to fill design gaps.
+    **Promotion = candidate artifact becomes canonical via recorded operation; source artifact
+    immutability is preserved.**
 
-19. **QA Contract Definition** `AUTO` (parallel with Design Contract)
+20. **QA Contract Definition** `AUTO` (parallel with Design Contract)
     QA Architect defines the **QA Contract**: acceptance criteria, test strategy, automated/visual/
     human QA scope, golden baseline requirements, and evidence standards. Required before
     implementation completion.
 
 ### Phase 2: Implementation & Code Review
 
-20. **Implementation** `AUTO`
+21. **Implementation** `AUTO`
     Implementers build against the Design Contract and QA Contract, declaring `OWNED_PATHS`,
     `READ_ONLY_PATHS`, and `PROHIBITED_PATHS`. Implementers never approve their own work.
     Implementation-discovered UI gaps route back into the design lifecycle via DCR.
 
-21. **Deterministic Tests / Runtime / Browser Validation** `GATE`
+22. **Deterministic Tests / Runtime / Browser Validation** `GATE`
     Required deterministic validation must pass. Runtime/browser evidence must correspond to the
     exact code revision under review.
 
-22. **Independent Engineering Review** `GATE`
+23. **Independent Engineering Review** `GATE`
     An independent, read-only reviewer evaluates the implementation against:
     - Design Contract compliance
     - QA Contract test coverage
     - Architecture boundaries
     - Code quality and maintainability
 
-23. **Correction / Re-review** `AUTO` (loop)
+24. **Correction / Re-review** `AUTO` (loop)
     Address findings and re-review until the gate passes. Bounded: after two failed cycles on
     the same substantive issue, classify and escalate if `HUMAN_DECISION_REQUIRED`.
 
 ### Phase 3: QA Governance
 
-24. **Integration** `AUTO`
+25. **Integration** `AUTO`
     Integrate approved work into the integration branch.
 
-25. **Automated QA Deployment** `AUTO` (when project policy permits)
+26. **Automated QA Deployment** `AUTO` (when project policy permits)
     Deploy to QA environment deterministically after integration.
 
-26. **Automated QA Execution** `GATE`
+27. **Automated QA Execution** `GATE`
     QA Executor runs: unit, integration, contract, e2e tests per QA Contract.
     Deterministic evidence is authoritative over reviewer opinion.
 
-27. **Visual QA Execution** `GATE`
+28. **Visual QA Execution** `GATE`
     QA Executor runs visual regression against golden baselines.
     Implementation agents **cannot approve changed visual golden baselines** — only QA Architect
     or Human QA can rebaseline.
 
-28. **Human QA Execution** (when required) `HUMAN_DECISION_REQUIRED` / `GATE`
+29. **Human QA Execution** (when required) `HUMAN_DECISION_REQUIRED` / `GATE`
     Exploratory, usability, accessibility testing per QA Contract.
     QA artifacts must be preserved as evidence.
 
-29. **QA Verdict & Failure Classification** `GATE`
+30. **QA Verdict & Failure Classification** `GATE`
     QA classifies any failure as exactly one of:
     - `IMPLEMENTATION_DEFECT` → route to correction lane
     - `DESIGN_DEFECT` → route to DCR (Design Change Request)
@@ -164,24 +175,24 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
 
 ### Phase 4: Deployment Governance
 
-30. **Merge** `AUTO`
+31. **Merge** `AUTO`
     Merge to main/trunk branch after all QA gates pass.
 
-31. **Staging Deployment** `AUTO` (when project policy permits)
+32. **Staging Deployment** `AUTO` (when project policy permits)
     Deploy the **same immutable artifact** to staging. Build once, promote same artifact.
 
-32. **Staging Validation** `GATE`
+33. **Staging Validation** `GATE`
     Smoke tests, health checks, and staging-specific validation.
 
-33. **Production Candidate Creation** `AUTO`
+34. **Production Candidate Creation** `AUTO`
     Tag the validated artifact as a **Production Candidate** with full provenance:
     git SHA, build ID, test results, QA evidence, Design Contract version, migration plan.
 
-34. **Pre-Deployment Validation** `GATE`
+35. **Pre-Deployment Validation** `GATE`
     Verify deployment plan, migration classification, rollback plan, and mobile API
     backward compatibility (old Android/iOS clients may remain installed).
 
-35. **Migration Classification Review** `GATE`
+36. **Migration Classification Review** `GATE`
     Classify each migration step:
     - `SAFE` — additive, backward-compatible
     - `RISKY` — schema changes, config changes requiring coordination
@@ -189,25 +200,25 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
     **Destructive production migrations always require human approval.**
     **Infrastructure destruction always requires human approval.**
 
-36. **`HUMAN_DECISION_REQUIRED`** (Production Promotion) `GATE`
+37. **`HUMAN_DECISION_REQUIRED`** (Production Promotion) `GATE`
     Production promotion remains human-authorized unless a human-approved project policy
     explicitly changes that. Deployment Authority executes; coding agents never receive
     unrestricted production credentials.
 
-37. **Deployment Execution** `AUTO` (by Deployment Authority)
+38. **Deployment Execution** `AUTO` (by Deployment Authority)
     Deployment Authority/Controller executes the deployment plan.
     Automatic rollback prefers a known-good artifact rather than asking an AI to debug live production.
 
-38. **Production Validation** `GATE`
+39. **Production Validation** `GATE`
     Verify the promoted release in production: health checks, synthetic transactions,
     key metrics, error rates, mobile client compatibility.
 
 ### Phase 5: Learning & Improvement
 
-39. **Repository Learning** `AUTO`
+40. **Repository Learning** `AUTO`
     Persist verified discoveries per [LEARNING_POLICY.md](LEARNING_POLICY.md).
 
-40. **Framework Improvement Candidates** (where generally reusable) `AUTO` → review
+41. **Framework Improvement Candidates** (where generally reusable) `AUTO` → review
     Promote generally reusable lessons as framework improvement candidates. Material
     workflow-framework changes require independent review; consequential governance changes
     require human approval.
@@ -215,6 +226,24 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
 ---
 
 ## Resolved framework areas
+
+- **Manager orchestration as an invocable procedure** — RESOLVED by
+  [ADR 0003](adr/0003-product-generic-orchestrator-skill.md): the `aef-orchestrator` skill is the
+  **operational counterpart** of the Manager invariants in `AGENTS.md`. It makes the top-level session
+  a **dispatching orchestrator** (decompose → dispatch to isolated lanes with declared ownership and
+  full provenance → collect structured results → integrate only independently reviewed results) and
+  defines the dispatch/report contracts
+  (`.agents/skills/aef-orchestrator/templates/subtask-prompt.md`,
+  `.agents/skills/aef-orchestrator/templates/subtask-report.md`) and the plain-file state convention
+  that keeps Manager state
+  recoverable after a crash or compaction. It **delegates to** the existing lane skills
+  (`aef-design-workflow`, `aef-design-review`, `aef-qa-contract`, `aef-qa-execution`,
+  `aef-implementation-workflow`, `aef-independent-review`, `aef-correction-loop`,
+  `aef-deployment-execution`, `aef-human-decision`, `aef-repository-learning`) and **adds no stage and
+  no human gate**. That ADR also fixes the **platform matrix**: `.agents/` is the canonical source of
+  truth and `.claude/`, `.junie/`, and `.opencode/` are **generated-only** output — never
+  hand-maintained — machine-verified by the adapter drift test. This document — and
+  `AGENTS.md`/`HUMAN_DECISIONS.md` — remain authoritative wherever the skill and this document differ.
 
 - **Distribution/versioning of framework artifacts to product repositories** — RESOLVED at the
   architecture level by [ADR 0001](adr/0001-framework-distribution-and-versioning.md):

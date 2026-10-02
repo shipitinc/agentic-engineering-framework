@@ -16,11 +16,14 @@ void main() {
   group('bootstrap integration regression', () {
     late Directory sandbox;
     late Directory previousCwd;
-    final String frameworkRepoPath = '/Users/alkebut/air/agentic-engineering-framework';
+    final String frameworkRepoPath =
+        '/Users/alkebut/air/agentic-engineering-framework';
 
     setUp(() {
       previousCwd = Directory.current;
-      sandbox = Directory.systemTemp.createTempSync('framework_bootstrap_test_');
+      sandbox = Directory.systemTemp.createTempSync(
+        'framework_bootstrap_test_',
+      );
       Directory.current = sandbox;
     });
 
@@ -38,21 +41,36 @@ void main() {
 
       // Initialize git repo in product directory
       Process.runSync('git', ['init'], workingDirectory: productDir.path);
-      Process.runSync('git', ['config', 'user.email', 'test@example.com'],
-          workingDirectory: productDir.path);
-      Process.runSync('git', ['config', 'user.name', 'Test User'],
-          workingDirectory: productDir.path);
+      Process.runSync('git', [
+        'config',
+        'user.email',
+        'test@example.com',
+      ], workingDirectory: productDir.path);
+      Process.runSync('git', [
+        'config',
+        'user.name',
+        'Test User',
+      ], workingDirectory: productDir.path);
 
       // Create pre-existing product files
-      File('${productDir.path}/product-only.txt').writeAsStringSync('product only content');
+      File(
+        '${productDir.path}/product-only.txt',
+      ).writeAsStringSync('product only content');
       Directory('${productDir.path}/src').createSync(recursive: true);
-      File('${productDir.path}/src/existing.dart').writeAsStringSync('// existing dart file');
-      File('${productDir.path}/README-product.md').writeAsStringSync('# Product README');
+      File(
+        '${productDir.path}/src/existing.dart',
+      ).writeAsStringSync('// existing dart file');
+      File(
+        '${productDir.path}/README-product.md',
+      ).writeAsStringSync('# Product README');
 
       // Commit pre-existing files
       Process.runSync('git', ['add', '.'], workingDirectory: productDir.path);
-      Process.runSync('git', ['commit', '-m', 'Initial product commit'],
-          workingDirectory: productDir.path);
+      Process.runSync('git', [
+        'commit',
+        '-m',
+        'Initial product commit',
+      ], workingDirectory: productDir.path);
 
       return productDir;
     }
@@ -61,196 +79,324 @@ void main() {
     Future<void> runBootstrap(Directory targetDir) async {
       final result = await Process.run(
         'dart',
-        ['run', 'cli/bin/framework.dart', 'bootstrap', '--target', targetDir.path],
+        [
+          'run',
+          'cli/bin/framework.dart',
+          'bootstrap',
+          '--target',
+          targetDir.path,
+        ],
         workingDirectory: frameworkRepoPath,
         environment: {'FRAMEWORK_CLI_TEST_MODE': 'true'},
       );
-      expect(result.exitCode, 0, reason: 'Bootstrap should succeed: stdout=${result.stdout}\nstderr=${result.stderr}');
+      expect(
+        result.exitCode,
+        0,
+        reason:
+            'Bootstrap should succeed: stdout=${result.stdout}\nstderr=${result.stderr}',
+      );
       expect(result.stdout.toString(), contains('BOOTSTRAP_COMPLETE'));
     }
 
     /// Reads and parses the framework-manifest.yaml from the target directory.
     FrameworkManifest readManifest(Directory targetDir) {
       final manifestFile = File('${targetDir.path}/framework-manifest.yaml');
-      expect(manifestFile.existsSync(), isTrue, reason: 'Manifest should exist');
+      expect(
+        manifestFile.existsSync(),
+        isTrue,
+        reason: 'Manifest should exist',
+      );
       final yamlText = manifestFile.readAsStringSync();
       return FrameworkManifest.parse(yamlText);
     }
 
-    test('KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts', () async {
-      final productDir = await createProductRepoWithPreExistingFiles();
-      await runBootstrap(productDir);
+    test(
+      'KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts',
+      () async {
+        final productDir = await createProductRepoWithPreExistingFiles();
+        await runBootstrap(productDir);
 
-      final manifest = readManifest(productDir);
+        final manifest = readManifest(productDir);
 
-      // Verify no .git/** paths in managed artifacts
-      for (final artifact in manifest.artifacts) {
-        expect(artifact.path.startsWith('.git/'), isFalse,
-            reason: 'Artifact "${artifact.path}" should not be a .git/** path');
-      }
+        // Verify no .git/** paths in managed artifacts
+        for (final artifact in manifest.artifacts) {
+          expect(
+            artifact.path.startsWith('.git/'),
+            isFalse,
+            reason: 'Artifact "${artifact.path}" should not be a .git/** path',
+          );
+        }
 
-      // Verify .git directory exists but is not managed
-      expect(Directory('${productDir.path}/.git').existsSync(), isTrue);
-    }, timeout: Timeout(Duration(minutes: 2)));
+        // Verify .git directory exists but is not managed
+        expect(Directory('${productDir.path}/.git').existsSync(), isTrue);
+      },
+      timeout: Timeout(Duration(minutes: 2)),
+    );
 
-    test('KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed', () async {
-      final productDir = await createProductRepoWithPreExistingFiles();
-      await runBootstrap(productDir);
+    test(
+      'KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed',
+      () async {
+        final productDir = await createProductRepoWithPreExistingFiles();
+        await runBootstrap(productDir);
 
-      final manifest = readManifest(productDir);
+        final manifest = readManifest(productDir);
 
-      // Verify pre-existing files still exist
-      expect(File('${productDir.path}/product-only.txt').existsSync(), isTrue);
-      expect(File('${productDir.path}/src/existing.dart').existsSync(), isTrue);
-      expect(File('${productDir.path}/README-product.md').existsSync(), isTrue);
+        // Verify pre-existing files still exist
+        expect(
+          File('${productDir.path}/product-only.txt').existsSync(),
+          isTrue,
+        );
+        expect(
+          File('${productDir.path}/src/existing.dart').existsSync(),
+          isTrue,
+        );
+        expect(
+          File('${productDir.path}/README-product.md').existsSync(),
+          isTrue,
+        );
 
-      // Verify pre-existing files are NOT in managed artifacts
-      final managedPaths = manifest.managedPaths;
-      expect(managedPaths, isNot(contains('product-only.txt')));
-      expect(managedPaths, isNot(contains('src/existing.dart')));
-      expect(managedPaths, isNot(contains('README-product.md')));
-    }, timeout: Timeout(Duration(minutes: 2)));
+        // Verify pre-existing files are NOT in managed artifacts
+        final managedPaths = manifest.managedPaths;
+        expect(managedPaths, isNot(contains('product-only.txt')));
+        expect(managedPaths, isNot(contains('src/existing.dart')));
+        expect(managedPaths, isNot(contains('README-product.md')));
+      },
+      timeout: Timeout(Duration(minutes: 2)),
+    );
 
-    test('KNOWN DEFECT C: Manifest records framework source revision, not product revision', () async {
-      final productDir = await createProductRepoWithPreExistingFiles();
+    test(
+      'KNOWN DEFECT C: Manifest records framework source revision, not product revision',
+      () async {
+        final productDir = await createProductRepoWithPreExistingFiles();
 
-      // Get product repo HEAD before bootstrap
-      final productHeadResult = Process.runSync('git', ['rev-parse', 'HEAD'],
-          workingDirectory: productDir.path);
-      final productHead = productHeadResult.stdout.toString().trim();
+        // Get product repo HEAD before bootstrap
+        final productHeadResult = Process.runSync('git', [
+          'rev-parse',
+          'HEAD',
+        ], workingDirectory: productDir.path);
+        final productHead = productHeadResult.stdout.toString().trim();
 
-      await runBootstrap(productDir);
+        await runBootstrap(productDir);
 
-      final manifest = readManifest(productDir);
+        final manifest = readManifest(productDir);
 
-      // Manifest revision should be the framework source revision, not product HEAD
-      expect(manifest.revision, isNot(equals(productHead)),
-          reason: 'Manifest revision (${manifest.revision}) should not equal product HEAD ($productHead)');
+        // Manifest revision should be the framework source revision, not product HEAD
+        expect(
+          manifest.revision,
+          isNot(equals(productHead)),
+          reason:
+              'Manifest revision (${manifest.revision}) should not equal product HEAD ($productHead)',
+        );
 
-      // Framework revision should be a valid SHA (40 hex chars)
-      expect(manifest.revision, matches(RegExp(r'^[a-f0-9]{40}$')));
-    }, timeout: Timeout(Duration(minutes: 2)));
+        // Framework revision should be a valid SHA (40 hex chars)
+        expect(manifest.revision, matches(RegExp(r'^[a-f0-9]{40}$')));
+      },
+      timeout: Timeout(Duration(minutes: 2)),
+    );
 
-    test('KNOWN DEFECT D: Template completeness - all governance files installed', () async {
-      final productDir = Directory('${sandbox.path}/product2');
-      productDir.createSync(recursive: true);
-      Process.runSync('git', ['init'], workingDirectory: productDir.path);
-      Process.runSync('git', ['config', 'user.email', 'test@example.com'],
-          workingDirectory: productDir.path);
-      Process.runSync('git', ['config', 'user.name', 'Test User'],
-          workingDirectory: productDir.path);
-      Process.runSync('git', ['commit', '--allow-empty', '-m', 'Initial commit'],
-          workingDirectory: productDir.path);
+    test(
+      'KNOWN DEFECT D: Template completeness - all governance files installed',
+      () async {
+        final productDir = Directory('${sandbox.path}/product2');
+        productDir.createSync(recursive: true);
+        Process.runSync('git', ['init'], workingDirectory: productDir.path);
+        Process.runSync('git', [
+          'config',
+          'user.email',
+          'test@example.com',
+        ], workingDirectory: productDir.path);
+        Process.runSync('git', [
+          'config',
+          'user.name',
+          'Test User',
+        ], workingDirectory: productDir.path);
+        Process.runSync('git', [
+          'commit',
+          '--allow-empty',
+          '-m',
+          'Initial commit',
+        ], workingDirectory: productDir.path);
 
-      await runBootstrap(productDir);
+        await runBootstrap(productDir);
 
-      final manifest = readManifest(productDir);
+        final manifest = readManifest(productDir);
 
-      // Verify expected governance files are present
-      final expectedPaths = [
-        'AGENTS.md',
-        'docs/engineering/WORKFLOW.md',
-        'docs/engineering/WORK_STATE.md',
-        'docs/engineering/LEARNING_POLICY.md',
-        'docs/engineering/QA_GOVERNANCE.md',
-        'docs/engineering/STRUCTURED_RESULTS.md',
-        'docs/engineering/DESIGN_GOVERNANCE.md',
-        'docs/engineering/DEPLOYMENT_GOVERNANCE.md',
-        'docs/engineering/HUMAN_DECISIONS.md',
-        'docs/engineering/adr/0001-framework-distribution-and-versioning.md',
-        'docs/engineering/adr/0002-dart-mason-git-framework-driver.md',
-        '.junie/agents/correction-implementer.md',
-        '.junie/agents/deployment-authority.md',
-        '.junie/agents/design-agent.md',
-        '.junie/agents/design-reviewer.md',
-        '.junie/agents/engineering-reviewer.md',
-        '.junie/agents/focused-reviewer.md',
-        '.junie/agents/implementer.md',
-        '.junie/agents/integrator.md',
-        '.junie/agents/qa-architect.md',
-        '.junie/agents/qa-executor.md',
-        '.junie/commands/run-feature.md',
-        '.junie/skills/correction-loop/SKILL.md',
-        '.junie/skills/deployment-execution/SKILL.md',
-        '.junie/skills/design-review/SKILL.md',
-        '.junie/skills/design-workflow/SKILL.md',
-        '.junie/skills/human-decision/SKILL.md',
-        '.junie/skills/implementation-workflow/SKILL.md',
-        '.junie/skills/independent-review/SKILL.md',
-        '.junie/skills/qa-contract/SKILL.md',
-        '.junie/skills/qa-execution/SKILL.md',
-        '.junie/skills/repository-learning/SKILL.md',
-      ];
+        // Verify expected governance files are present
+        final expectedPaths = [
+          'AGENTS.md',
+          'docs/engineering/WORKFLOW.md',
+          'docs/engineering/WORK_STATE.md',
+          'docs/engineering/LEARNING_POLICY.md',
+          'docs/engineering/QA_GOVERNANCE.md',
+          'docs/engineering/STRUCTURED_RESULTS.md',
+          'docs/engineering/DESIGN_GOVERNANCE.md',
+          'docs/engineering/DEPLOYMENT_GOVERNANCE.md',
+          'docs/engineering/HUMAN_DECISIONS.md',
+          'docs/engineering/adr/0001-framework-distribution-and-versioning.md',
+          'docs/engineering/adr/0002-dart-mason-git-framework-driver.md',
+          'docs/engineering/adr/0003-product-generic-orchestrator-skill.md',
+          '.agents/agents/correction-implementer.md',
+          '.agents/agents/deployment-authority.md',
+          '.agents/agents/design-agent.md',
+          '.agents/agents/design-reviewer.md',
+          '.agents/agents/engineering-reviewer.md',
+          '.agents/agents/focused-reviewer.md',
+          '.agents/agents/implementer.md',
+          '.agents/agents/integrator.md',
+          '.agents/agents/qa-architect.md',
+          '.agents/agents/qa-executor.md',
+          '.agents/skills/aef-correction-loop/SKILL.md',
+          '.agents/skills/aef-deployment-execution/SKILL.md',
+          '.agents/skills/aef-design-review/SKILL.md',
+          '.agents/skills/aef-design-workflow/SKILL.md',
+          '.agents/skills/aef-human-decision/SKILL.md',
+          '.agents/skills/aef-implementation-workflow/SKILL.md',
+          '.agents/skills/aef-independent-review/SKILL.md',
+          '.agents/skills/aef-orchestrator/SKILL.md',
+          '.agents/skills/aef-orchestrator/templates/subtask-prompt.md',
+          '.agents/skills/aef-orchestrator/templates/subtask-report.md',
+          '.agents/skills/aef-qa-contract/SKILL.md',
+          '.agents/skills/aef-qa-execution/SKILL.md',
+          '.agents/skills/aef-repository-learning/SKILL.md',
+          '.agents/skills/aef-run-feature/SKILL.md',
+          // Generated platform adapters — never hand-edited; rendered from the
+          // canonical `.agents/` artifacts by
+          // cli/tool/generate_platform_adapters.dart. `.opencode/skills/` is
+          // deliberately absent: opencode resolves `.agents/skills/` natively.
+          for (final platform in ['.claude', '.junie', '.opencode']) ...[
+            for (final skill in [
+              'aef-correction-loop',
+              'aef-deployment-execution',
+              'aef-design-review',
+              'aef-design-workflow',
+              'aef-human-decision',
+              'aef-implementation-workflow',
+              'aef-independent-review',
+              'aef-orchestrator',
+              'aef-qa-contract',
+              'aef-qa-execution',
+              'aef-repository-learning',
+              'aef-run-feature',
+            ])
+              if (platform != '.opencode') '$platform/skills/$skill/SKILL.md',
+            for (final agent in [
+              'correction-implementer',
+              'deployment-authority',
+              'design-agent',
+              'design-reviewer',
+              'engineering-reviewer',
+              'focused-reviewer',
+              'implementer',
+              'integrator',
+              'qa-architect',
+              'qa-executor',
+            ])
+              '$platform/agents/$agent.md',
+            if (platform == '.opencode')
+              '.opencode/command/run-feature.md'
+            else
+              '$platform/commands/run-feature.md',
+          ],
+        ];
 
-      for (final expectedPath in expectedPaths) {
-        expect(manifest.managedPaths, contains(expectedPath),
-            reason: 'Expected managed artifact: $expectedPath');
-        expect(File('${productDir.path}/$expectedPath').existsSync(), isTrue,
-            reason: 'File should exist on disk: $expectedPath');
-      }
+        expect(expectedPaths, hasLength(93));
 
-      // Verify managed artifact count matches expected
-      expect(manifest.artifacts.length, expectedPaths.length);
-    }, timeout: Timeout(Duration(minutes: 3)));
+        for (final expectedPath in expectedPaths) {
+          expect(
+            manifest.managedPaths,
+            contains(expectedPath),
+            reason: 'Expected managed artifact: $expectedPath',
+          );
+          expect(
+            File('${productDir.path}/$expectedPath').existsSync(),
+            isTrue,
+            reason: 'File should exist on disk: $expectedPath',
+          );
+        }
 
-    test('Re-run safety: bootstrap no-ops when manifest already exists', () async {
-      final productDir = await createProductRepoWithPreExistingFiles();
-      await runBootstrap(productDir);
+        // Verify managed artifact count matches expected
+        expect(manifest.artifacts.length, expectedPaths.length);
+      },
+      timeout: Timeout(Duration(minutes: 3)),
+    );
 
-      final manifest1 = readManifest(productDir);
-      final firstInstantiatedAt = manifest1.instantiatedAt;
+    test(
+      'Re-run safety: bootstrap no-ops when manifest already exists',
+      () async {
+        final productDir = await createProductRepoWithPreExistingFiles();
+        await runBootstrap(productDir);
 
-      // Run bootstrap again
-      await runBootstrap(productDir);
+        final manifest1 = readManifest(productDir);
+        final firstInstantiatedAt = manifest1.instantiatedAt;
 
-      final manifest2 = readManifest(productDir);
+        // Run bootstrap again
+        await runBootstrap(productDir);
 
-      // Manifest should be unchanged (same instantiation timestamp)
-      expect(manifest2.instantiatedAt, equals(firstInstantiatedAt));
-      expect(manifest2.revision, equals(manifest1.revision));
-      expect(manifest2.artifacts.length, equals(manifest1.artifacts.length));
-    }, timeout: Timeout(Duration(minutes: 3)));
+        final manifest2 = readManifest(productDir);
 
-    test('Managed artifacts have baseline hashes (source_hash and install_hash)', () async {
-      final productDir = await createProductRepoWithPreExistingFiles();
-      await runBootstrap(productDir);
+        // Manifest should be unchanged (same instantiation timestamp)
+        expect(manifest2.instantiatedAt, equals(firstInstantiatedAt));
+        expect(manifest2.revision, equals(manifest1.revision));
+        expect(manifest2.artifacts.length, equals(manifest1.artifacts.length));
+      },
+      timeout: Timeout(Duration(minutes: 3)),
+    );
 
-      final manifest = readManifest(productDir);
+    test(
+      'Managed artifacts have baseline hashes (source_hash and install_hash)',
+      () async {
+        final productDir = await createProductRepoWithPreExistingFiles();
+        await runBootstrap(productDir);
 
-      for (final artifact in manifest.artifacts) {
-        expect(artifact.sourceHash.hex, isNotEmpty);
-        expect(artifact.installHash.hex, isNotEmpty);
-        expect(artifact.sourceHash.algorithm, 'sha256');
-        expect(artifact.installHash.algorithm, 'sha256');
-        // For bootstrap, source_hash == install_hash (baseline)
-        expect(artifact.sourceHash, equals(artifact.installHash));
-      }
-    }, timeout: Timeout(Duration(minutes: 2)));
+        final manifest = readManifest(productDir);
 
-    test('Framework source identity recorded in manifest', () async {
-      final productDir = await createProductRepoWithPreExistingFiles();
-      await runBootstrap(productDir);
+        for (final artifact in manifest.artifacts) {
+          expect(artifact.sourceHash.hex, isNotEmpty);
+          expect(artifact.installHash.hex, isNotEmpty);
+          expect(artifact.sourceHash.algorithm, 'sha256');
+          expect(artifact.installHash.algorithm, 'sha256');
+          // For bootstrap, source_hash == install_hash (baseline)
+          expect(artifact.sourceHash, equals(artifact.installHash));
+        }
+      },
+      timeout: Timeout(Duration(minutes: 2)),
+    );
 
-      final manifest = readManifest(productDir);
+    test(
+      'Framework source identity recorded in manifest',
+      () async {
+        final productDir = await createProductRepoWithPreExistingFiles();
+        await runBootstrap(productDir);
 
-      expect(manifest.source, 'https://github.com/shipitinc/agentic-engineering-framework.git');
-      expect(manifest.version, '0.1.0');
-    }, timeout: Timeout(Duration(minutes: 2)));
+        final manifest = readManifest(productDir);
 
-    test('Path safety: managed paths are normalized and safe', () async {
-      final productDir = await createProductRepoWithPreExistingFiles();
-      await runBootstrap(productDir);
+        expect(
+          manifest.source,
+          'https://github.com/shipitinc/agentic-engineering-framework.git',
+        );
+        expect(manifest.version, '0.1.0');
+      },
+      timeout: Timeout(Duration(minutes: 2)),
+    );
 
-      final manifest = readManifest(productDir);
+    test(
+      'Path safety: managed paths are normalized and safe',
+      () async {
+        final productDir = await createProductRepoWithPreExistingFiles();
+        await runBootstrap(productDir);
 
-      for (final artifact in manifest.artifacts) {
-        // Paths should be POSIX-style, relative, no ..
-        expect(artifact.path, isNot(contains('..')));
-        expect(artifact.path, isNot(startsWith('/')));
-        expect(artifact.path, isNot(contains('\\')));
-        // Should not be empty
-        expect(artifact.path, isNotEmpty);
-      }
-    }, timeout: Timeout(Duration(minutes: 2)));
+        final manifest = readManifest(productDir);
+
+        for (final artifact in manifest.artifacts) {
+          // Paths should be POSIX-style, relative, no ..
+          expect(artifact.path, isNot(contains('..')));
+          expect(artifact.path, isNot(startsWith('/')));
+          expect(artifact.path, isNot(contains('\\')));
+          // Should not be empty
+          expect(artifact.path, isNotEmpty);
+        }
+      },
+      timeout: Timeout(Duration(minutes: 2)),
+    );
   });
 }

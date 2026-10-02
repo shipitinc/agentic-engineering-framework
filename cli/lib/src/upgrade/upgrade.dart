@@ -60,7 +60,9 @@ Future<CommandResult> runUpgradeCore({
       family: ResultFamily.upgradeBlocked,
       command: CommandNames.upgrade,
       message: 'No framework-manifest.yaml found — product not bootstrapped.',
-      blockers: ['Product repository has no framework manifest. Run bootstrap first.'],
+      blockers: [
+        'Product repository has no framework manifest. Run bootstrap first.',
+      ],
       humanActionRequired: true,
     );
   }
@@ -155,7 +157,9 @@ Future<CommandResult> runUpgradeCore({
 
     if (classification.hasConflicts) {
       family = ResultFamily.upgradeConflict;
-      blockers.add('Git merge produced ${classification.conflicts.length} conflict(s)');
+      blockers.add(
+        'Git merge produced ${classification.conflicts.length} conflict(s)',
+      );
       humanActionRequired = true;
     } else if (classification.hasChanges) {
       family = ResultFamily.upgradeReadyForReview;
@@ -201,7 +205,10 @@ Future<CommandResult> runUpgradeCore({
 /// Creates an isolated Git worktree for the upgrade.
 Directory? _createWorktree(Directory productRepo, String branchName) {
   // Ensure we're in a clean state for worktree creation
-  final status = Process.runSync('git', ['status', '--porcelain'], workingDirectory: productRepo.path);
+  final status = Process.runSync('git', [
+    'status',
+    '--porcelain',
+  ], workingDirectory: productRepo.path);
   if (status.exitCode != 0) return null;
 
   // Create worktree
@@ -210,14 +217,22 @@ Directory? _createWorktree(Directory productRepo, String branchName) {
 
   // Clean up any existing stale worktree
   if (worktreeDir.existsSync()) {
-    Process.runSync('git', ['worktree', 'remove', '--force', worktreePath], workingDirectory: productRepo.path);
+    Process.runSync('git', [
+      'worktree',
+      'remove',
+      '--force',
+      worktreePath,
+    ], workingDirectory: productRepo.path);
   }
 
-  final result = Process.runSync(
-    'git',
-    ['worktree', 'add', '-b', branchName, worktreePath, 'HEAD'],
-    workingDirectory: productRepo.path,
-  );
+  final result = Process.runSync('git', [
+    'worktree',
+    'add',
+    '-b',
+    branchName,
+    worktreePath,
+    'HEAD',
+  ], workingDirectory: productRepo.path);
 
   if (result.exitCode != 0) return null;
 
@@ -233,13 +248,20 @@ Future<CommandResult> _renderFrameworkRevision({
   required Directory targetDir,
 }) async {
   // Create a temporary clone of the canonical framework at the specific revision
-  final tempDir = Directory.systemTemp.createTempSync('framework_render_$revision');
+  final tempDir = Directory.systemTemp.createTempSync(
+    'framework_render_$revision',
+  );
   try {
     // Clone the canonical framework
-    final cloneResult = Process.runSync(
-      'git',
-      ['clone', '--branch', 'main', '--depth', '1', approvedFrameworkSource, tempDir.path],
-    );
+    final cloneResult = Process.runSync('git', [
+      'clone',
+      '--branch',
+      'main',
+      '--depth',
+      '1',
+      approvedFrameworkSource,
+      tempDir.path,
+    ]);
     if (cloneResult.exitCode != 0) {
       return CommandResult(
         family: ResultFamily.upgradeBlocked,
@@ -251,11 +273,10 @@ Future<CommandResult> _renderFrameworkRevision({
     }
 
     // Checkout the specific revision
-    final checkoutResult = Process.runSync(
-      'git',
-      ['checkout', revision],
-      workingDirectory: tempDir.path,
-    );
+    final checkoutResult = Process.runSync('git', [
+      'checkout',
+      revision,
+    ], workingDirectory: tempDir.path);
     if (checkoutResult.exitCode != 0) {
       return CommandResult(
         family: ResultFamily.upgradeBlocked,
@@ -283,7 +304,7 @@ Future<CommandResult> _renderFrameworkRevision({
       targetDir.createSync(recursive: true);
     }
 
-// Render using Mason
+    // Render using Mason
     final brick = Brick.path(brickDir.path);
     final generator = await MasonGenerator.fromBrick(brick);
 
@@ -324,7 +345,9 @@ CommandResult _performThreeWayMerge({
   required String revisionB,
 }) {
   // Initialize git in worktree if needed
-  final gitInit = Process.runSync('git', ['init'], workingDirectory: worktreeDir.path);
+  final gitInit = Process.runSync('git', [
+    'init',
+  ], workingDirectory: worktreeDir.path);
   if (gitInit.exitCode != 0) {
     return CommandResult(
       family: ResultFamily.internalError,
@@ -339,61 +362,84 @@ CommandResult _performThreeWayMerge({
 
   // Stage and commit product state as "local"
   Process.runSync('git', ['add', '-A'], workingDirectory: worktreeDir.path);
-  Process.runSync('git', ['config', 'user.email', 'framework-cli@upgrade'], workingDirectory: worktreeDir.path);
-  Process.runSync('git', ['config', 'user.name', 'Framework CLI Upgrade'], workingDirectory: worktreeDir.path);
-  final localCommit = Process.runSync(
-    'git',
-    ['commit', '-m', 'Local product state (pre-upgrade)'],
-    workingDirectory: worktreeDir.path,
-  );
+  Process.runSync('git', [
+    'config',
+    'user.email',
+    'framework-cli@upgrade',
+  ], workingDirectory: worktreeDir.path);
+  Process.runSync('git', [
+    'config',
+    'user.name',
+    'Framework CLI Upgrade',
+  ], workingDirectory: worktreeDir.path);
+  final localCommit = Process.runSync('git', [
+    'commit',
+    '-m',
+    'Local product state (pre-upgrade)',
+  ], workingDirectory: worktreeDir.path);
   if (localCommit.exitCode != 0) {
     // Might be nothing to commit - that's okay
   }
 
   // Create base branch from product state
-  Process.runSync('git', ['branch', 'upgrade-base'], workingDirectory: worktreeDir.path);
+  Process.runSync('git', [
+    'branch',
+    'upgrade-base',
+  ], workingDirectory: worktreeDir.path);
 
   // Replace worktree content with base render (revision A)
   _clearDirectory(worktreeDir);
   _copyDirectory(baseDir, worktreeDir);
   Process.runSync('git', ['add', '-A'], workingDirectory: worktreeDir.path);
-  Process.runSync(
-    'git',
-    ['commit', '-m', 'Base: framework revision $revisionA'],
-    workingDirectory: worktreeDir.path,
-  );
+  Process.runSync('git', [
+    'commit',
+    '-m',
+    'Base: framework revision $revisionA',
+  ], workingDirectory: worktreeDir.path);
 
   // Create incoming branch from base
-  Process.runSync('git', ['branch', 'upgrade-incoming', 'upgrade-base'], workingDirectory: worktreeDir.path);
+  Process.runSync('git', [
+    'branch',
+    'upgrade-incoming',
+    'upgrade-base',
+  ], workingDirectory: worktreeDir.path);
 
   // Replace worktree content with incoming render (revision B)
   _clearDirectory(worktreeDir);
   _copyDirectory(incomingDir, worktreeDir);
   Process.runSync('git', ['add', '-A'], workingDirectory: worktreeDir.path);
-  Process.runSync(
-    'git',
-    ['commit', '-m', 'Incoming: framework revision $revisionB'],
-    workingDirectory: worktreeDir.path,
-  );
+  Process.runSync('git', [
+    'commit',
+    '-m',
+    'Incoming: framework revision $revisionB',
+  ], workingDirectory: worktreeDir.path);
 
   // Now merge: we want to merge incoming into local with base as merge-base
   // Switch back to local (main worktree branch)
-  Process.runSync('git', ['checkout', '-b', 'upgrade-merge', 'upgrade-base'], workingDirectory: worktreeDir.path);
+  Process.runSync('git', [
+    'checkout',
+    '-b',
+    'upgrade-merge',
+    'upgrade-base',
+  ], workingDirectory: worktreeDir.path);
 
   // Merge incoming
-  final mergeResult = Process.runSync(
-    'git',
-    ['merge', 'upgrade-incoming', '--no-commit', '--no-ff'],
-    workingDirectory: worktreeDir.path,
-  );
+  final mergeResult = Process.runSync('git', [
+    'merge',
+    'upgrade-incoming',
+    '--no-commit',
+    '--no-ff',
+  ], workingDirectory: worktreeDir.path);
 
   // Check for conflicts
-  final statusResult = Process.runSync(
-    'git',
-    ['status', '--porcelain'],
-    workingDirectory: worktreeDir.path,
-  );
-  final hasConflicts = statusResult.stdout.toString().contains('UU') || statusResult.stdout.toString().contains('UD') || statusResult.stdout.toString().contains('DU');
+  final statusResult = Process.runSync('git', [
+    'status',
+    '--porcelain',
+  ], workingDirectory: worktreeDir.path);
+  final hasConflicts =
+      statusResult.stdout.toString().contains('UU') ||
+      statusResult.stdout.toString().contains('UD') ||
+      statusResult.stdout.toString().contains('DU');
 
   if (mergeResult.exitCode != 0 && !hasConflicts) {
     return CommandResult(
@@ -417,11 +463,11 @@ CommandResult _performThreeWayMerge({
   }
 
   // No conflicts - commit the merge
-  Process.runSync(
-    'git',
-    ['commit', '-m', 'Merge framework upgrade $revisionA -> $revisionB'],
-    workingDirectory: worktreeDir.path,
-  );
+  Process.runSync('git', [
+    'commit',
+    '-m',
+    'Merge framework upgrade $revisionA -> $revisionB',
+  ], workingDirectory: worktreeDir.path);
 
   return CommandResult(
     family: ResultFamily.commandComplete,
@@ -450,7 +496,11 @@ UpgradeClassification _classifyChanges({
   final unmodified = <String>[];
 
   // Get all unique paths across base, incoming, and manifest
-  final allPaths = <String>{...baseFiles.keys, ...incomingFiles.keys, ...manifestPaths};
+  final allPaths = <String>{
+    ...baseFiles.keys,
+    ...incomingFiles.keys,
+    ...manifestPaths,
+  };
 
   for (final path in allPaths) {
     final inBase = baseFiles.containsKey(path);
@@ -459,12 +509,13 @@ UpgradeClassification _classifyChanges({
     final inMerged = mergedFiles.containsKey(path);
 
     // Check for Git conflicts (unmerged index entries)
-    final conflictCheck = Process.runSync(
-      'git',
-      ['ls-files', '--unmerged', path],
-      workingDirectory: worktreeDir.path,
-    );
-    if (conflictCheck.exitCode == 0 && conflictCheck.stdout.toString().trim().isNotEmpty) {
+    final conflictCheck = Process.runSync('git', [
+      'ls-files',
+      '--unmerged',
+      path,
+    ], workingDirectory: worktreeDir.path);
+    if (conflictCheck.exitCode == 0 &&
+        conflictCheck.stdout.toString().trim().isNotEmpty) {
       conflicts.add(path);
       continue;
     }
@@ -476,7 +527,9 @@ UpgradeClassification _classifyChanges({
       // Deleted in incoming (framework B)
       // Check delete policy: if locally modified, must not silently delete
       if (inManifest) {
-        final matchingArtifacts = currentManifest.artifacts.where((a) => a.path == path);
+        final matchingArtifacts = currentManifest.artifacts.where(
+          (a) => a.path == path,
+        );
         if (matchingArtifacts.isNotEmpty) {
           final artifact = matchingArtifacts.first;
           final detector = ModificationDetector();
@@ -528,7 +581,9 @@ UpgradeClassification _classifyChanges({
     } else if (!inBase && !inIncoming && inManifest && !inMerged) {
       // Was in manifest but not in either render and not in merged = deleted by framework
       // Check local modification
-      final matchingArtifacts = currentManifest.artifacts.where((a) => a.path == path);
+      final matchingArtifacts = currentManifest.artifacts.where(
+        (a) => a.path == path,
+      );
       if (matchingArtifacts.isNotEmpty) {
         final artifact = matchingArtifacts.first;
         final detector = ModificationDetector();
@@ -559,23 +614,40 @@ String _generateReviewableDiff(
   String revisionA,
   String revisionB,
 ) {
-  final diffResult = Process.runSync(
-    'git',
-    ['diff', 'HEAD', 'upgrade-merge', '--', '.'],
-    workingDirectory: worktreeDir.path,
-  );
+  final diffResult = Process.runSync('git', [
+    'diff',
+    'HEAD',
+    'upgrade-merge',
+    '--',
+    '.',
+  ], workingDirectory: worktreeDir.path);
 
   final diffOutput = diffResult.stdout.toString();
-  final diffFile = File('${worktreeDir.path}/upgrade-diff-$revisionA-$revisionB.patch');
+  final diffFile = File(
+    '${worktreeDir.path}/upgrade-diff-$revisionA-$revisionB.patch',
+  );
   diffFile.writeAsStringSync(diffOutput);
 
   return diffOutput;
 }
 
 /// Cleans up the worktree after upgrade.
-void _cleanupWorktree(Directory productRepo, String branchName, Directory worktreeDir) {
-  Process.runSync('git', ['worktree', 'remove', '--force', worktreeDir.path], workingDirectory: productRepo.path);
-  Process.runSync('git', ['branch', '-D', branchName], workingDirectory: productRepo.path);
+void _cleanupWorktree(
+  Directory productRepo,
+  String branchName,
+  Directory worktreeDir,
+) {
+  Process.runSync('git', [
+    'worktree',
+    'remove',
+    '--force',
+    worktreeDir.path,
+  ], workingDirectory: productRepo.path);
+  Process.runSync('git', [
+    'branch',
+    '-D',
+    branchName,
+  ], workingDirectory: productRepo.path);
 }
 
 /// Copies directory contents recursively.
@@ -613,7 +685,9 @@ Map<String, File> _collectFiles(Directory dir) {
       final relPath = entity.path
           .replaceFirst(dir.absolute.path, '')
           .replaceAll('\\', '/');
-      final normalized = relPath.startsWith('/') ? relPath.substring(1) : relPath;
+      final normalized = relPath.startsWith('/')
+          ? relPath.substring(1)
+          : relPath;
       if (normalized.isNotEmpty) {
         result[normalized] = entity;
       }

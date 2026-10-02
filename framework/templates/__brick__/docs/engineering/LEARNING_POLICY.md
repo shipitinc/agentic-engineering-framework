@@ -96,23 +96,23 @@ Always classify **where** a finding belongs:
 ### Worked example — do not ignore whole agent-configuration namespaces
 
 Observed agent behavior: during source-control integration an agent added a `.gitignore` rule that
-excluded the entire `.air/` and `.junie/` directories, simply to keep its current commit clean. A
-narrower follow-up then ignored only `.air/plans/` and `.junie/plans/` as "transient" plan artifacts;
-new evidence shows even that was too strong — Air plan files may be useful project artifacts, and
-Junie plans are explicitly designed to be editable/committable.
+excluded the entire `.air/` and `.junie/` directories (the latter since renamed to `.agents/`), simply
+to keep its current commit clean. A narrower follow-up then ignored only the plan directories as
+"transient" plan artifacts; new evidence shows even that was too strong — plan files may be useful
+project artifacts and are explicitly designed to be editable/committable.
 
 This is a `WORKFLOW_IMPROVEMENT` derived from observed behavior. The reusable lesson:
 
 - Agents must **not introduce unrequested repository-policy changes** merely to simplify their
   current task.
-- `.air/` and `.junie/` are **namespaces that may include both durable project configuration and
+- `.air/` and `.agents/` are **namespaces that may include both durable project configuration and
   transient session state**. JetBrains Air stores shareable configuration under `.air/` (e.g.
-  worktree setup, Docker environment setup, MCP configuration, review prompts); Junie stores
-  project-scoped configuration under `.junie/` (e.g. Skills). Some of these are intended to be
-  committed.
+  worktree setup, Docker environment setup, MCP configuration, review prompts); the portable Agent
+  Skills layout stores project-scoped configuration under `.agents/` (agents and Skills). Some of
+  these are intended to be committed.
 - **Generated does not imply transient.** Tool-owned namespaces and generated artifacts must **not**
   be ignored without evidence about their lifecycle and repository value — including plan
-  directories such as `.air/plans/` and `.junie/plans/`.
+  directories such as `.air/plans/` and `.agents/plans/`.
 - **Default to visibility/versionability when uncertain.** Ignore rules must be **path-specific and
   evidence-based**, never exclude entire agent configuration namespaces. Ignore only paths
   demonstrated to be local/session-only and **not** useful for collaboration, provenance, replay, or
@@ -174,7 +174,7 @@ method. It follows the **human-decision** authority level (consequential archite
 ## Plan artifact retention policy
 
 **Status:** `APPROVED WITH REFINEMENT` (human decision). Applies to agent-generated plan artifacts
-(e.g. under `.air/plans/`, `.junie/plans/`, or any equivalent agent-platform plan directory),
+(e.g. under `.air/plans/`, `.agents/plans/`, or any equivalent agent-platform plan directory),
 regardless of which tool produced them. The policy is **tool-neutral**: it classifies artifacts by
 **information authority**, never by artifact **origin**.
 

@@ -47,15 +47,13 @@ class FrameworkCliRunner {
       if (name == CommandNames.upgrade) {
         sub.addOption(
           'target',
-          help: 'Target framework revision to upgrade to (required for upgrade).',
+          help:
+              'Target framework revision to upgrade to (required for upgrade).',
         );
       }
       // Add --target for bootstrap command
       if (name == CommandNames.bootstrap) {
-        sub.addOption(
-          'target',
-          help: 'Target directory to bootstrap into.',
-        );
+        sub.addOption('target', help: 'Target directory to bootstrap into.');
       }
       parser.addCommand(name, sub);
     }
