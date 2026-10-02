@@ -417,6 +417,55 @@ per their approved dispositions:
   for the contract owner. Not a blocker for this change and not introduced by it.
 - **Change is approved for integration.** The only remaining action is a normal human-authorized commit.
 
+## Accepted open items — ADR 0004 upgrade engine (tracked follow-ups)
+
+- The ADR 0004 upgrade-engine change (`b1a028d`, `ce4f015`, `2ffa16a`) completed independent review
+  and a focused re-review with **zero blockers**, and is **human-approved for integration**. The human
+  has explicitly decided to push the work and leave four items open as documented rather than fix
+  them here; they are recorded below so they stay tracked instead of being lost. **None of them is a
+  blocker for this change and none was introduced by it**, and each carries a follow-up owner.
+  Numbers continue the existing `NF-001` series (§ *Earlier independent review outcome — ADR 0003 /
+  orchestrator skill*).
+
+- **NF-002 — the CI workflow is entirely non-functional (severity `HIGH`, pre-existing, out of scope
+  for this change).** `.github/workflows/ci.yml` runs `dart pub get`, `dart format`, `dart analyze`,
+  `dart test`, and `dart compile exe bin/framework.dart` with no `working-directory`, i.e. at the
+  repository root, which has neither a `pubspec.yaml` nor a `bin/`. The first step therefore fails on
+  all three OSes of the matrix (`Found no pubspec.yaml file in … or parent directories`) and the
+  workflow never reaches a test. **Provenance:** added in `4ca8094`, before the reviewed range, and
+  untouched by `e37b2a3..2ffa16a`. **Suggested remedy:** `defaults.run.working-directory: cli`, plus
+  Windows path care for `bin/framework.dart`. **Owner: framework tooling / CI.**
+
+- **NF-003 — open `HUMAN_DECISION`: non-checkout framework source vs the ADR-0002 brick-content
+  hash.** Already recorded as unresolved in ADR 0004 § 1; re-registered here as a tracked item so it
+  is not lost. The rule and its evaluation point are **deliberately unchanged** by ADR 0004.
+  **Owner: framework architecture (human decision).**
+
+- **NF-004 — `FRAMEWORK_CLI_TEST_MODE` is reachable in a compiled production binary.** Verified by
+  compiling `dart compile exe bin/framework.dart` and driving it against a framework checkout whose
+  `origin` is an untrusted URL: with the flag unset the run is correctly blocked
+  (`Untrusted framework source: …`, exit 20), while with the flag set the trusted-source check is
+  skipped entirely and execution proceeds. The flag deliberately disables **both** the
+  trusted-framework-source check **and** the dirty-tree guard — pre-existing behaviour, untouched by
+  `2ffa16a`, and honestly documented as a test seam in ADR 0004 § 1. Two sub-points: **(a)** whether
+  that trade-off is acceptable for a compiled production binary is a **human call, not a reviewer's**,
+  and a candidate remedy is gating the seam behind a compile-time flag; **(b)** ADR 0004 § 1's
+  enumeration of what the flag skips is **incomplete** — it omits that the same flag also skips
+  `_validateBrickIntegrity`. **Owner: framework security / tooling.**
+
+- **NF-005 — minor accuracy items in the `2ffa16a` correction commit and its tests.** **(a)** The
+  commit message claims "every added test was verified to fail when its fix is reverted"; that is not
+  true for `a different repository or a non-remote is not that identity`, which also passes against
+  the pre-fix algorithm (the old code rejected those inputs too, just via garbage identities) —
+  **documentation inaccuracy only**, with no behaviour claim. **(b)** The same commit's wording "every
+  cleanup path uses `dispose()`" is loose: the render temp-dir `finally` block in
+  `cli/lib/src/upgrade/upgrade.dart:715-722` is `existsSync`-guarded inside
+  `try`/`catch (FileSystemException)`, so the safety property holds but the wording overstates it.
+  **(c)** `_newScratchDirs` assumes no concurrent run creates `aef_upgrade_*` between capture and
+  assertion — safe today (only `upgrade_merge_test.dart` uses that prefix, and tests within a file
+  are serial) but a latent coupling if a second file ever drives `runUpgradeCore`.
+  **Owner: framework tooling / upgrade engine.**
+
 ## Next steps for the framework itself
 
 - **Framework complete** (Phases 3-8). No further phase implementation required.
