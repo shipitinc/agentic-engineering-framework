@@ -47,9 +47,40 @@ CommandResult notImplementedResult(String command) {
 const String approvedFrameworkSource =
     'https://github.com/shipitinc/agentic-engineering-framework.git';
 
+/// Normalizes a git remote URL to a comparable repository identity.
+///
+/// Accepts the SSH (`git@host:owner/repo.git`), scp-like, and HTTPS forms and the
+/// optional trailing `.git`, so equivalent spellings of one repository compare
+/// equal. Returns the `host/owner/repo` identity, or null when [url] cannot be
+/// parsed as a git remote.
+String? _remoteIdentity(String url) {
+  final trimmed = url.trim();
+  if (trimmed.isEmpty) return null;
+
+  // scp-like / SSH: [user@]host:owner/repo(.git)
+  final scp = RegExp(r'^(?:[^@/]+@)?([^:/]+):(?!\d)(.+)$').firstMatch(trimmed);
+  if (scp != null) {
+    return '${scp.group(1)}/${scp.group(2)}';
+  }
+
+  // URL form: scheme://[user[:pass]@]host[:port]/path
+  final uri = Uri.tryParse(trimmed);
+  if (uri == null || !uri.hasScheme || uri.host.isEmpty) return null;
+  var path = uri.path;
+  return '${uri.host}/$path';
+}
+
+/// Strips a trailing `.git` from a normalized [identity] path.
+String _stripGitSuffix(String identity) {
+  return identity.endsWith('.git')
+      ? identity.substring(0, identity.length - 4)
+      : identity;
+}
+
 /// Performs Git/repository preflight checks (dirty-tree guard, repo validation,
-/// canonical-repository check, trusted-source). Returns list of blocking issues.
-/// All operations are read-only (no mutation). Sync to preserve CommandResult API.
+/// product-repository check, trusted framework source). Returns list of blocking
+/// issues. All operations are read-only (no mutation). Sync to preserve
+/// CommandResult API.
 List<String> _runPreflightChecks() {
   final issues = <String>[];
 
@@ -60,16 +91,49 @@ List<String> _runPreflightChecks() {
     return issues; // early exit, further checks require repo
   }
 
-  // Canonical repository check (origin URL must match approved)
+  // Product repository check: upgrading needs a product repo that has an origin
+  // remote to merge into. Its identity is deliberately NOT compared against the
+  // framework source -- the product repo is a *different* repository, so any
+  // comparison here can never pass for a real product.
   final remote = Process.runSync('git', ['remote', 'get-url', 'origin']);
   if (remote.exitCode != 0) {
-    issues.add('No origin remote configured');
+    issues.add('Product repository has no origin remote configured');
+  }
+
+  // Trusted framework source: the framework this CLI renders from must be the
+  // approved canonical repository. Validated on the framework source checkout the
+  // brick resolves to, NOT on the product repo's origin (ADR 0004 § 1).
+  // Test-aware: skipped under FRAMEWORK_CLI_TEST_MODE=true so hermetic tests can
+  // render from a sandbox framework, exactly like the dirty-tree guard below.
+  final frameworkRoot = resolveFrameworkSourceRoot();
+  if (Platform.environment['FRAMEWORK_CLI_TEST_MODE'] == 'true') {
+    // Intentionally not validated in test mode.
+  } else if (frameworkRoot == null) {
+    issues.add(
+      'Cannot resolve framework source: brick path unavailable '
+      '(set FRAMEWORK_BRICK_PATH or run the CLI from a framework checkout).',
+    );
   } else {
-    final url = (remote.stdout as String).trim();
-    if (url != approvedFrameworkSource) {
+    final frameworkRemote = Process.runSync(
+      'git',
+      ['remote', 'get-url', 'origin'],
+      workingDirectory: frameworkRoot,
+    );
+    if (frameworkRemote.exitCode != 0) {
       issues.add(
-        'Untrusted framework source: $url (expected $approvedFrameworkSource)',
+        'Framework source at $frameworkRoot has no origin remote; cannot verify '
+        'it is $approvedFrameworkSource.',
       );
+    } else {
+      final url = (frameworkRemote.stdout as String).trim();
+      final expected =
+          _stripGitSuffix(_remoteIdentity(approvedFrameworkSource) ?? '');
+      final actualIdentity = _remoteIdentity(url);
+      if (actualIdentity == null || _stripGitSuffix(actualIdentity) != expected) {
+        issues.add(
+          'Untrusted framework source: $url (expected $approvedFrameworkSource)',
+        );
+      }
     }
   }
 
@@ -89,9 +153,9 @@ List<String> _runPreflightChecks() {
     }
   }
 
-  // Trusted source / revision context is validated via remote above.
-  // Path safety and failure containment are enforced by using Process arg lists
-  // (no shell) and by never writing.
+  // Trusted framework source is validated above, on the framework checkout the
+  // brick resolves to. Path safety and failure containment are enforced by using
+  // Process arg lists (no shell) and by never writing.
 
   return issues;
 }
@@ -209,6 +273,19 @@ String _resolveBrickPath() {
     'Cannot locate framework brick directory. Tried: ${brickDir.path}, ${altBrickDir.path}. '
     'Set FRAMEWORK_BRICK_PATH environment variable if brick is installed elsewhere.',
   );
+}
+
+/// Resolves the framework checkout that owns the resolved brick, or null when it
+/// cannot be determined. The brick lives at `<framework-root>/framework/templates`,
+/// so the owning checkout is two levels above it. Used to evaluate the trusted
+/// framework source (ADR 0004 § 1) and to prefer a local framework checkout as
+/// the render source (ADR 0004 § 2).
+String? resolveFrameworkSourceRoot() {
+  try {
+    return Directory('${_resolveBrickPath()}/../..').absolute.path;
+  } catch (_) {
+    return null;
+  }
 }
 
 /// Snapshots all regular files in [dir] recursively, returning a map of

@@ -252,6 +252,17 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
   upgrades** that preserve product-specific knowledge. Normal product operation requires **no**
   runtime access to the framework repository or any package registry.
 
+- **How an upgrade merge is computed and delivered** — RESOLVED by
+  [ADR 0004](adr/0004-upgrade-three-way-merge-and-delivery.md): the documented three-way merge
+  (**base** = render of the pinned revision A, **local** = the product's own state, **incoming** = render
+  of revision B) is computed **without a working-tree copy** by giving git three synthetic commits that
+  share the base render as their parent and merging them with `git merge-tree --write-tree`. The result
+  is delivered as **one commit on the product repository's real `HEAD`**, pushed to
+  `framework/upgrade-<A>-<B>` for review, with the refreshed `framework-manifest.yaml` inside it. The
+  product's working tree and index are **never** mutated, a conflict is delivered (with markers) and
+  reported rather than stranded, a re-run never overwrites an upgrade awaiting review, and all scratch
+  state is discarded on every exit path. Requires `git >= 2.38` for `git merge-tree --write-tree`.
+
 - **Framework driver / tooling selection** — RESOLVED by
   [ADR 0002](adr/0002-dart-mason-git-framework-driver.md): the driver is
   **Dart + Mason + Git** with **`framework-manifest.yaml`** as authoritative provenance. Dart owns
@@ -259,9 +270,12 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
   mechanics; a **custom text merge engine is prohibited**. This selection was validated by an
   empirical proof-of-concept (`DART_MASON_GIT_POC_PASS`, no architecture blockers). ADR 0002 records
   the mandatory POC-derived mitigations, exit-code and structured-result contracts, and a phased
-  implementation plan. The **production CLI is not yet implemented** — implementation is explicitly
-  deferred to the phased plan (next state: Phase 1 CLI skeleton/domain model); the driver is **not**
-  production-ready merely because the POC passed. See [framework/templates/](../../framework/templates/).
+  implementation plan. **Amended 2026-10-02 (ADR 0004):** the CLI is now implemented far enough to
+  operate a product repository — `bootstrap` renders the brick and writes the authoritative manifest,
+  and `upgrade` performs and delivers the three-way merge — so the earlier "the production CLI is not
+  yet implemented" state no longer describes this repository. `status` and `doctor` remain
+  `NOT_IMPLEMENTED`, and neither is required for the invariants above. See
+  [framework/templates/](../../framework/templates/).
 
 ---
 

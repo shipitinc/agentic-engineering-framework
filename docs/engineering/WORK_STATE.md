@@ -155,6 +155,54 @@ product-specific architecture, design, or infrastructure decisions — those bel
   intentionally finalized to `COMMIT`, `PROMOTE_THEN_DELETE`, or `DELETE` unless its originating
   work/review cycle is still active.
 
+- **Upgrade merge engine and delivery (ADR 0004):** `framework upgrade` now computes the documented
+  three-way merge — **base** = render of the pinned revision A, **local** = the product's own state,
+  **incoming** = render of revision B — **without a working-tree copy**, by creating three synthetic
+  commits that share the base render as their parent and merging them with `git merge-tree
+  --write-tree`. The result is delivered as **one commit on the product repository's real `HEAD`**,
+  pushed last to `framework/upgrade-<A>-<B>`, carrying the refreshed `framework-manifest.yaml`
+  (`source_hash` = what the framework ships at revision B, `install_hash` = what the product will
+  carry, so a local customization stays detectable). Consequences that are now guarantees: the product
+  working tree and index are **never** mutated; a conflict is **delivered** with markers and reported
+  as `upgradeConflict` + `humanActionRequired` instead of being stranded; a re-run **refuses** to
+  overwrite an upgrade awaiting review; all scratch state is **discarded** on every exit path. Requires
+  `git >= 2.38`. Classified `WORKFLOW_IMPROVEMENT`; authority is **independent review**, not
+  `HUMAN_DECISION_REQUIRED` — it repairs an existing documented command and adds no stage or gate.
+
+- **Five blocking defects in the previous upgrade implementation (all fixed by ADR 0004; reproduced
+  against a real bootstrapped product pinned at `7f1368f` before any fix).** Recorded because
+  `upgrade` had **never executed successfully on a real product**, and ADR 0003 could therefore claim
+  only fresh instantiation:
+  1. **Trusted-source check ran on the wrong repository** — it compared the **product** repo's `origin`
+     against the approved framework URL, which can never match for a real product. Now evaluated on
+     the framework checkout that owns the resolved brick (`<brick>/../..`); the product repo needs only
+     an existing `origin`.
+  2. **Base revision was unreachable** — rendering used `git clone --depth 1`, so any upgrade whose
+     pinned base was not the branch tip failed. Rendering now uses full history, and prefers the CLI's
+     own framework checkout when it contains the revision (no network, hermetic under test).
+  3. **Scratch checkout lived inside the repository being copied** — the worktree was created at
+     `<productRepo>/.git/worktrees/upgrade-tmp` and the product repo was copied into it, aborting with
+     `FileSystemException … '.git/info/refs' … (Is a directory)`. Scratch is now a clone of the product
+     repo in the system temp directory, outside the product repository entirely.
+  4. **Inverted commit topology dropped product changes** — `upgrade-base` was rewritten *from* the
+     local state after local state was committed on top of it, so the merge base no longer matched the
+     base render and the product's own changes were silently absent from the merged tree.
+  5. **Nothing was delivered** — a conflicted merge returned early, a clean merge left its only output
+     in a scratch repo that was then deleted, and the review patch was written **into the product
+     working tree** (which itself trips the next run's dirty-tree guard). Delivery is now the branch
+     above; the product tree is never written to.
+
+- **Two engineering findings from implementing ADR 0004 (both fixed here).** *(a)* Two `git`
+  invocations — the product-repo clone and the framework clone — originally inherited the **ambient
+  process working directory**; the CLI test suite caught this only when another suite had moved and
+  deleted the current directory (`shell-init: … getcwd: cannot access parent directories` →
+  `fatal: this operation must be run in a work tree`). Every git invocation in the engine now passes
+  an explicit `workingDirectory`, so the upgrade never depends on where the process is. *(b)* Building
+  a tree from a rendered directory must use `git add -A -f`, not `git add -A`: a product `.gitignore`
+  can exclude framework-rendered paths (e.g. a generated `.claude/` adapter directory) and `add`
+  without `-f` would silently drop them from the merge inputs — resurrecting, in a new disguise, the
+  class of bug this ADR exists to remove.
+
 ## Plan artifact cleanup completed
 
 The three plan artifacts previously classified under the retention policy have been finalized
@@ -200,7 +248,12 @@ per their approved dispositions:
   exercises **`bootstrap` only**, so it never proves upgrade re-delivery — which is why ADR 0003 and
   `framework/templates/README.md` claim only fresh instantiation + manifest registration. Classified
   `WORKFLOW_IMPROVEMENT`; **unresolved** — parameterizing the path is a `cli/**` change outside the
-  ADR 0003 correction scope.
+  ADR 0003 correction scope. **Amended 2026-10-02 (ADR 0004):** the *conclusion* this entry drew
+  ("upgrade re-delivery is unproven") is superseded — `cli/test/upgrade_merge_test.dart` now covers
+  upgrade merge, delivery, conflict reporting, manifest refresh, re-run refusal, and scratch cleanup
+  end-to-end, and it builds its framework and product fixtures in temporary directories with **no
+  absolute-path dependency**, so it does not repeat the host-bound mistake this entry records. The
+  host-bound defect of `bootstrap_integration_test.dart` itself is **still unresolved**.
 - **The two `STRUCTURED_RESULTS.md` copies are byte-identical; no divergence exists.** Verified
   (independent review finding, corrected 2026-10-01): at HEAD `01e0e845` both copies were 585 lines and
   byte-identical with **zero** design markers, and in the current working tree both are 675 lines,
