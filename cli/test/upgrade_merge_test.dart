@@ -118,6 +118,81 @@ _Fixture _createFixture({
   );
 }
 
+/// Files the brick stages *outside* `__brick__/`: the brick's own build inputs,
+/// which a Mason render never emits into a product.
+const _brickStagedFiles = <String, String>{
+  'brick.yaml': _brickYaml,
+  'manifest.template.yaml': 'artifacts: []\n',
+  'product-repo/AGENTS.template.md': '# templated agents\n',
+  'README.md': 'brick readme\n',
+};
+
+/// A product bootstrapped from the *brick directory* rather than from a render.
+///
+/// It carries byte-identical copies of the brick's build inputs, keeps the
+/// brick's own `__brick__/` directory, and has a manifest that claims only those
+/// copies. Because the copies are identical to what the base render emits, git's
+/// rename detection pairs them with the base files and reports rename/rename
+/// conflicts that no human ever caused. The engine must recognise the copies as
+/// staging artifacts, keep them out of the merge, and report them.
+_Fixture _createStagingFixture({
+  Map<String, String> incomingFiles = const {},
+  Map<String, String> productStagingOverrides = const {},
+  Map<String, String> productOwnFiles = const {},
+}) {
+  final root = Directory.systemTemp.createTempSync('aef_staging_');
+  final frameworkRepo = Directory('${root.path}/framework')..createSync();
+  final productRepo = Directory('${root.path}/product')..createSync();
+  final remote = Directory('${root.path}/remote')..createSync();
+
+  final revAFiles = <String, String>{
+    ..._baseFiles,
+    'agents/implementer.md': 'implementer agent\n',
+  };
+  final revBFiles = <String, String>{
+    ...revAFiles,
+    ...incomingFiles,
+    'agents/implementer.md': 'implementer agent v2\n',
+  };
+
+  void commitBrick(String message, Map<String, String> brickFiles) {
+    _writeBrick(frameworkRepo, brickFiles);
+    final templates = Directory('${frameworkRepo.path}/framework/templates');
+    _brickStagedFiles.forEach((path, content) =>
+        _writeFile(templates, path, content));
+    _git(frameworkRepo, ['add', '-A']);
+    _git(frameworkRepo, ['commit', '-qm', message]);
+  }
+
+  _git(frameworkRepo, ['init', '-q', '-b', 'main', '.']);
+  _configureIdentity(frameworkRepo);
+  commitBrick('framework revision A', revAFiles);
+  final revA = _gitOut(frameworkRepo, ['rev-parse', 'HEAD']);
+  commitBrick('framework revision B', revBFiles);
+  final revB = _gitOut(frameworkRepo, ['rev-parse', 'HEAD']);
+
+  // The product is the brick directory copied verbatim, exactly what a bootstrap
+  // that renders nothing leaves behind.
+  _git(productRepo, ['init', '-q', '-b', 'main', '.']);
+  _configureIdentity(productRepo);
+  _git(productRepo, ['remote', 'add', 'origin', remote.path]);
+  revAFiles.forEach((path, content) => _writeFile(productRepo, '__brick__/$path', content));
+  final staged = {..._brickStagedFiles, ...productStagingOverrides};
+  staged.forEach((path, content) => _writeFile(productRepo, path, content));
+  productOwnFiles.forEach((path, content) => _writeFile(productRepo, path, content));
+  _writeProductManifest(productRepo, revA, staged);
+  _git(productRepo, ['add', '-A']);
+  _git(productRepo, ['commit', '-qm', 'product bootstrapped from brick dir']);
+
+  return _Fixture(
+    root: root,
+    frameworkRepo: frameworkRepo,
+    productRepo: productRepo,
+    revA: revA,
+    revB: revB,
+  );
+}
+
 bool _sameContent(Map<String, String> a, Map<String, String> b) {
   if (a.length != b.length) return false;
   for (final entry in a.entries) {
@@ -488,6 +563,121 @@ void main() {
     ]);
     expect(merged.exitCode, 0);
     expect((merged.stdout as String).trim(), isNotEmpty);
+  });
+
+  test('an abbreviated target pins the full revision in the refreshed manifest',
+      () async {
+    final fixture = _createFixture(
+      incomingFiles: const {'docs/engineering/ROADMAP.md': 'upstream roadmap\n'},
+    );
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    await _runUpgrade(fixture, targetRevision: fixture.revB.substring(0, 12));
+
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+    final manifest = _fileOnBranch(fixture, branch, 'framework-manifest.yaml');
+
+    expect(
+      FrameworkManifest.parse(manifest).revision,
+      fixture.revB,
+      reason: 'the product must be pinned to an unambiguous object id',
+    );
+  });
+
+  test('brick staging copies are removed from the delivered tree and reported',
+      () async {
+    final fixture = _createStagingFixture();
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    final result = await _runUpgrade(fixture);
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+    final reason = 'upgrade result: ${result.message} ${result.blockers}';
+
+    // No fabricated conflict: the copies were never a human-authored rename.
+    expect(result.family, ResultFamily.upgradeReadyForReview, reason: reason);
+    expect(result.message, contains('Adopted the incoming render: yes'));
+    expect(result.blockers.join('\n'), contains('no render of'));
+    expect(result.humanActionRequired, isTrue,
+        reason: 'accepting the removal of framework build inputs is a human '
+            'decision');
+    expect(
+      result.blockers.join('\n'),
+      allOf(contains('brick staging artifact'), contains('brick.yaml')),
+    );
+
+    final delivered = _gitOut(fixture.productRepo,
+        ['ls-tree', '-r', '--name-only', branch]).split('\n');
+    expect(delivered.where((p) => p.startsWith('__brick__/')), isEmpty,
+        reason: "the brick's own __brick__ directory must not reach a product");
+    for (final staged in _brickStagedFiles.keys) {
+      expect(delivered, isNot(contains(staged)),
+          reason: '$staged is brick build input, not product content');
+    }
+
+    // The render itself is still delivered.
+    expect(delivered, contains('agents/implementer.md'));
+    expect(_fileOnBranch(fixture, branch, 'agents/implementer.md'),
+        'implementer agent v2\n');
+
+    // And the product working tree is untouched: removal is only a proposal.
+    expect(
+      File('${fixture.productRepo.path}/__brick__/AGENTS.md').existsSync(),
+      isTrue,
+    );
+    expect(_gitOut(fixture.productRepo, ['status', '--porcelain']), isEmpty);
+  });
+
+  test('a product with its own customized artifact conflicts on that artifact '
+      'only, and still receives the whole render', () async {
+    // The real shape: no render was ever delivered, but the product owns an
+    // `AGENTS.md` of its own. Merging against the fictional base would report
+    // every framework path as a local deletion; adopting the render must instead
+    // conflict on exactly the artifact the product and the framework both own.
+    final fixture = _createStagingFixture(
+      productOwnFiles: const {'AGENTS.md': _customizedAgents},
+    );
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    final result = await _runUpgrade(fixture);
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+
+    expect(result.family, ResultFamily.upgradeConflict,
+        reason: '${result.message} ${result.blockers}');
+    expect(
+      result.blockers.first,
+      allOf(contains('1 conflict'), contains('AGENTS.md')),
+    );
+    expect(result.message, isNot(contains('agents/implementer.md')));
+
+    final delivered = _gitOut(fixture.productRepo,
+        ['ls-tree', '-r', '--name-only', branch]).split('\n');
+    expect(delivered, contains('agents/implementer.md'));
+    expect(delivered, contains('docs/engineering/WORK_STATE.md'));
+    expect(_fileOnBranch(fixture, branch, 'AGENTS.md'), contains('<<<<<<<'));
+  });
+
+  test('a staging-shaped file the product actually owns is not removed',
+      () async {
+    final fixture = _createStagingFixture(
+      // The product wrote its own README: same name as a brick input, different
+      // content, so it is product content and must survive untouched.
+      productStagingOverrides: const {'README.md': 'our own readme\n'},
+    );
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    final result = await _runUpgrade(fixture);
+    final branch = 'framework/upgrade-${fixture.revA.substring(0, 12)}-'
+        '${fixture.revB.substring(0, 12)}';
+
+    final stagingBlocker = result.blockers
+        .where((b) => b.contains('brick staging artifact'))
+        .join('\n');
+    expect(stagingBlocker, isNot(contains('README.md')),
+        reason: 'the product owns this file; the brick merely ships one too');
+    expect(_fileOnBranch(fixture, branch, 'README.md'), 'our own readme\n');
   });
 }
 

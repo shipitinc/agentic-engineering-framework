@@ -117,7 +117,42 @@ revision B) and `install_hash` is the hash of the merged file (what the product 
 a locally customized artifact stays visible as `source_hash != install_hash`. Artifacts that upstream
 deleted are dropped from the manifest; product files that are not framework-managed are never listed.
 
-### 6. Scratch state is always cleaned up
+### 6. The manifest pins the exact revision, not the string that was typed
+
+The requested target may be an abbreviation (`e37b2a3`). The refreshed manifest records the full object
+id the render actually resolved to (`e37b2a3fa344…`), because a pin must be unambiguous for a later
+upgrade to verify and for a reviewer to audit. Branch names keep the short form for readability.
+
+### 7. Brick staging artifacts are removed from the delivered tree and reported
+
+Mason renders only `__brick__/**`. Everything else the brick ships — `brick.yaml`,
+`manifest.template.yaml`, `product-repo/**`, `README.md` — plus the brick's own `__brick__/` directory
+are build inputs that no render can produce. A product holding a **byte-identical copy** of a file the
+brick ships at that exact relative path was bootstrapped from the brick *directory* instead of from a
+render; those copies are excluded from the merge, deleted in the delivered commit, and listed in the
+result so that accepting the branch is an explicit human decision.
+
+Byte identity is required on purpose. A product that merely shares a name with a brick input (`README.md`
+is the common case) is product content and is preserved untouched.
+
+Leaving such copies in place is not a neutral option: git pairs a byte-identical copy with the base
+render file as a **rename**, so an untouched product copy is reported as `rename/rename` against an
+unrelated upstream move. On the first real product upgrade this manufactured 11 of 15 conflicts out of
+nothing.
+
+### 8. A product with no render lineage adopts the incoming render
+
+If the product's manifest claims no path that the pinned revision actually renders, the product was never
+rendered and the merge base is fiction. Merging against fiction reports every framework path as a local
+deletion, so the base is replaced by git's empty tree: the incoming render is **adopted**, product-owned
+files are kept as-is, and the result states `Adopted the incoming render: yes` plus a blocker requiring a
+human to review every added artifact.
+
+A product that owns a path the framework also renders (`AGENTS.md`, `docs/engineering/WORK_STATE.md`)
+then conflicts on exactly that path — the true, resolvable disagreement — instead of colliding with
+dozens of fabricated modify/delete conflicts.
+
+### 9. Scratch state is always cleaned up
 
 The temporary scratch clone and both render directories are deleted on every exit path, success or
 failure. Because the deliverable is a ref in the product repository, keeping scratch state is never
@@ -138,6 +173,13 @@ necessary for a human to continue the work.
   additionally reported by the change classifier, so deletion is never applied silently.
 - The manifest is now rewritten on upgrade; a product that keeps its manifest untouched after accepting
   the branch will still be detected as pinned to the old revision.
+- A product bootstrapped from the brick directory is repaired by the upgrade rather than reported as
+  broken: it receives the render it never had, its unverifiable staging copies are removed, and its own
+  files are untouched. This was found by running the engine against the first real product
+  (`TeamHub`), whose manifest claimed 21 brick build inputs and no rendered artifact at all.
+- Staging copies that are *not* byte-identical (someone edited `__brick__/AGENTS.md`) are deliberately
+  **kept** and reported as stale manifest entries, because that content may carry product knowledge the
+  human wants to port. They survive as unreachable files that no future render will ever claim.
 
 ## Alternatives considered
 

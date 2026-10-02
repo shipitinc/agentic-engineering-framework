@@ -252,6 +252,21 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
   upgrades** that preserve product-specific knowledge. Normal product operation requires **no**
   runtime access to the framework repository or any package registry.
 
+- **How an upgrade merge is computed and delivered** — RESOLVED by
+  [ADR 0004](adr/0004-upgrade-three-way-merge-and-delivery.md): the documented three-way merge
+  (**base** = render of the pinned revision A, **local** = the product's own state, **incoming** = render
+  of revision B) is computed **without a working-tree copy** by giving git three synthetic commits that
+  share the base render as their parent and merging them with `git merge-tree --write-tree`. The result
+  is delivered as **one commit on the product repository's real `HEAD`**, pushed to
+  `framework/upgrade-<A>-<B>` for review, with the refreshed `framework-manifest.yaml` inside it, pinned
+  to the exact revision object id. The product's working tree and index are **never** mutated, a conflict
+  is delivered (with markers) and reported rather than stranded, a re-run never overwrites an upgrade
+  awaiting review, and all scratch state is discarded on every exit path. Two cases are handled
+  explicitly: **brick staging artifacts** (byte-identical copies of the brick's own build inputs, which
+  no render can produce) are removed from the delivered tree and reported, and a product that carries no
+  render of its pinned revision **adopts** the incoming render instead of merging against a fictional
+  base. Requires `git >= 2.38` for `git merge-tree --write-tree`.
+
 - **Framework driver / tooling selection** — RESOLVED by
   [ADR 0002](adr/0002-dart-mason-git-framework-driver.md): the driver is
   **Dart + Mason + Git** with **`framework-manifest.yaml`** as authoritative provenance. Dart owns

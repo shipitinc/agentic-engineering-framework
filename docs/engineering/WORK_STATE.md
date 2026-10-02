@@ -169,6 +169,30 @@ product-specific architecture, design, or infrastructure decisions — those bel
   `git >= 2.38`. Classified `WORKFLOW_IMPROVEMENT`; authority is **independent review**, not
   `HUMAN_DECISION_REQUIRED` — it repairs an existing documented command and adds no stage or gate.
 
+- **The first real product upgrade exposed three more defects, all fixed by ADR 0004 § 6-8.** Running the
+  engine against `TeamHub` (pinned `7f1368f`, manifest `upgraded_at: null`) produced **15 conflicts, 11
+  of them fabricated**. The product had been bootstrapped from the **brick directory** rather than from a
+  render: its 21 manifest entries were all brick build inputs, and it held **no rendered framework
+  artifact at all** (no `.agents/`, `.claude/`, `.junie/`, `.opencode/`). Three consequences, each now
+  handled explicitly and covered by tests:
+  1. **Staging artifacts.** Byte-identical copies of brick inputs (`__brick__/**`, `brick.yaml`,
+     `manifest.template.yaml`) are removed from the delivered tree and reported; git had been pairing
+     them with the base render as renames, inventing `rename/rename` conflicts against unrelated upstream
+     moves. Copies that were *edited* (e.g. a customized `__brick__/AGENTS.md`) are deliberately kept and
+     reported as stale entries, since that content may carry product knowledge.
+  2. **A fictional merge base.** With no render lineage the base is replaced by git's empty tree, so the
+     incoming render is **adopted** and product-owned files are kept. Conflicts dropped from 15 to the
+     **2 that are real** (`AGENTS.md`, `docs/engineering/WORK_STATE.md` — a product-local file and a
+     framework file that both claim the same path).
+  3. **Ambiguous pins.** The manifest recorded the revision string that was typed (`e37b2a3`); it now
+     records the resolved object id (`e37b2a3fa3449df89686b79dbe08e4eb7b9a3176`).
+  Result: `Added: 91`, `Removed: 3`, `Conflicts: 2`, 93 artifacts in the refreshed manifest. The product
+  working tree stayed clean throughout. **Still open and human-owned:** resolving those 2 conflicts,
+  deciding the fate of the 17 leftover unreachable `__brick__/**` and `product-repo/**` files, and
+  reviewing the 91 adopted artifacts. `framework.source` in that manifest is still a local filesystem
+  path inherited from the original bootstrap; left as-is (truthful provenance, host-bound) pending an
+  explicit decision.
+
 - **Five blocking defects in the previous upgrade implementation (all fixed by ADR 0004; reproduced
   against a real bootstrapped product pinned at `7f1368f` before any fix).** Recorded because
   `upgrade` had **never executed successfully on a real product**, and ADR 0003 could therefore claim

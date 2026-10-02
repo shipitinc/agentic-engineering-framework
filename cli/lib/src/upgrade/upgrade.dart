@@ -21,6 +21,8 @@ class UpgradeClassification {
     required this.conflicts,
     required this.unmodified,
     required this.productPreserved,
+    required this.staleManifestEntries,
+    required this.stagingArtifacts,
   });
 
   /// Paths introduced by the incoming framework revision and present in the
@@ -47,7 +49,20 @@ class UpgradeClassification {
   /// Locally customized artifacts whose local content survived the merge.
   final List<String> productPreserved;
 
+  /// Paths the product's manifest claims as framework-managed that **neither**
+  /// the pinned revision nor the incoming revision renders — a stale manifest
+  /// entry. No file is ever deleted for these; they are dropped from the
+  /// refreshed manifest and reported here so a human can decide what they were.
+  final List<String> staleManifestEntries;
+
+  /// Product paths that were byte-identical copies of the brick's own build
+  /// inputs (files the brick stages outside `__brick__/`). No render can produce
+  /// them, so they are removed from the delivered tree and reported here; the
+  /// product's working tree is never touched (ADR 0004 § 7).
+  final List<String> stagingArtifacts;
+
   bool get hasChanges =>
+      stagingArtifacts.isNotEmpty ||
       added.isNotEmpty ||
       deleted.isNotEmpty ||
       renamed.isNotEmpty ||
@@ -85,12 +100,23 @@ class _UpgradeScratch {
     required this.incomingRender,
     required this.mergedDir,
     required this.localDir,
+    required this.baseStagingDir,
+    required this.incomingStagingDir,
   });
 
   final Directory root;
   final Directory repo;
   final Directory baseRender;
   final Directory incomingRender;
+
+  /// Copies of the brick files at each rendered revision. A product that contains
+  /// a byte-identical copy of one of them was bootstrapped from the brick
+  /// directory instead of from a render, so it is a staging artifact rather than
+  /// product content (ADR 0004 § 7). Both revisions are kept because the product
+  /// carries the copies of the revision it was bootstrapped at, which is not
+  /// necessarily the revision being upgraded to.
+  final Directory baseStagingDir;
+  final Directory incomingStagingDir;
 
   /// The merged tree materialized on disk (conflict markers included).
   final Directory mergedDir;
@@ -205,26 +231,65 @@ Future<CommandResult> runUpgradeCore({
     final baseRender = await _renderFrameworkRevision(
       revision: revisionA,
       targetDir: scratch.baseRender,
+      stagingDir: scratch.baseStagingDir,
       frameworkRoot: frameworkRootOverride,
     );
-    if (baseRender != null) return baseRender;
+    if (baseRender.failure != null) return baseRender.failure!;
 
     final incomingRender = await _renderFrameworkRevision(
       revision: revisionB,
       targetDir: scratch.incomingRender,
+      stagingDir: scratch.incomingStagingDir,
       frameworkRoot: frameworkRootOverride,
     );
-    if (incomingRender != null) return incomingRender;
+    if (incomingRender.failure != null) return incomingRender.failure!;
 
     final repo = scratch.repo;
+    final stagedFiles = {...baseRender.stagedFiles, ...incomingRender.stagedFiles};
+
+    // Pin the exact revision the product adopts. The requested revision may be an
+    // abbreviation; the manifest must record an unambiguous object id.
+    final revisionBPinned = incomingRender.resolved ?? revisionB;
+
+    // A product whose manifest claims no path the pinned revision actually
+    // renders was never rendered: its "framework content" is a copy of the brick
+    // directory. Its merge base would be fiction, and merging against fiction
+    // reports every framework path as a local deletion. Such a product adopts the
+    // incoming render instead (ADR 0004 § 8).
+    final baseRenderFiles = _collectFiles(scratch.baseRender);
+    final manifestPaths = currentManifest.managedPaths.toSet();
+    final adoptedFromRender = manifestPaths.isEmpty ||
+        manifestPaths.any((path) => baseRenderFiles.containsKey(path));
+    final effectiveBaseDir = adoptedFromRender
+        ? scratch.baseRender
+        : Directory('${scratch.root.path}/empty_base')..createSync(recursive: true);
 
     // 5. Synthetic topology: base (render A) <- local (product HEAD) and
     //    base <- incoming (render B).
     final productHead = _gitOut(repo, ['rev-parse', 'HEAD']);
-    final localTree = _gitOut(repo, ['rev-parse', 'HEAD^{tree}']);
+    final productTree = _gitOut(repo, ['rev-parse', 'HEAD^{tree}']);
 
-    _createRef(repo, _baseRef, _commitTree(repo, _treeFromDirectory(repo, scratch.baseRender),
-        'Base: framework render of $revisionA'));
+    // A product bootstrapped from the brick directory instead of from a render
+    // holds byte-identical copies of the brick's own build inputs. They are not
+    // product content: no render can produce them, so they are excluded from the
+    // merge and reported as staging artifacts for the human to accept.
+    final stagingArtifacts = _stagingArtifacts(
+      repo: repo,
+      productTree: productTree,
+      stagingDirs: [scratch.baseStagingDir, scratch.incomingStagingDir],
+      stagedFiles: stagedFiles,
+    );
+    final localTree = stagingArtifacts.isEmpty
+        ? productTree
+        : _removePathsFromTree(repo, productTree, stagingArtifacts);
+
+    final baseTree = adoptedFromRender
+        ? _treeFromDirectory(repo, scratch.baseRender)
+        : _emptyTreeObject(repo, scratch);
+    _createRef(repo, _baseRef, _commitTree(repo, baseTree,
+        adoptedFromRender
+            ? 'Base: framework render of $revisionA'
+            : 'Base: empty (product carries no render of $revisionA)'));
     _createRef(repo, _incomingRef,
         _commitTree(repo, _treeFromDirectory(repo, scratch.incomingRender),
             'Incoming: framework render of $revisionB', parent: _baseRef));
@@ -265,21 +330,22 @@ Future<CommandResult> runUpgradeCore({
 
     final classification = _classifyChanges(
       mergedDir: scratch.mergedDir,
-      baseDir: scratch.baseRender,
+      baseDir: effectiveBaseDir,
       incomingDir: scratch.incomingRender,
       localDir: scratch.localDir,
       mergeConflicts: mergeConflicts,
       currentManifest: currentManifest,
+      stagingArtifacts: stagingArtifacts,
     );
 
     // Refresh the manifest inside the merged tree so the delivered commit pins
     // the product to the revision it just adopts (ADR 0004 § 5).
     _writeUpgradedManifest(
       mergedDir: scratch.mergedDir,
-      baseRender: scratch.baseRender,
+      baseRender: effectiveBaseDir,
       incomingRender: scratch.incomingRender,
       currentManifest: currentManifest,
-      revisionB: revisionB,
+      revisionB: revisionBPinned,
     );
 
     // 7. Deliver: one commit on the product's real history, pushed last so a
@@ -292,7 +358,9 @@ Future<CommandResult> runUpgradeCore({
           'Merge base: framework render of $revisionA.\n'
           'Incoming:  framework render of $revisionB.\n'
           'Local:     product repository state at $productHead.\n'
-          'Conflicts: ${classification.conflicts.length}\n',
+          'Conflicts: ${classification.conflicts.length}\n'
+          'Brick staging artifacts removed: '
+          '${classification.stagingArtifacts.length}\n',
       parent: productHead,
     );
     final push = _git(
@@ -337,8 +405,50 @@ Future<CommandResult> runUpgradeCore({
       ..writeln('Product customizations preserved: '
           '${classification.productPreserved.length}')
       ..writeln('Unmodified: ${classification.unmodified.length}')
-      ..writeln('Manifest refreshed to revision $revisionB.')
+      ..writeln('Stale manifest entries dropped: '
+          '${classification.staleManifestEntries.length}')
+      ..writeln('Brick staging artifacts removed from the delivered tree: '
+          '${classification.stagingArtifacts.length}')
+      ..writeln('Adopted the incoming render: '
+          '${adoptedFromRender ? 'no' : 'yes'}')
+      ..writeln('Manifest refreshed to revision $revisionBPinned.')
       ..writeln('Review: git diff HEAD..$branch');
+
+    if (!adoptedFromRender) {
+      // The product's manifest claimed only brick build inputs, so it never
+      // received a render. There is no faithful base to merge against; the
+      // incoming render is adopted and the product's own files are kept.
+      blockers.add(
+        'Product carries no render of $revisionA (its manifest claimed only '
+        'brick build inputs), so the incoming render was adopted instead of '
+        'three-way merged. Review every added framework artifact.',
+      );
+      humanActionRequired = true;
+    }
+
+    if (classification.stagingArtifacts.isNotEmpty) {
+      // A staging artifact is proof the product was bootstrapped from the brick
+      // directory rather than from a render. It is removed in the delivered
+      // commit and listed here, so accepting the branch is the human's decision.
+      blockers.add(
+        'Removed ${classification.stagingArtifacts.length} brick staging '
+        'artifact(s) the product carried as byte-identical copies of the '
+        "brick's own build inputs: "
+        '${classification.stagingArtifacts.join(', ')}',
+      );
+      humanActionRequired = true;
+    }
+
+    if (classification.staleManifestEntries.isNotEmpty) {
+      // A stale entry means the product's manifest claims a framework path that
+      // the framework does not ship at either revision. Nothing was deleted;
+      // the entries were dropped from the refreshed manifest.
+      blockers.add(
+        'Dropped ${classification.staleManifestEntries.length} manifest '
+        'entr(y/ies) the framework does not ship: '
+        '${classification.staleManifestEntries.join(', ')}',
+      );
+    }
 
     return CommandResult(
       family: family,
@@ -355,12 +465,12 @@ Future<CommandResult> runUpgradeCore({
       blockers: failure.blockers,
       humanActionRequired: true,
     );
-  } catch (e) {
+  } catch (e, stackTrace) {
     return CommandResult(
       family: ResultFamily.internalError,
       command: CommandNames.upgrade,
       message: 'Upgrade failed with exception: $e',
-      blockers: ['Internal error during upgrade: $e'],
+      blockers: ['Internal error during upgrade: $e\n$stackTrace'],
     );
   } finally {
     scratch?.dispose();
@@ -393,6 +503,8 @@ _UpgradeScratch _createScratch(Directory productRepo) {
       incomingRender: Directory('${root.path}/incoming'),
       mergedDir: Directory('${root.path}/merged'),
       localDir: Directory('${root.path}/local'),
+      baseStagingDir: Directory('${root.path}/staging_base'),
+      incomingStagingDir: Directory('${root.path}/staging_incoming'),
     );
     scratch.dispose();
     throw _UpgradeFailure(
@@ -431,6 +543,8 @@ _UpgradeScratch _createScratch(Directory productRepo) {
     incomingRender: Directory('${root.path}/incoming'),
     mergedDir: Directory('${root.path}/merged'),
     localDir: Directory('${root.path}/local'),
+    baseStagingDir: Directory('${root.path}/staging_base'),
+    incomingStagingDir: Directory('${root.path}/staging_incoming'),
   );
 }
 
@@ -453,9 +567,24 @@ bool _gitSupportsWriteTreeMerge(Directory cwd) {
 /// check out any revision other than the branch tip (ADR 0004 § 2).
 ///
 /// Returns null on success, or a [CommandResult] describing the blocker.
-Future<CommandResult?> _renderFrameworkRevision({
+/// The outcome of rendering one framework revision: a failure result, or the
+/// brick's staged (non-`__brick__`) files copied next to the render.
+class _RenderResult {
+  _RenderResult({this.failure, this.stagedFiles = const {}, this.resolved});
+
+  final CommandResult? failure;
+
+  /// Brick-staged file paths relative to the brick directory.
+  final Set<String> stagedFiles;
+
+  /// The full object id the requested revision resolved to.
+  final String? resolved;
+}
+
+Future<_RenderResult> _renderFrameworkRevision({
   required String revision,
   required Directory targetDir,
+  required Directory stagingDir,
   String? frameworkRoot,
 }) async {
   final source = _resolveRenderSource(revision, frameworkRoot: frameworkRoot);
@@ -469,15 +598,17 @@ Future<CommandResult?> _renderFrameworkRevision({
       workingDirectory: Directory.systemTemp.path,
     );
     if (cloneResult.exitCode != 0) {
-      return CommandResult(
-        family: ResultFamily.upgradeBlocked,
-        command: CommandNames.upgrade,
-        message: 'Failed to clone framework source',
-        blockers: [
-          'Could not clone the framework from $source at revision $revision: '
-              '${_stderrOf(cloneResult)}',
-        ],
-        humanActionRequired: true,
+      return _RenderResult(
+        failure: CommandResult(
+          family: ResultFamily.upgradeBlocked,
+          command: CommandNames.upgrade,
+          message: 'Failed to clone framework source',
+          blockers: [
+            'Could not clone the framework from $source at revision $revision: '
+                '${_stderrOf(cloneResult)}',
+          ],
+          humanActionRequired: true,
+        ),
       );
     }
 
@@ -487,25 +618,29 @@ Future<CommandResult?> _renderFrameworkRevision({
       workingDirectory: tempDir.path,
     );
     if (checkoutResult.exitCode != 0) {
-      return CommandResult(
-        family: ResultFamily.upgradeBlocked,
-        command: CommandNames.upgrade,
-        message: 'Failed to checkout framework revision',
-        blockers: [
-          'Revision $revision not found in framework source $source',
-        ],
-        humanActionRequired: true,
+      return _RenderResult(
+        failure: CommandResult(
+          family: ResultFamily.upgradeBlocked,
+          command: CommandNames.upgrade,
+          message: 'Failed to checkout framework revision',
+          blockers: [
+            'Revision $revision not found in framework source $source',
+          ],
+          humanActionRequired: true,
+        ),
       );
     }
 
     final brickDir = Directory('${tempDir.path}/framework/templates');
     if (!brickDir.existsSync()) {
-      return CommandResult(
-        family: ResultFamily.upgradeBlocked,
-        command: CommandNames.upgrade,
-        message: 'Framework brick not found',
-        blockers: ['framework/templates not found at revision $revision'],
-        humanActionRequired: true,
+      return _RenderResult(
+        failure: CommandResult(
+          family: ResultFamily.upgradeBlocked,
+          command: CommandNames.upgrade,
+          message: 'Framework brick not found',
+          blockers: ['framework/templates not found at revision $revision'],
+          humanActionRequired: true,
+        ),
       );
     }
 
@@ -518,13 +653,22 @@ Future<CommandResult?> _renderFrameworkRevision({
       fileConflictResolution: FileConflictResolution.overwrite,
     );
 
-    return null;
+    final resolved = _stdoutOf(
+      Process.runSync('git', ['rev-parse', 'HEAD'], workingDirectory: tempDir.path),
+    ).trim();
+
+    return _RenderResult(
+      stagedFiles: _copyBrickStagingFiles(brickDir, stagingDir),
+      resolved: resolved.isEmpty ? null : resolved,
+    );
   } catch (e) {
-    return CommandResult(
-      family: ResultFamily.internalError,
-      command: CommandNames.upgrade,
-      message: 'Failed to render framework revision $revision',
-      blockers: ['Mason render failed for $revision: $e'],
+    return _RenderResult(
+      failure: CommandResult(
+        family: ResultFamily.internalError,
+        command: CommandNames.upgrade,
+        message: 'Failed to render framework revision $revision',
+        blockers: ['Mason render failed for $revision: $e'],
+      ),
     );
   } finally {
     if (tempDir.existsSync()) {
@@ -535,6 +679,36 @@ Future<CommandResult?> _renderFrameworkRevision({
       }
     }
   }
+}
+
+/// Copies every file the brick ships — its own build inputs *and* the
+/// `__brick__/**` render sources — into [stagingDir], preserving relative paths,
+/// and returns those relative paths.
+///
+/// A product path is a staging artifact only when the brick ships a file at that
+/// exact relative path and the bytes match. The two namespaces are disjoint by
+/// construction: a render emits `__brick__/**` at the product root, so a product
+/// path matching a non-`__brick__` brick file (or a `__brick__/` path at all) can
+/// only be a copy of the brick directory.
+Set<String> _copyBrickStagingFiles(Directory brickDir, Directory stagingDir) {
+  final staged = <String>{};
+  stagingDir.createSync(recursive: true);
+  final brickRoot = brickDir.absolute.path;
+  for (final entity in brickDir.listSync()) {
+    final name = entity.path.split(Platform.pathSeparator).last;
+    if (name.startsWith('.')) continue;
+    final candidates = entity is Directory
+        ? entity.listSync(recursive: true).whereType<File>()
+        : <File>[if (entity is File) entity];
+    for (final file in candidates) {
+      final relative = file.absolute.path.substring(brickRoot.length + 1);
+      final target = File('${stagingDir.path}/$relative');
+      target.parent.createSync(recursive: true);
+      target.writeAsBytesSync(file.readAsBytesSync());
+      staged.add(relative);
+    }
+  }
+  return staged;
 }
 
 /// The local framework checkout when it contains [revision], otherwise the
@@ -550,6 +724,96 @@ String _resolveRenderSource(String revision, {String? frameworkRoot}) {
     if (hasRevision.exitCode == 0) return localRoot;
   }
   return approvedFrameworkSource;
+}
+
+/// Writes and returns git's empty tree object, used as the merge base when the
+/// product carries no render of the pinned revision.
+String _emptyTreeObject(Directory repo, _UpgradeScratch scratch) {
+  final empty = File('${scratch.root.path}/empty-base-file')
+    ..writeAsStringSync('');
+  final result = _git(repo, ['hash-object', '-w', '-t', 'tree', empty.path]);
+  if (result.exitCode != 0) {
+    throw _UpgradeFailure(
+      ['Could not create the empty base tree: ${_stderrOf(result)}'],
+      message: 'Failed to prepare the merge base',
+      family: ResultFamily.internalError,
+    );
+  }
+  return _stdoutOf(result);
+}
+
+/// Returns the product paths that are byte-identical copies of files the brick
+/// stages outside `__brick__/` — evidence the product was bootstrapped from the
+/// brick directory rather than from a render.
+List<String> _stagingArtifacts({
+  required Directory repo,
+  required String productTree,
+  required List<Directory> stagingDirs,
+  required Set<String> stagedFiles,
+}) {
+  final artifacts = <String>[];
+  for (final relative in stagedFiles) {
+    final blob = _git(repo, ['cat-file', 'blob', '$productTree:$relative']);
+    if (blob.exitCode != 0) continue;
+    final productBytes = blob.stdout is String
+        ? (blob.stdout as String).codeUnits
+        : blob.stdout as List<int>;
+    for (final dir in stagingDirs) {
+      final staged = File('${dir.path}/$relative');
+      if (!staged.existsSync()) continue;
+      if (_sameBytes(staged.readAsBytesSync(), productBytes)) {
+        artifacts.add(relative);
+        break;
+      }
+    }
+  }
+  artifacts.sort();
+  return artifacts;
+}
+
+bool _sameBytes(List<int> a, List<int> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
+}
+
+/// Returns [tree] with [paths] removed, without touching the product repository.
+String _removePathsFromTree(Directory repo, String tree, List<String> paths) {
+  final index = File('${repo.path}/.git/aef-upgrade-prune-index');
+  if (index.existsSync()) index.deleteSync();
+  final environment = {'GIT_INDEX_FILE': index.path};
+  final read = _git(repo, ['read-tree', tree], environment: environment);
+  if (read.exitCode != 0) {
+    throw _UpgradeFailure(
+      ['Could not read tree $tree: ${_stderrOf(read)}'],
+      message: 'Failed to prune staging artifacts',
+      family: ResultFamily.internalError,
+    );
+  }
+  final remove = _git(
+    repo,
+    ['update-index', '--force-remove', ...paths],
+    environment: environment,
+  );
+  if (remove.exitCode != 0) {
+    throw _UpgradeFailure(
+      ['Could not remove staging artifacts: ${_stderrOf(remove)}'],
+      message: 'Failed to prune staging artifacts',
+      family: ResultFamily.internalError,
+    );
+  }
+  final write = _git(repo, ['write-tree'], environment: environment);
+  if (index.existsSync()) index.deleteSync();
+  if (write.exitCode != 0) {
+    throw _UpgradeFailure(
+      ['Could not write pruned tree: ${_stderrOf(write)}'],
+      message: 'Failed to prune staging artifacts',
+      family: ResultFamily.internalError,
+    );
+  }
+  return _stdoutOf(write).trim();
 }
 
 /// Builds a git tree from the contents of [dir] without touching [repo]'s own
@@ -706,6 +970,7 @@ UpgradeClassification _classifyChanges({
   required Directory localDir,
   required List<String> mergeConflicts,
   required FrameworkManifest currentManifest,
+  required List<String> stagingArtifacts,
 }) {
   final baseFiles = _collectFiles(baseDir);
   final incomingFiles = _collectFiles(incomingDir);
@@ -720,6 +985,7 @@ UpgradeClassification _classifyChanges({
   final conflicts = <String>[];
   final unmodified = <String>[];
   final productPreserved = <String>[];
+  final staleManifestEntries = <String>[];
 
   final allPaths = <String>{
     ...baseFiles.keys,
@@ -768,6 +1034,13 @@ UpgradeClassification _classifyChanges({
         continue;
       }
       if (!inMerged) deleted.add(path);
+      continue;
+    }
+
+    if (!inBase && !inIncoming) {
+      // Claimed by the manifest, shipped by neither revision. Reported and
+      // dropped from the refreshed manifest; no file is deleted.
+      staleManifestEntries.add(path);
       continue;
     }
 
@@ -827,6 +1100,8 @@ UpgradeClassification _classifyChanges({
     conflicts: conflictsSet.toList()..sort(),
     unmodified: unmodified..sort(),
     productPreserved: productPreserved..sort(),
+    staleManifestEntries: staleManifestEntries..sort(),
+    stagingArtifacts: stagingArtifacts..sort(),
   );
 }
 
