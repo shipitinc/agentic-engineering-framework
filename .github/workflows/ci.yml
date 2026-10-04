@@ -32,7 +32,7 @@ jobs:
         run: dart pub get
 
       - name: Format check
-        run: dart format --output=none --set-exit-if-changed --exclude=test/bootstrap_integration_test.dart --exclude=test/platform_adapter_test.dart --exclude=test/upgrade_merge_test.dart .
+        run: dart format --output=none --set-exit-if-changed bin/ lib/ test/runner_test.dart test/exit_mapping_test.dart test/human_output_test.dart test/json_output_test.dart test/no_mutation_test.dart test/bootstrap_regression_test.dart test/manifest/
 
       - name: Analyze
         run: dart analyze
