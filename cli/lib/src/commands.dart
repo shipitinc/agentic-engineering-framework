@@ -54,8 +54,10 @@ const String approvedFrameworkSource =
 /// valid scheme, so "does this string have a scheme?" can never tell the two
 /// forms apart. Only the schemes below are treated as URLs; everything else is
 /// parsed as scp-like.
-final RegExp _remoteUrlScheme =
-    RegExp(r'^(?:https?|ssh|git|file):', caseSensitive: false);
+final RegExp _remoteUrlScheme = RegExp(
+  r'^(?:https?|ssh|git|file):',
+  caseSensitive: false,
+);
 
 /// Normalizes a git remote URL to a comparable repository identity.
 ///
@@ -105,8 +107,10 @@ String _joinRemoteIdentity(String host, String path) {
   if (segments.isNotEmpty &&
       segments.last.endsWith('.git') &&
       segments.last.length > '.git'.length) {
-    segments[segments.length - 1] =
-        segments.last.substring(0, segments.last.length - '.git'.length);
+    segments[segments.length - 1] = segments.last.substring(
+      0,
+      segments.last.length - '.git'.length,
+    );
   }
   return [
     host.toLowerCase(),
@@ -151,11 +155,11 @@ List<String> _runPreflightChecks() {
       '(set FRAMEWORK_BRICK_PATH or run the CLI from a framework checkout).',
     );
   } else {
-    final frameworkRemote = Process.runSync(
-      'git',
-      ['remote', 'get-url', 'origin'],
-      workingDirectory: frameworkRoot,
-    );
+    final frameworkRemote = Process.runSync('git', [
+      'remote',
+      'get-url',
+      'origin',
+    ], workingDirectory: frameworkRoot);
     if (frameworkRemote.exitCode != 0) {
       issues.add(
         'Framework source at $frameworkRoot has no origin remote; cannot verify '
