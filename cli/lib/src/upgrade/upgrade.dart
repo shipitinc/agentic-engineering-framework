@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:mason/mason.dart';
@@ -97,6 +98,45 @@ class _UpgradeFailure implements Exception {
 const String _baseRef = 'refs/aef-upgrade/base';
 const String _localRef = 'refs/aef-upgrade/local';
 const String _incomingRef = 'refs/aef-upgrade/incoming';
+
+/// Ref that carries the delivered commit into the product repository before it
+/// is pushed. It lives under `refs/aef-upgrade/` so it cannot collide with a
+/// branch, and it is deleted again once the push has succeeded.
+const String _deliveryRef = 'refs/aef-upgrade/delivered';
+
+/// The product repository's delivery remote, resolved from the product's own
+/// configuration.
+class _ProductRemote {
+  const _ProductRemote({required this.name, required this.url});
+
+  /// The configured remote name (`origin`), pushed by name so git also updates
+  /// the remote-tracking ref.
+  final String name;
+
+  /// The URL git will actually push to, for reporting.
+  final String url;
+}
+
+/// Resolves the product repository's delivery remote, or null when it has none.
+///
+/// A product needs a real remote: the upgrade branch is delivered by a push, and
+/// a push has to go somewhere. This is read from the product's own config
+/// because the scratch clone's `origin` is the product's *local path* — pushing
+/// from there writes a ref into the product repository and reaches nothing else
+/// (ADR 0004 § 4).
+_ProductRemote? _resolveProductRemote(Directory productRepo) {
+  final remotes = _git(productRepo, ['remote']);
+  if (remotes.exitCode != 0) return null;
+  final names = _stdoutOf(
+    remotes,
+  ).split('\n').map((line) => line.trim()).toSet();
+  if (!names.contains('origin')) return null;
+  final url = _git(productRepo, ['remote', 'get-url', '--push', 'origin']);
+  if (url.exitCode != 0) return null;
+  final resolved = _stdoutOf(url);
+  if (resolved.isEmpty) return null;
+  return _ProductRemote(name: 'origin', url: resolved);
+}
 
 /// Scratch workspace for a single upgrade run: a clone of the product
 /// repository plus the two framework renders, all outside the product repository
@@ -219,19 +259,40 @@ Future<CommandResult> runUpgradeCore({
     );
   }
 
-  final branch = 'framework/upgrade-${_shortRevision(revisionA)}-'
+  final branch =
+      'framework/upgrade-${_shortRevision(revisionA)}-'
       '${_shortRevision(revisionB)}';
+
+  // Delivery target. Resolved from the product's own config, because the scratch
+  // clone's `origin` is the product's local path and a push from there never
+  // leaves the machine (ADR 0004 § 4).
+  final remote = _resolveProductRemote(productRepo);
+  if (remote == null) {
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'No delivery remote in the product repository.',
+      blockers: [
+        'The upgrade branch is delivered by pushing it to the product '
+            "repository's remote, but this repository has no 'origin' remote with "
+            'a resolvable push URL. Configure one and re-run.',
+      ],
+      humanActionRequired: true,
+    );
+  }
 
   // Re-run safety: never overwrite an upgrade that is already awaiting review —
   // neither one that exists locally nor one that exists only on the remote. A
   // branch known only through its remote-tracking ref is refused here with this
   // message, instead of being pushed onto later and failing as a
-  // non-fast-forward push with a far less useful error.
+  // non-fast-forward push.
   for (final ref in ['refs/heads/$branch', 'refs/remotes/origin/$branch']) {
-    final existing = _git(
-      productRepo,
-      ['show-ref', '--verify', '--quiet', ref],
-    );
+    final existing = _git(productRepo, [
+      'show-ref',
+      '--verify',
+      '--quiet',
+      ref,
+    ]);
     if (existing.exitCode == 0) {
       return CommandResult(
         family: ResultFamily.upgradeBlocked,
@@ -239,11 +300,54 @@ Future<CommandResult> runUpgradeCore({
         message: 'Upgrade branch $branch already exists.',
         blockers: [
           'Branch $branch already exists in the product repository ($ref). '
-          'Review or delete it before re-running the upgrade.',
+              'Review or delete it before re-running the upgrade.',
         ],
         humanActionRequired: true,
       );
     }
+  }
+
+  // The remote is the branch's real destination, so it is also where a previous
+  // run left the branch. Probing only local refs cannot see it: a branch that was
+  // pushed and whose local ref was removed (or never created) is invisible to
+  // `show-ref`, and the upgrade would then push over a review in progress.
+  //
+  // `ls-remote --exit-code` returns 0 when the ref exists and 2 when no ref
+  // matches. Anything else means the remote could not be asked, which is not
+  // evidence that the branch is absent, so it is refused rather than assumed.
+  final remoteProbe = _git(productRepo, [
+    'ls-remote',
+    '--exit-code',
+    '--heads',
+    remote.name,
+    'refs/heads/$branch',
+  ]);
+  if (remoteProbe.exitCode == 0) {
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Upgrade branch $branch already exists.',
+      blockers: [
+        'Branch $branch already exists on the product remote '
+            '${remote.name} (${remote.url}) as refs/heads/$branch. Review or '
+            'delete it before re-running the upgrade.',
+      ],
+      humanActionRequired: true,
+    );
+  }
+  if (remoteProbe.exitCode != 2) {
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Could not check the product remote for $branch.',
+      blockers: [
+        'The upgrade refuses to overwrite a review that may already be awaiting '
+            'one, so it will not run while the remote cannot be checked. '
+            "Probing ${remote.name} (${remote.url}) for refs/heads/$branch failed: "
+            '${_stderrOf(remoteProbe)}',
+      ],
+      humanActionRequired: true,
+    );
   }
 
   _UpgradeScratch? scratch;
@@ -271,7 +375,10 @@ Future<CommandResult> runUpgradeCore({
     if (incomingRender.failure != null) return incomingRender.failure!;
 
     final repo = scratch.repo;
-    final stagedFiles = {...baseRender.stagedFiles, ...incomingRender.stagedFiles};
+    final stagedFiles = {
+      ...baseRender.stagedFiles,
+      ...incomingRender.stagedFiles,
+    };
 
     // Pin the exact revision the product adopts. The requested revision may be an
     // abbreviation; the manifest must record an unambiguous object id.
@@ -284,11 +391,15 @@ Future<CommandResult> runUpgradeCore({
     // incoming render instead (ADR 0004 § 8).
     final baseRenderFiles = _collectFiles(scratch.baseRender);
     final manifestPaths = currentManifest.managedPaths.toSet();
-    final adoptedFromRender = manifestPaths.isEmpty ||
+    final adoptedFromRender =
+        manifestPaths.isEmpty ||
         manifestPaths.any((path) => baseRenderFiles.containsKey(path));
-    final effectiveBaseDir = adoptedFromRender
-        ? scratch.baseRender
-        : Directory('${scratch.root.path}/empty_base')..createSync(recursive: true);
+
+    final effectiveBaseDir =
+        adoptedFromRender
+              ? scratch.baseRender
+              : Directory('${scratch.root.path}/empty_base')
+          ..createSync(recursive: true);
 
     // 5. Synthetic topology: base (render A) <- local (product HEAD) and
     //    base <- incoming (render B).
@@ -305,28 +416,72 @@ Future<CommandResult> runUpgradeCore({
       stagingDirs: [scratch.baseStagingDir, scratch.incomingStagingDir],
       stagedFiles: stagedFiles,
     );
-    final localTree = stagingArtifacts.isEmpty
+    final productLocalTree = stagingArtifacts.isEmpty
         ? productTree
         : _removePathsFromTree(repo, productTree, stagingArtifacts);
+
+    // A product upgraded by the engine as it stood before ADR 0004 § 6 was
+    // repaired carries the provenance pin abbreviated, because that engine
+    // substituted the revision string the caller typed while the manifest pinned
+    // the resolved object id. Base and local then disagree about a value with
+    // exactly one correct answer, and because incoming changes the same line git
+    // reports a modify/modify conflict on it. A file whose whole content differs
+    // from base only in how that one id is spelled is not a product
+    // customization; it is the same content with the same pin written
+    // differently. Such files are canonicalized to base before the merge, so the
+    // product's own text is never rewritten to make a conflict disappear.
+    _materializeTree(repo, productLocalTree, scratch.localDir);
+    final pinCanonicalized = _canonicalizePinSpelling(
+      localDir: scratch.localDir,
+      baseDir: adoptedFromRender ? scratch.baseRender : null,
+      pin: baseRender.resolved ?? revisionA,
+    );
+    final localTree = pinCanonicalized.isEmpty
+        ? productLocalTree
+        : _treeFromDirectory(repo, scratch.localDir);
 
     final baseTree = adoptedFromRender
         ? _treeFromDirectory(repo, scratch.baseRender)
         : _emptyTreeObject(repo, scratch);
-    _createRef(repo, _baseRef, _commitTree(repo, baseTree,
+    _createRef(
+      repo,
+      _baseRef,
+      _commitTree(
+        repo,
+        baseTree,
         adoptedFromRender
             ? 'Base: framework render of $revisionA'
-            : 'Base: empty (product carries no render of $revisionA)'));
-    _createRef(repo, _incomingRef,
-        _commitTree(repo, _treeFromDirectory(repo, scratch.incomingRender),
-            'Incoming: framework render of $revisionB', parent: _baseRef));
-    _createRef(repo, _localRef,
-        _commitTree(repo, localTree, 'Local: product state at $productHead',
-            parent: _baseRef));
-
-    final merge = _git(
-      repo,
-      ['merge-tree', '--write-tree', '--name-only', _localRef, _incomingRef],
+            : 'Base: empty (product carries no render of $revisionA)',
+      ),
     );
+    _createRef(
+      repo,
+      _incomingRef,
+      _commitTree(
+        repo,
+        _treeFromDirectory(repo, scratch.incomingRender),
+        'Incoming: framework render of $revisionB',
+        parent: _baseRef,
+      ),
+    );
+    _createRef(
+      repo,
+      _localRef,
+      _commitTree(
+        repo,
+        localTree,
+        'Local: product state at $productHead',
+        parent: _baseRef,
+      ),
+    );
+
+    final merge = _git(repo, [
+      'merge-tree',
+      '--write-tree',
+      '--name-only',
+      _localRef,
+      _incomingRef,
+    ]);
     // Exit 0 = clean merge, 1 = conflicts (expected and reviewable).
     if (merge.exitCode != 0 && merge.exitCode != 1) {
       throw _UpgradeFailure(
@@ -350,9 +505,10 @@ Future<CommandResult> runUpgradeCore({
       mergeConflicts.add(line.trim());
     }
 
-    // 6. Materialize both sides so classification and hashing work on files.
+    // 6. Materialize the merged side so classification and hashing work on
+    //    files. The local side was materialized, and canonicalized, before the
+    //    merge above.
     _materializeTree(repo, mergedTree, scratch.mergedDir);
-    _materializeTree(repo, localTree, scratch.localDir);
 
     final classification = _classifyChanges(
       mergedDir: scratch.mergedDir,
@@ -374,34 +530,30 @@ Future<CommandResult> runUpgradeCore({
       revisionB: revisionBPinned,
     );
 
-    // 7. Deliver: one commit on the product's real history, pushed last so a
-    //    failed upgrade leaves no ref behind.
+    // 7. Deliver: one commit on the product's real history, pushed to the
+    //    product's real remote, last so a failed upgrade leaves no ref behind.
     final deliveredTree = _treeFromDirectory(repo, scratch.mergedDir);
     final deliveredCommit = _commitTree(
       repo,
       deliveredTree,
       'framework: upgrade $revisionA -> $revisionB\n\n'
-          'Merge base: framework render of $revisionA.\n'
-          'Incoming:  framework render of $revisionB.\n'
-          'Local:     product repository state at $productHead.\n'
-          'Conflicts: ${classification.conflicts.length}\n'
-          'Brick staging artifacts removed: '
-          '${classification.stagingArtifacts.length}\n',
+      'Merge base: framework render of $revisionA.\n'
+      'Incoming:  framework render of $revisionB.\n'
+      'Local:     product repository state at $productHead.\n'
+      'Conflicts: ${classification.conflicts.length}\n'
+      'Brick staging artifacts removed: '
+      '${classification.stagingArtifacts.length}\n'
+      '${_pinCanonicalizationSummary(pinCanonicalized)}\n',
       parent: productHead,
     );
-    final push = _git(
-      repo,
-      ['push', 'origin', '$deliveredCommit:refs/heads/$branch'],
+    final deliveryFailure = _deliver(
+      productRepo: productRepo,
+      scratchRepo: repo,
+      commit: deliveredCommit,
+      branch: branch,
+      remote: remote,
     );
-    if (push.exitCode != 0) {
-      throw _UpgradeFailure(
-        [
-          'Could not push $branch to the product repository: '
-              '${_stderrOf(push)}',
-        ],
-        message: 'Failed to deliver the upgrade branch',
-      );
-    }
+    if (deliveryFailure != null) return deliveryFailure;
 
     // 8. Result family: conflicts first, then real changes, then no-op.
     final ResultFamily family;
@@ -428,16 +580,26 @@ Future<CommandResult> runUpgradeCore({
       ..writeln('Renamed: ${classification.renamed.length}')
       ..writeln('Modified: ${classification.modified.length}')
       ..writeln('Conflicts: ${classification.conflicts.length}')
-      ..writeln('Product customizations preserved: '
-          '${classification.productPreserved.length}')
+      ..writeln(
+        'Product customizations preserved: '
+        '${classification.productPreserved.length}',
+      )
       ..writeln('Unmodified: ${classification.unmodified.length}')
-      ..writeln('Stale manifest entries dropped: '
-          '${classification.staleManifestEntries.length}')
-      ..writeln('Brick staging artifacts removed from the delivered tree: '
-          '${classification.stagingArtifacts.length}')
-      ..writeln('Adopted the incoming render: '
-          '${adoptedFromRender ? 'no' : 'yes'}')
+      ..writeln(
+        'Stale manifest entries dropped: '
+        '${classification.staleManifestEntries.length}',
+      )
+      ..writeln(
+        'Brick staging artifacts removed from the delivered tree: '
+        '${classification.stagingArtifacts.length}',
+      )
+      ..writeln(
+        'Adopted the incoming render: '
+        '${adoptedFromRender ? 'no' : 'yes'}',
+      )
+      ..writeln(_pinCanonicalizationSummary(pinCanonicalized))
       ..writeln('Manifest refreshed to revision $revisionBPinned.')
+      ..writeln('Delivered to: ${remote.name} (${remote.url})')
       ..writeln('Review: git diff HEAD..$branch');
 
     if (!adoptedFromRender) {
@@ -503,9 +665,138 @@ Future<CommandResult> runUpgradeCore({
   }
 }
 
+/// Delivers [commit] to the product repository's real remote as [branch]
+/// (ADR 0004 § 4).
+///
+/// The push is issued **by the product repository**, not by the scratch clone.
+/// The scratch clone's `origin` is the product's local path — git configures the
+/// clone source as the clone's remote when the source is a path — so pushing
+/// from there is a local-to-local write: it creates a ref inside the product
+/// repository, reports success, and reaches the hosting provider of nothing.
+/// Pushing from the product repository against its configured remote is the
+/// delivery the upgrade documents, and it is also the only push that updates the
+/// product's remote-tracking ref.
+///
+/// The commit itself is created in the scratch clone (that is where the merge
+/// inputs live), so its objects are moved into the product repository first. It
+/// arrives under `refs/aef-upgrade/delivered`, never as a branch, and that ref
+/// is removed again on both the success and the failure path: a failed upgrade
+/// leaves no ref behind. The product working tree and index are never touched —
+/// only objects and refs under `.git`.
+///
+/// Returns null on success, or a [CommandResult] describing the blocker.
+CommandResult? _deliver({
+  required Directory productRepo,
+  required Directory scratchRepo,
+  required String commit,
+  required String branch,
+  required _ProductRemote remote,
+}) {
+  final staged = _git(scratchRepo, ['update-ref', _deliveryRef, commit]);
+  if (staged.exitCode != 0) {
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Failed to stage the delivered commit',
+      blockers: [
+        'Could not reference the delivered commit for delivery: '
+            '${_stderrOf(staged)}',
+      ],
+      humanActionRequired: true,
+    );
+  }
+
+  final imported = _git(productRepo, [
+    'fetch',
+    '--no-tags',
+    scratchRepo.absolute.path,
+    '+$_deliveryRef:$_deliveryRef',
+  ]);
+  if (imported.exitCode != 0) {
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Failed to move the upgrade result into the product repository',
+      blockers: [
+        'Could not move the delivered commit from the scratch clone into the '
+            'product repository: ${_stderrOf(imported)}',
+      ],
+      humanActionRequired: true,
+    );
+  }
+
+  final push = _git(productRepo, [
+    'push',
+    remote.name,
+    '$_deliveryRef:refs/heads/$branch',
+  ]);
+  if (push.exitCode != 0) {
+    _dropDeliveryRef(productRepo);
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Failed to deliver the upgrade branch',
+      blockers: [
+        'Could not push $branch to ${remote.name} (${remote.url}): '
+            '${_stderrOf(push)}',
+      ],
+      humanActionRequired: true,
+    );
+  }
+
+  // The branch is on the remote; make it reviewable in the product repository
+  // with the command the result reports. `git diff HEAD..framework/upgrade-…`
+  // resolves the bare branch name through `refs/heads/`, which a push does not
+  // create — only the remote-tracking ref — so the local branch is created here.
+  // This writes a ref and nothing else: the working tree and index stay exactly
+  // as they were.
+  final local = _git(productRepo, [
+    'update-ref',
+    '--create-reflog',
+    '-m',
+    'framework upgrade $branch',
+    'refs/heads/$branch',
+    commit,
+  ]);
+  if (local.exitCode != 0) {
+    _dropDeliveryRef(productRepo);
+    return CommandResult(
+      family: ResultFamily.upgradeBlocked,
+      command: CommandNames.upgrade,
+      message: 'Failed to create the local review branch',
+      blockers: [
+        '$branch was pushed to ${remote.name} (${remote.url}) but the local '
+            'review branch could not be created, so the reported review command '
+            'will not resolve: ${_stderrOf(local)}',
+      ],
+      humanActionRequired: true,
+    );
+  }
+
+  _dropDeliveryRef(productRepo);
+  return null;
+}
+
+/// Removes the transient delivery ref, best effort. A leftover ref would keep
+/// the merged tree reachable in the product repository, which is exactly the
+/// state a failed upgrade must not leave behind.
+void _dropDeliveryRef(Directory productRepo) {
+  Process.runSync('git', [
+    'update-ref',
+    '-d',
+    _deliveryRef,
+  ], workingDirectory: productRepo.path);
+}
+
 /// Clones the product repository into the system temp directory. The clone lives
 /// outside the product repository so that no operation can ever copy a directory
 /// into itself (ADR 0004 § 3).
+///
+/// **The clone's `origin` is the product's local path, not the product's remote.**
+/// Git configures the clone source as the clone's remote whenever the source is a
+/// path, so nothing delivered from here reaches the hosting provider — delivery
+/// goes through [_deliver] against the product repository's own remote instead.
+///
 ///
 /// [gitVersionSupported] overrides the git version gate; production callers pass
 /// null and the real `git --version` is probed. It exists so the gate itself can
@@ -516,28 +807,21 @@ _UpgradeScratch _createScratch(
 }) {
   // The version gate runs BEFORE anything is created, so an unsupported git
   // never leaves a scratch clone behind and never needs an unguarded delete.
-  final supported = gitVersionSupported?.call() ??
+  final supported =
+      gitVersionSupported?.call() ??
       _gitSupportsWriteTreeMerge(Directory.systemTemp);
   if (!supported) {
-    throw _UpgradeFailure(
-      [
-        'git >= 2.38 is required for `git merge-tree --write-tree`, which '
-            'computes the upgrade merge without a working tree.',
-      ],
-      message: 'Unsupported git version',
-    );
+    throw _UpgradeFailure([
+      'git >= 2.38 is required for `git merge-tree --write-tree`, which '
+          'computes the upgrade merge without a working tree.',
+    ], message: 'Unsupported git version');
   }
 
   final root = Directory.systemTemp.createTempSync('aef_upgrade_');
   final repo = Directory('${root.path}/product');
   final clone = Process.runSync(
     'git',
-    [
-      'clone',
-      '--no-hardlinks',
-      productRepo.absolute.path,
-      repo.path,
-    ],
+    ['clone', '--no-hardlinks', productRepo.absolute.path, repo.path],
     // Never inherit the ambient working directory: the upgrade must not depend
     // on where the process happens to be.
     workingDirectory: Directory.systemTemp.path,
@@ -556,23 +840,22 @@ _UpgradeScratch _createScratch(
     // Dispose rather than delete: a cleanup failure must never mask the clone
     // failure as an internal error.
     scratch.dispose();
-    throw _UpgradeFailure(
-      ['Could not clone the product repository: ${_stderrOf(clone)}'],
-      message: 'Failed to create the upgrade scratch clone',
-    );
+    throw _UpgradeFailure([
+      'Could not clone the product repository: ${_stderrOf(clone)}',
+    ], message: 'Failed to create the upgrade scratch clone');
   }
 
   // A deterministic author keeps the synthetic and delivered commits stable.
-  Process.runSync(
-    'git',
-    ['config', 'user.email', 'framework-cli@upgrade'],
-    workingDirectory: repo.path,
-  );
-  Process.runSync(
-    'git',
-    ['config', 'user.name', 'Framework CLI Upgrade'],
-    workingDirectory: repo.path,
-  );
+  Process.runSync('git', [
+    'config',
+    'user.email',
+    'framework-cli@upgrade',
+  ], workingDirectory: repo.path);
+  Process.runSync('git', [
+    'config',
+    'user.name',
+    'Framework CLI Upgrade',
+  ], workingDirectory: repo.path);
 
   return _UpgradeScratch(
     root: root,
@@ -599,16 +882,6 @@ bool _gitSupportsWriteTreeMerge(Directory cwd) {
   return major > 2 || (major == 2 && minor >= 38);
 }
 
-/// Renders a framework revision with Mason.
-///
-/// An explicit [frameworkRoot] is used verbatim. Otherwise this prefers the CLI's
-/// own framework checkout when it already contains [revision] (no network
-/// round-trip, hermetic under test), and clones the canonical source when it does
-/// not. The clone always carries full history because an upgrade renders the
-/// pinned base revision as well as the incoming one, and a shallow clone cannot
-/// check out any revision other than the branch tip (ADR 0004 § 2).
-///
-/// Returns null on success, or a [CommandResult] describing the blocker.
 /// The outcome of rendering one framework revision: a failure result, or the
 /// brick's staged (non-`__brick__`) files copied next to the render.
 class _RenderResult {
@@ -623,6 +896,25 @@ class _RenderResult {
   final String? resolved;
 }
 
+/// Renders a framework revision with Mason.
+///
+/// An explicit [frameworkRoot] is used verbatim. Otherwise this prefers the CLI's
+/// own framework checkout when it already contains [revision] (no network
+/// round-trip, hermetic under test), and clones the canonical source when it does
+/// not. The clone always carries full history because an upgrade renders the
+/// pinned base revision as well as the incoming one, and a shallow clone cannot
+/// check out any revision other than the branch tip (ADR 0004 § 2).
+///
+/// The render is a function of the **resolved object id** of [revision], never of
+/// the string the caller typed: `{{frameworkRevision}}` is substituted with the
+/// full commit id the checkout resolved to. The render therefore carries the same
+/// immutable identifier the refreshed manifest pins, whatever spelling was used
+/// on the command line. This is what keeps the provenance line a clean one-sided
+/// bump on the next upgrade instead of a modify/modify conflict: the base render
+/// of revision A then equals the file the product already carries, because
+/// bootstrap resolved A the same way (ADR 0004 § 6).
+///
+/// Returns a failure result on any problem, otherwise the render outcome.
 Future<_RenderResult> _renderFrameworkRevision({
   required String revision,
   required Directory targetDir,
@@ -654,11 +946,10 @@ Future<_RenderResult> _renderFrameworkRevision({
       );
     }
 
-    final checkoutResult = Process.runSync(
-      'git',
-      ['checkout', revision],
-      workingDirectory: tempDir.path,
-    );
+    final checkoutResult = Process.runSync('git', [
+      'checkout',
+      revision,
+    ], workingDirectory: tempDir.path);
     if (checkoutResult.exitCode != 0) {
       return _RenderResult(
         failure: CommandResult(
@@ -686,22 +977,40 @@ Future<_RenderResult> _renderFrameworkRevision({
       );
     }
 
+    // The full object id the checkout resolved to. It is substituted into the
+    // render rather than the requested [revision] string, so the rendered
+    // provenance line always carries the exact immutable identifier the manifest
+    // pins. Resolving before rendering is what makes that possible: the pin is
+    // derived from the revision alone, never from product state.
+    final resolvedResult = _git(tempDir, ['rev-parse', 'HEAD']);
+    final resolved = _stdoutOf(resolvedResult);
+    if (resolved.isEmpty) {
+      return _RenderResult(
+        failure: CommandResult(
+          family: ResultFamily.upgradeBlocked,
+          command: CommandNames.upgrade,
+          message: 'Failed to resolve the framework revision',
+          blockers: [
+            'Could not resolve the object id of $revision in framework source '
+                '$source: ${_stderrOf(resolvedResult)}',
+          ],
+          humanActionRequired: true,
+        ),
+      );
+    }
+
     targetDir.createSync(recursive: true);
     final brick = Brick.path(brickDir.path);
     final generator = await MasonGenerator.fromBrick(brick);
     await generator.generate(
       DirectoryGeneratorTarget(targetDir),
-      vars: <String, dynamic>{'frameworkRevision': revision},
+      vars: <String, dynamic>{'frameworkRevision': resolved},
       fileConflictResolution: FileConflictResolution.overwrite,
     );
 
-    final resolved = _stdoutOf(
-      Process.runSync('git', ['rev-parse', 'HEAD'], workingDirectory: tempDir.path),
-    ).trim();
-
     return _RenderResult(
       stagedFiles: _copyBrickStagingFiles(brickDir, stagingDir),
-      resolved: resolved.isEmpty ? null : resolved,
+      resolved: resolved,
     );
   } catch (e) {
     return _RenderResult(
@@ -767,11 +1076,11 @@ String _resolveRenderSource(String revision, {String? frameworkRoot}) {
   if (frameworkRoot != null) return frameworkRoot;
   final localRoot = resolveFrameworkSourceRoot();
   if (localRoot != null && Directory(localRoot).existsSync()) {
-    final hasRevision = Process.runSync(
-      'git',
-      ['cat-file', '-e', '$revision^{commit}'],
-      workingDirectory: localRoot,
-    );
+    final hasRevision = Process.runSync('git', [
+      'cat-file',
+      '-e',
+      '$revision^{commit}',
+    ], workingDirectory: localRoot);
     if (hasRevision.exitCode == 0) return localRoot;
   }
   return approvedFrameworkSource;
@@ -830,6 +1139,139 @@ bool _sameBytes(List<int> a, List<int> b) {
   return true;
 }
 
+/// One line naming every artifact whose provenance pin spelling was
+/// canonicalized, so the delivered commit is auditable from its message alone.
+///
+/// Beyond ten paths the summary degrades to a count rather than growing without
+/// bound: this is a report, not the evidence, and the paths are all visible in
+/// the branch diff.
+String _pinCanonicalizationSummary(List<String> paths) {
+  if (paths.isEmpty) return 'Provenance pin spellings canonicalized: 0';
+  const limit = 10;
+  if (paths.length <= limit) {
+    return 'Provenance pin spellings canonicalized: '
+        '${paths.length} (${paths.join(', ')})';
+  }
+  return 'Provenance pin spellings canonicalized: ${paths.length} '
+      '(${paths.take(limit).join(', ')}, and '
+      '${paths.length - limit} more)';
+}
+
+/// Rewrites local files whose whole content differs from the base render only
+/// in how [pin] is spelled, replacing them with the base render's content.
+///
+/// This exists for products whose provenance pin was delivered abbreviated by
+/// the pre-repair engine: the pin is one commit either way, so the local file is
+/// not a product customization and must not be treated as a competing edit. A
+/// file is rewritten only when its content is byte-for-byte equal to the base
+/// render's content with [pin] replaced by another spelling of the same object
+/// id. Anything else — including a genuine local edit, even one that touches the
+/// provenance line — is left alone and merges as it always did.
+///
+/// The comparison is made on **bytes**, never on decoded text: a rendered
+/// artifact need not be valid UTF-8, and decoding one would turn a byte-level
+/// rule into a decode failure for the whole upgrade. The pin and its
+/// abbreviations are ASCII, so substituting them at the byte level is exact.
+///
+/// Returns the rewritten paths, relative to [localDir].
+List<String> _canonicalizePinSpelling({
+  required Directory localDir,
+  required Directory? baseDir,
+  required String pin,
+}) {
+  if (baseDir == null || pin.isEmpty) return const [];
+  if (!baseDir.existsSync()) return const [];
+
+  final pinBytes = ascii.encode(pin);
+  final rewritten = <String>[];
+  for (final entity in localDir.listSync(recursive: true, followLinks: false)) {
+    if (entity is! File) continue;
+    final relative = entity.path.substring(localDir.path.length + 1);
+    final baseFile = File('${baseDir.path}/$relative');
+    if (!baseFile.existsSync()) continue;
+    final baseBytes = baseFile.readAsBytesSync();
+    // Nothing to canonicalize unless the base render carries the pin at all.
+    if (!_containsBytes(baseBytes, pinBytes)) continue;
+    final localBytes = entity.readAsBytesSync();
+    if (_sameBytes(localBytes, baseBytes)) continue;
+    for (final spelling in _objectIdSpellings(pin)) {
+      final candidate = _replaceBytes(
+        baseBytes,
+        pinBytes,
+        ascii.encode(spelling),
+      );
+      if (!_sameBytes(candidate, localBytes)) continue;
+      entity.writeAsBytesSync(baseBytes);
+      rewritten.add(relative);
+      break;
+    }
+  }
+  rewritten.sort();
+  return rewritten;
+}
+
+/// Whether [haystack] contains [needle].
+bool _containsBytes(List<int> haystack, List<int> needle) {
+  if (needle.isEmpty || needle.length > haystack.length) return false;
+  for (var start = 0; start <= haystack.length - needle.length; start++) {
+    var matches = true;
+    for (var i = 0; i < needle.length; i++) {
+      if (haystack[start + i] != needle[i]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return true;
+  }
+  return false;
+}
+
+/// [haystack] with every occurrence of [needle] replaced by [replacement].
+List<int> _replaceBytes(
+  List<int> haystack,
+  List<int> needle,
+  List<int> replacement,
+) {
+  if (needle.isEmpty) return haystack;
+  final out = <int>[];
+  var index = 0;
+  while (index < haystack.length) {
+    final fits = index + needle.length <= haystack.length;
+    if (fits) {
+      var matches = true;
+      for (var i = 0; i < needle.length; i++) {
+        if (haystack[index + i] != needle[i]) {
+          matches = false;
+          break;
+        }
+      }
+      if (matches) {
+        out.addAll(replacement);
+        index += needle.length;
+        continue;
+      }
+    }
+    out.add(haystack[index]);
+    index++;
+  }
+  return out;
+}
+
+/// The other spellings git accepts for [objectId]: its abbreviations.
+///
+/// Excludes the full id itself and anything shorter than git's minimum
+/// unambiguous abbreviation, and stops at the first character that is not a hex
+/// digit since a longer abbreviation could not be a prefix of it.
+Iterable<String> _objectIdSpellings(String objectId) sync* {
+  final hex = RegExp(r'^[0-9a-f]+$');
+  if (!hex.hasMatch(objectId)) return;
+  for (var length = 4; length < objectId.length; length++) {
+    final candidate = objectId.substring(0, length);
+    if (!hex.hasMatch(candidate)) return;
+    yield candidate;
+  }
+}
+
 /// Returns [tree] with [paths] removed, without touching the product repository.
 String _removePathsFromTree(Directory repo, String tree, List<String> paths) {
   final index = File('${repo.path}/.git/aef-upgrade-prune-index');
@@ -843,11 +1285,11 @@ String _removePathsFromTree(Directory repo, String tree, List<String> paths) {
       family: ResultFamily.internalError,
     );
   }
-  final remove = _git(
-    repo,
-    ['update-index', '--force-remove', ...paths],
-    environment: environment,
-  );
+  final remove = _git(repo, [
+    'update-index',
+    '--force-remove',
+    ...paths,
+  ], environment: environment);
   if (remove.exitCode != 0) {
     throw _UpgradeFailure(
       ['Could not remove staging artifacts: ${_stderrOf(remove)}'],
@@ -886,10 +1328,9 @@ String _treeFromDirectory(Directory repo, Directory dir) {
     environment: environment,
   );
   if (add.exitCode != 0) {
-    throw _UpgradeFailure(
-      ['Could not stage the render at ${dir.path}: ${_stderrOf(add)}'],
-      message: 'Failed to build a merge input tree',
-    );
+    throw _UpgradeFailure([
+      'Could not stage the render at ${dir.path}: ${_stderrOf(add)}',
+    ], message: 'Failed to build a merge input tree');
   }
   return _gitOut(repo, ['write-tree'], environment: environment);
 }
@@ -941,17 +1382,13 @@ void _materializeTree(Directory repo, String tree, Directory dest) {
       family: ResultFamily.internalError,
     );
   }
-  final checkout = _git(
-    repo,
-    [
-      '--git-dir=${repo.path}/.git',
-      '--work-tree=${dest.absolute.path}',
-      'checkout-index',
-      '-a',
-      '-f',
-    ],
-    environment: environment,
-  );
+  final checkout = _git(repo, [
+    '--git-dir=${repo.path}/.git',
+    '--work-tree=${dest.absolute.path}',
+    'checkout-index',
+    '-a',
+    '-f',
+  ], environment: environment);
   if (checkout.exitCode != 0) {
     throw _UpgradeFailure(
       ['Could not write the merged tree: ${_stderrOf(checkout)}'],
@@ -968,6 +1405,15 @@ void _materializeTree(Directory repo, String tree, Directory dest) {
 /// `install_hash` records what the product will carry, so a locally customized
 /// artifact stays detectable as `source_hash != install_hash`. Framework paths
 /// that upstream deleted are dropped; non-managed product files are never added.
+///
+/// `template_inputs` is refreshed, not carried forward. `frameworkRevision` is
+/// framework-controlled: it is the value the render substituted into the managed
+/// provenance lines, so a stale one is a false record of what the product's
+/// artifacts were rendered from. It is recomputed from the same resolved
+/// identifier that was rendered and that `framework.revision` pins. Any other key
+/// is left untouched, and — because the renderer never reads `template_inputs`
+/// back — it records product input provenance without ever becoming an input to
+/// a render.
 void _writeUpgradedManifest({
   required Directory mergedDir,
   required Directory baseRender,
@@ -1011,10 +1457,14 @@ void _writeUpgradedManifest({
     instantiatedAt: currentManifest.instantiatedAt,
     upgradedAt: DateTime.now().toUtc(),
     artifacts: artifacts,
-    templateInputs: currentManifest.templateInputs,
+    templateInputs: {
+      ...currentManifest.templateInputs,
+      'frameworkRevision': revisionB,
+    },
   );
-  File('${mergedDir.path}/framework-manifest.yaml')
-      .writeAsStringSync(upgraded.write());
+  File(
+    '${mergedDir.path}/framework-manifest.yaml',
+  ).writeAsStringSync(upgraded.write());
 }
 
 /// Classifies every managed path across the base render, the incoming render,
@@ -1061,7 +1511,7 @@ UpgradeClassification _classifyChanges({
   for (final path in allPaths) {
     final inBase = baseFiles.containsKey(path);
     final inIncoming = incomingFiles.containsKey(path);
-    
+
     final inMerged = mergedFiles.containsKey(path);
     final inLocal = localFiles.containsKey(path);
 
@@ -1103,8 +1553,7 @@ UpgradeClassification _classifyChanges({
     // Present on both sides.
     final baseHash = ContentHash.ofFile(baseFiles[path]!);
     final incomingHash = ContentHash.ofFile(incomingFiles[path]!);
-    final mergedHash =
-        inMerged ? ContentHash.ofFile(mergedFiles[path]!) : null;
+    final mergedHash = inMerged ? ContentHash.ofFile(mergedFiles[path]!) : null;
 
     if (baseHash == incomingHash) {
       // The framework did not touch this path.
@@ -1122,7 +1571,13 @@ UpgradeClassification _classifyChanges({
 
     // The framework changed this path.
     if (mergedHash == incomingHash) {
+      // Nothing of the product's was lost, so the path is unmodified from the
+      // product's side — but the framework did change it, which is what
+      // [modified] also means (see its contract above). Counting it here is what
+      // keeps an upgrade whose every change is a one-sided upstream edit from
+      // being reported as a no-op after its branch was already delivered.
       unmodified.add(path);
+      modified.add(path);
       continue;
     }
     if (inLocal && ContentHash.ofFile(localFiles[path]!) != baseHash) {

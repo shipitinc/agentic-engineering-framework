@@ -459,12 +459,96 @@ per their approved dispositions:
   the pre-fix algorithm (the old code rejected those inputs too, just via garbage identities) —
   **documentation inaccuracy only**, with no behaviour claim. **(b)** The same commit's wording "every
   cleanup path uses `dispose()`" is loose: the render temp-dir `finally` block in
-  `cli/lib/src/upgrade/upgrade.dart:715-722` is `existsSync`-guarded inside
+  `cli/lib/src/upgrade/upgrade.dart` is `existsSync`-guarded inside
   `try`/`catch (FileSystemException)`, so the safety property holds but the wording overstates it.
   **(c)** `_newScratchDirs` assumes no concurrent run creates `aef_upgrade_*` between capture and
   assertion — safe today (only `upgrade_merge_test.dart` uses that prefix, and tests within a file
   are serial) but a latent coupling if a second file ever drives `runUpgradeCore`.
   **Owner: framework tooling / upgrade engine.**
+
+## Upstream-reported upgrade-engine defects, repaired (2026-10-03)
+
+Two defects in the ADR 0004 upgrade engine were reported **from outside this repository**, by a consumer
+running `framework upgrade` against a real product (`TeamHub`), as issues #3 and #4. Both reproduced
+here and both are now repaired. They were introduced by the ADR 0004 change itself, so the repair is
+part of closing that item rather than a new workstream. Neither is a governance change: no human gate,
+no lifecycle stage, no policy decision — so the authority is again **independent review**, per
+`LEARNING_POLICY.md`'s `WORKFLOW_IMPROVEMENT` category. ADR 0004 is amended in place with the full
+record.
+
+- **Delivery went to a local path, not the product's remote.** The delivered commit was pushed from the
+  scratch clone, whose `origin` git had configured as the product's **local directory** (the clone source
+  was a path). The push exited `0`, created a ref inside the product repository, and reached the hosting
+  provider of nothing, so the run reported success while `git ls-remote origin 'refs/heads/framework/*'`
+  was empty. This also silently disabled ADR 0004 §4's remote-only re-run refusal, so a re-run would push
+  over a review in progress, and it wrote into the product repository that the same ADR promises is never
+  mutated. The hermetic suite could not catch it: with a local-path remote, "the branch is on the remote"
+  was satisfiable by a local assertion — and the fixtures' "remote" was not a git repository at all.
+  **Repair:** the push is now issued by the product repository against the remote in its own config; the
+  remote is probed with `ls-remote` for the refusal, an unprobeable remote is refused rather than assumed
+  branch-free, and a product with no resolvable remote is refused before any state exists. Fixtures now
+  use a **real bare remote** and delivery is asserted by reading the ref out of it.
+
+- **The render carried the typed target while the manifest carried the resolved pin.**
+  `{{frameworkRevision}}` was substituted with the revision *string the caller typed*, and
+  `template_inputs.frameworkRevision` was carried forward verbatim from the original instantiation. The
+  field was therefore stale from the first upgrade onward, and the two spellings made the managed
+  provenance line collide with itself on the **second** upgrade: modify/modify on
+  `Framework revision:` in `AGENTS.md` and `docs/engineering/WORK_STATE.md`, a field whose only correct
+  value was never in dispute. Reproduced on `TeamHub` as 2 conflicts and reproduced hermetically as a
+  two-upgrade test. **Repair:** the render substitutes the **resolved object id**, so the rendered line
+  and `framework.revision` are the same immutable identifier by construction and the bump is a clean
+  one-sided change; `template_inputs` is refreshed from that value rather than carried forward, and the
+  renderer never reads it back, so a recorded product input cannot become a later render's input (which
+  also closes the concern raised with issue #3 about a non-checkout framework source — see ADR 0004
+  §1's open `HUMAN_DECISION` and NF-003).
+
+Three further defects were found while repairing those two, all in the same engine and all now fixed:
+
+- **A pin spelled differently was treated as a competing edit.** Fixing the render alone would still leave
+  every product already delivered by the pre-repair engine carrying `Framework revision: e37b2a3` against
+  a manifest pinning `e37b2a3fa344…`, so its next upgrade would conflict on that line for no reason.
+  **Repair:** a local file is canonicalized to the base render when — and only when — its content is
+  byte-for-byte the base render's content with the pin replaced by another spelling of the same object id
+  (git's own abbreviations, down to 4 characters). The test is whole-file equality, never a partial
+  rewrite, so a genuine customization in the same file still conflicts with the product's text intact, and
+  the count is reported (`Provenance pin spellings canonicalized: N`) and recorded in the commit message.
+  See ADR 0004 A3.
+- **A delivered upgrade could be reported as a no-op.** `UpgradeClassification.modified` is contracted as
+  "the framework changed them, a local customization survived on top of them, **or both**", but the
+  implementation recorded a path only as `unmodified` when the merged content equalled the incoming
+  render. `hasChanges` is derived from `added`/`deleted`/`renamed`/`modified`/`conflicts`, so an upgrade
+  whose every change was a one-sided upstream edit returned `upgradeNoop` **after** pushing its branch to
+  the product's remote — telling the human there was nothing to review about a branch with real changes.
+  Reachable from any second upgrade, since the provenance pin changes by construction. **Repair:** a path
+  the framework changed counts as `modified` whether or not a local customization also survived, matching
+  the documented contract; a genuinely empty upgrade still reports `upgradeNoop`. See ADR 0004 A4.
+- **`dart format` drift in `cli/`.** Two files did not satisfy the gate this repo documents and runs
+  locally (`dart format --output=none --set-exit-if-changed .` at Dart >= 3.12.0):
+  `cli/lib/src/commands.dart` and `cli/test/upgrade_merge_test.dart`. Both are now formatted, in a
+  separate commit that touches no behaviour and is byte-identical to `dart format` output, so it can be
+  reviewed as pure formatter output. This did **not** make the CI format step red at `main`: per **NF-002**
+  the workflow fails at `dart pub get` (there is no root `pubspec.yaml`) and never reaches the format step.
+  Fixing NF-002 would make this gate enforce itself in CI; that is a separate, infrastructure-level change
+  and is left open deliberately.
+
+- **Verified:** `dart analyze` clean, `dart format --set-exit-if-changed` clean across the whole `cli`
+  package, full hermetic suite green (**113 tests**). The six tests added for #3 and #4 were each confirmed
+  to **fail against the pre-repair engine** and pass after it. The three tests added for the findings above
+  were each confirmed to fail against the engine **without** the corresponding fix — the abbreviated-pin
+  upgrade conflicts on 2 files, the abbreviation-plus-local-edit case reports 0 canonicalized instead of
+  1, and the one-sided-edit upgrade returns `upgradeNoop` — by neutering each fix in place and re-running
+  exactly those tests. (Recorded explicitly because NF-005(a) flags a prior commit for claiming this
+  verification without doing it.)
+- **Follow-ups raised by the independent review of this change**, all pre-existing or documentation-level
+  and none of them a blocker: the delivered branch name is still derived from the *typed* revisions, so
+  `upgrade e37b2a3` and `upgrade e37b2a3fa344…` name different branches and the A1 re-run refusal does not
+  fire between them; `_resolveProductRemote` requires a remote literally named `origin`, which A1 should
+  state explicitly; the product's `pre-push` hooks now run for the first time, since hooks are not cloned
+  into the scratch clone; the `git fetch` that moves the delivered commit into the product repository
+  leaves a `FETCH_HEAD` under its `.git`; and a canonicalized pin file reports itself locally modified
+  against its stale `install_hash`, which is inert today (ADR 0004 A3 records why).
+- **Known, untouched by this change:** `NF-002` — the CI workflow never reaches a test — still stands.
 
 ## Next steps for the framework itself
 

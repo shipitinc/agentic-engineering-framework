@@ -132,10 +132,23 @@ pushed to the product repository as `framework/upgrade-<revisionA>-<revisionB>`.
 
 The upgrade branch is pushed **last**, after the merge and the manifest update have succeeded, so a
 failed upgrade leaves no ref behind. An upgrade branch that already exists is refused rather than
-overwritten, so a re-run cannot silently discard a review in progress. The check probes both
-`refs/heads/<branch>` and `refs/remotes/origin/<branch>`, so a branch that exists only on the remote is
-refused with the same clear message instead of being pushed onto later and failing as a
-non-fast-forward push.
+overwritten, so a re-run cannot silently discard a review in progress. The check probes
+`refs/heads/<branch>` and `refs/remotes/origin/<branch>` locally, and the **remote** with
+`git ls-remote --exit-code --heads` — the remote is where a previous run actually left the branch, and
+a branch that exists only there is refused with the same clear message instead of being pushed over. A
+remote that cannot be probed at all is refused as well: "could not ask" is not evidence that the
+branch is absent.
+
+The push is issued **by the product repository**, against the remote configured in the product's own
+git config. The scratch clone's `origin` is the product's *local path* — git configures the clone
+source as the clone's remote whenever the source is a path — so a push from the scratch clone is a
+local-to-local write: it exits `0`, creates a ref inside the product repository, and reaches nothing
+else. A product with no resolvable remote is refused before any state is created. The delivered commit
+is created in the scratch clone, so its objects are moved into the product repository under
+`refs/aef-upgrade/delivered` before the push and that ref is dropped again on both paths; a failed
+upgrade therefore leaves no ref behind. After the push, the local review branch is created in the
+product repository so the review command below resolves by its bare name — a ref and objects under
+`.git`, never a working-tree or index change.
 
 ### 5. The delivered commit refreshes the manifest
 
@@ -146,11 +159,26 @@ revision B) and `install_hash` is the hash of the merged file (what the product 
 a locally customized artifact stays visible as `source_hash != install_hash`. Artifacts that upstream
 deleted are dropped from the manifest; product files that are not framework-managed are never listed.
 
+`template_inputs` is refreshed, not carried forward. `frameworkRevision` is framework-controlled — it is
+the value the render substituted into the managed provenance lines — so a value left at the original
+instantiation pin is a false record of what the product's artifacts were rendered from. Any other key
+is preserved. Because the renderer never reads `template_inputs` back, recording a product input there
+can never become an input to a later render.
+
 ### 6. The manifest pins the exact revision, not the string that was typed
 
 The requested target may be an abbreviation (`e37b2a3`). The refreshed manifest records the full object
 id the render actually resolved to (`e37b2a3fa344…`), because a pin must be unambiguous for a later
 upgrade to verify and for a reviewer to audit. Branch names keep the short form for readability.
+
+**The render substitutes that same resolved object id.** `{{frameworkRevision}}` is filled with the
+commit id the checkout resolved to, never with the string the caller typed. A managed provenance line
+therefore always carries exactly the identifier `framework.revision` pins, so the next upgrade's base
+render of revision A reproduces the file the product already has, and the pin bump is the clean
+one-sided change it should be. Substituting the typed string instead makes the *first* upgrade of an
+abbreviated target deliver a product whose provenance line disagrees with its own manifest, and the
+*next* upgrade then sees a local edit against that line as well as an upstream change to it — a
+modify/modify conflict on a field whose only correct value was never in dispute.
 
 ### 7. Brick staging artifacts are removed from the delivered tree and reported
 
@@ -195,9 +223,13 @@ best-effort disposal that swallows `FileSystemException` instead of letting it e
 ## Consequences
 
 - `upgrade` becomes executable and testable end-to-end; the hermetic suite covers a clean merge, a
-  conflicting merge, product-state preservation, manifest refresh, re-run refusal (local *and*
-  remote-only branch), the git version gate, the `git add -A -f` defense against a product `.gitignore`,
-  rename-vs-copy classification, stale manifest entries, and scratch cleanup.
+  conflicting merge, product-state preservation, manifest refresh, re-run refusal (local, remote-only
+  *and* real-remote-only branch, plus an unreadable remote), the git version gate, the `git add -A -f`
+  defense against a product `.gitignore`, rename-vs-copy classification, stale manifest entries, and
+  scratch cleanup.
+- Delivery is asserted against a **real bare remote**, not against the product's local refs. Asserting
+  locally cannot distinguish "delivered" from "written into the product repository", which is what let
+  a local-path push pass as delivery.
 - The upgrade tests perform **no network access**: an explicitly selected framework root is
   authoritative, so an absent revision fails from the sandbox framework instead of cloning the canonical
   source. The failure-path test asserts that the reported source is the sandbox, not the canonical URL.
@@ -237,3 +269,161 @@ best-effort disposal that swallows `FileSystemException` instead of letting it e
   preflight dirty-tree guarantee for any subsequent command and leaves no reviewable artifact.
 - **Hand-merging the framework artifacts manually in the product.** Rejected: not reproducible, not
   verifiable, and it silently depends on a human noticing that a generated artifact changed.
+
+## Amendment (2026-10-03) — delivery reaches the remote, and the render carries the resolved pin
+
+Two defects in the delivered engine were reported from outside by a consumer of this framework
+(`shipitinc/agentic-engineering-framework` issues #3 and #4), both reproduced here and both repaired.
+Neither changes a decision in this ADR: §4 already specifies delivery *to the product repository* and a
+remote-only re-run refusal, and §6 already specifies an unambiguous pin. Both repairs make the
+implementation do what those sections say.
+
+### A1 — delivery went to a local path, not to the remote (§4)
+
+The delivered commit was pushed from the scratch clone with `git push origin <sha>:refs/heads/<branch>`.
+Git configures the clone source as the clone's remote whenever the source is a **path**, and the scratch
+clone is created from the product's local path — so `origin` there was the product directory itself. The
+push was a local-to-local write: exit `0`, a new ref inside the product repository, and no ref anywhere on
+the hosting provider. The reported run therefore looked successful while `git ls-remote origin
+'refs/heads/framework/*'` returned nothing.
+
+Three things followed from that single cause:
+
+1. The re-run refusal of §4 — which only works against the **remote** — never saw a branch that a previous
+   run had delivered, so a re-run would push over a review in progress. (Its `refs/remotes/origin/<branch>`
+   probe cannot compensate: it describes what a fetch brought in, not what a push left behind.)
+2. A run that promises the product repository is never mutated wrote a ref into it.
+3. The hermetic suite could not catch it: with a local-path remote, the assertion "the branch is on the
+   remote" was satisfiable by a local-path assertion. The fixtures' remote was not even a git repository.
+
+**Repair.** The push is issued by the **product repository** against the remote in its own config
+(§4 as amended above); the scratch clone's `origin` is now documented as unusable for delivery. The remote
+is probed with `ls-remote` for the re-run refusal, an unprobeable remote is refused rather than assumed
+branch-free, and a product with no resolvable remote is refused before any state exists. The fixtures'
+remote is a **real bare repository**, and delivery is asserted by reading the ref out of it, so a local
+ref cannot satisfy the assertion.
+
+### A2 — the render carried the typed target, not the resolved pin (§6)
+
+`{{frameworkRevision}}` was substituted with the revision **string the caller passed**, while
+`framework.revision` and the refreshed `template_inputs.frameworkRevision` were left at, or computed
+independently of, the resolved object id. Two consequences:
+
+- `template_inputs.frameworkRevision` was carried forward verbatim and stayed frozen at the value the
+  product was instantiated with — a false record of what its artifacts were rendered from.
+- The two spellings made the managed provenance line (`AGENTS.md`,
+  `docs/engineering/WORK_STATE.md`) collide with itself on the **second** upgrade. Upgrade 1 with an
+  abbreviated target delivered `Framework revision: e37b2a3` while the manifest pinned
+  `e37b2a3fa344…`. On upgrade 2 the base render of the pinned revision produced the full id, the product
+  still carried the abbreviation, and the incoming render changed the line again: modify/modify, on a
+  field whose only correct value was never in dispute. Reproduced on the first real product
+  (`TeamHub`) as 2 conflicts confined to the provenance line, and reproduced hermetically as a
+  two-upgrade test.
+
+**Repair.** The render substitutes the **resolved object id** of the checked-out revision (§6 as amended
+above), so the rendered line and the manifest pin are the same immutable identifier by construction, and
+the bump is a clean one-sided change. `template_inputs` is refreshed from that same resolved value rather
+than carried forward. The renderer still derives its inputs from the revision alone and never reads
+`template_inputs`, so the recorded product input cannot become an input to a later render — which also
+closes the concern raised alongside issue #3 about a non-checkout framework source.
+
+A product delivered by the *pre-repair* engine still carries the abbreviated pin. A3 removes the one-time
+conflict that state would otherwise cause.
+
+### A3 — a pin spelled differently is the same pin, not a competing edit
+
+**Context.** A2 fixes the engine going forward, but every product already delivered by the pre-repair
+engine still carries `Framework revision: e37b2a3` against a manifest pinning `e37b2a3fa344…`. On its next
+upgrade the base render produces the full id, the product still carries the abbreviation, and incoming
+changes the same line: modify/modify on a field whose only correct value was never in dispute. Repairing
+the engine therefore leaves every existing product with a conflict it has no reason to adjudicate.
+
+**Decision.** A pin that names the same commit is the same pin. Before the merge, a local file is
+canonicalized to the base render **only** when its content is byte-for-byte equal to the base render's
+content with the pin replaced by another spelling of the same object id — git's own abbreviations, down to
+its 4-character minimum.
+
+The test is whole-file equality, never a partial or fuzzy rewrite, so:
+
+- a file differing from base in any other way is left untouched and merges, or conflicts, exactly as
+  before — including a product that edited the very line the pin is on;
+- no product text is rewritten to make a conflict disappear.
+
+Canonicalized paths are counted and named in the report (`Provenance pin spellings
+canonicalized: N (path, …)`) and in the delivered commit message, so the repair is never silent. The rule
+can only ever be *more* conservative: a file not proven to differ solely by pin spelling cannot be
+canonicalized.
+
+The comparison is made on **bytes**, not decoded text, because a rendered artifact need not be valid
+UTF-8 and decoding one would turn a byte-level rule into a failure for the entire upgrade.
+
+Two consequences worth stating because they are not obvious:
+
+- **Canonicalization cannot change delivered content.** A canonicalizable path's base text carries the
+  pin, and the pin differs between revision A and revision B by construction, so `base != incoming` holds
+  for such a path. It is therefore classified `modified`, and for that classification the merged content
+  is the incoming render whether or not the local side was canonicalized. Canonicalization can only turn a
+  conflict into a clean merge; it cannot alter what the product ends up carrying.
+- **A canonicalized file then reports itself as locally modified.** Its content no longer matches the
+  `install_hash` the pre-repair engine recorded for the abbreviated file, so `ModificationDetector`
+  reports it `locallyModified`. This is inert today — the only consumer of that signal is the
+  deleted-upstream branch, which reports a conflict either way — but it must be revisited if that branch
+  is ever changed.
+
+**Consequence.** A product delivered by the pre-repair engine upgrades with zero conflicts on its
+provenance lines, and its second upgrade is clean with nothing left to canonicalize. A product with a real
+customization in the same file still gets a conflict, with its own text intact, and a product whose
+provenance line names a *different* commit — or an abbreviation shorter than git's 4-character minimum —
+is never canonicalized either.
+
+### A4 — a delivered upgrade whose every change was one-sided upstream was reported as a no-op
+
+**Context.** `UpgradeClassification.modified` is contracted as "paths whose merged content differs from the
+base render — the framework changed them, a local customization survived on top of them, **or both**". The
+implementation contradicted that contract: when the merged content equalled the incoming render, the path
+was recorded only as `unmodified` and never in `modified`. `hasChanges` is derived from `added`, `deleted`,
+`renamed`, `modified` and `conflicts`, so an upgrade whose every change was a one-sided upstream edit —
+nothing of the product's involved — came back as `upgradeNoop` **after** its branch had already been
+pushed to the product's remote. The human was told there was nothing to review about a branch that
+contained real changes. Every upgrade also changes the provenance pin by construction, so the case was
+reachable from any second upgrade.
+
+**Decision.** A path the framework changed counts as `modified` whether or not a local customization also
+survived on it, matching the documented contract. `unmodified` keeps its own meaning — the merged content
+is exactly the incoming render, so nothing of the product's was lost — and the two buckets overlap by
+design, as the class already documents.
+
+**Consequence.** `hasChanges` is true whenever the delivered tree differs from the base render, so a
+delivered branch is never reported as a no-op. A genuinely empty upgrade — every path identical in base
+and incoming — still reports `upgradeNoop`, which remains the correct answer there.
+
+### Verified
+
+`dart analyze` clean; `dart format` clean across the whole `cli` package; the full hermetic suite green
+(113 tests).
+
+Each of the six tests added for issues #3 and #4 was confirmed to **fail** against the pre-repair engine
+and pass after it — the delivery assertion against the bare remote, the no-remote refusal, the
+real-remote-only branch refusal, the unprobeable-remote refusal, the resolved-provenance-pin assertion,
+and the two-upgrade no-conflict regression.
+
+For A3 and A4, each added test was confirmed to fail against the engine without the corresponding change:
+
+- the abbreviated-pin upgrade conflicted on both pin files without A3, and the negative case proves a real
+  local edit in the same file still conflicts with the product's text intact;
+- without A4 a second upgrade whose only edit was one-sided upstream returned `upgradeNoop`.
+
+One A3 test does **not** discriminate, and is claimed only as a characterization: "a pin that is not
+another spelling of the base id is never canonicalized" asserts behaviour that is correct both with and
+without A3. It exists to pin the boundary of the rule, not to prove the fix.
+
+`ls-remote --exit-code` was additionally checked against this environment's git: exit `2` for an absent
+branch in both an empty bare repository and a populated one, which is the contract A1 depends on.
+
+An independent read-only review of the whole change (`APPROVE_WITH_NON_BLOCKING_FOLLOWUP`, no blockers)
+reproduced each of the above, confirmed `89e3474` byte-identical to `dart format` output, and raised the
+corrections folded in here: the byte-level comparison (MEDIUM 2), the boundary test above (MEDIUM 3), the
+removal of an unsupported claim that this drift had made the CI format step red — NF-002 means CI never
+reaches it — the misplaced doc comment (LOW 5), the paths named in the commit message (LOW 7), and the two
+non-obvious A3 consequences recorded above (LOW 4). Its remaining low findings are tracked as follow-ups
+in `WORK_STATE.md`.

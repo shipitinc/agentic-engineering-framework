@@ -30,9 +30,12 @@ vars:
 /// Managed files shipped by the framework revision under test. `AGENTS.md` has
 /// four lines so a test can edit one region locally and a different region
 /// upstream, which is the case git can merge without a conflict.
+/// `PROVENANCE.md` carries the framework's own `{{frameworkRevision}}`
+/// substitution, the managed provenance line the framework renders.
 const _baseFiles = <String, String>{
   'AGENTS.md': 'line one\nshared line\nline three\nline four\n',
   'docs/engineering/WORK_STATE.md': 'base work state\n',
+  'PROVENANCE.md': 'Framework revision: {{frameworkRevision}}\n',
 };
 
 /// The locally customized copy of `AGENTS.md` used by several tests.
@@ -44,32 +47,61 @@ class _Fixture {
     required this.root,
     required this.frameworkRepo,
     required this.productRepo,
+    required this.remote,
     required this.revA,
     required this.revB,
+    this.revC,
   });
 
   final Directory root;
   final Directory frameworkRepo;
   final Directory productRepo;
+
+  /// The product repository's real remote, a bare repository. Delivery must land
+  /// here and nowhere else.
+  final Directory remote;
+
   final String revA;
   final String revB;
+
+  /// A third framework revision, used to prove that a second upgrade of a
+  /// product that already carries a provenance pin is still clean.
+  final String? revC;
+}
+
+/// Creates the product repository's remote as a real bare repository.
+///
+/// A directory that is not a git repository would make delivery untestable: a
+/// push that reached it would fail, and a push that did not would pass unnoticed.
+Directory _createBareRemote(String rootPath, String name) {
+  final remote = Directory('$rootPath/$name')..createSync(recursive: true);
+  final init = _git(remote, ['init', '-q', '--bare', '-b', 'main', '.']);
+  if (init.exitCode != 0) {
+    throw StateError('could not create the fixture remote: ${init.stderr}');
+  }
+  return remote;
 }
 
 /// Builds a framework repo with two revisions and a product repo bootstrapped
 /// from [revA]. [baseFiles] are the `__brick__` files at [revA];
 /// [incomingFiles] are the `__brick__` files added or changed at [revB];
 /// [productFiles] are extra product-owned files added on top of the render.
+///
+/// When [withThirdRevision] is set, [thirdRevisionFiles] are committed as a third
+/// framework revision so a test can run a second, sequential upgrade.
 _Fixture _createFixture({
   Map<String, String> baseFiles = _baseFiles,
   Map<String, String> incomingFiles = const {},
   Map<String, String> productFiles = const {},
   List<String> removedAtIncoming = const [],
   Map<String, String> productOverlays = const {},
+  bool withThirdRevision = false,
+  Map<String, String> thirdRevisionFiles = const {},
 }) {
   final root = Directory.systemTemp.createTempSync('aef_fixture_');
   final frameworkRepo = Directory('${root.path}/framework')..createSync();
   final productRepo = Directory('${root.path}/product')..createSync();
-  final remote = Directory('${root.path}/remote')..createSync();
+  final remote = _createBareRemote(root.path, 'remote.git');
 
   _writeBrick(frameworkRepo, baseFiles);
   _git(frameworkRepo, ['init', '-q', '-b', 'main', '.']);
@@ -93,13 +125,28 @@ _Fixture _createFixture({
   _git(frameworkRepo, ['commit', '-qm', 'framework revision B']);
   final revB = _gitOut(frameworkRepo, ['rev-parse', 'HEAD']);
 
+  String? revC;
+  if (withThirdRevision) {
+    // Always a real change, so the third revision is a distinct commit.
+    _writeBrick(frameworkRepo, <String, String>{
+      ...nextBrick,
+      ...thirdRevisionFiles,
+    });
+    _git(frameworkRepo, ['add', '-A', '-f']);
+    _git(frameworkRepo, ['commit', '-qm', 'framework revision C']);
+    revC = _gitOut(frameworkRepo, ['rev-parse', 'HEAD']);
+  }
+
   // Product repository: revision A rendered, plus the product's own files and
   // its committed local customizations of managed artifacts — which is what a
   // real product looks like, and what the dirty-tree guard permits.
   _git(productRepo, ['init', '-q', '-b', 'main', '.']);
   _configureIdentity(productRepo);
-  _git(productRepo, ['remote', 'add', 'origin', remote.path]);
-  _renderInto(productRepo, baseFiles);
+  _git(productRepo, ['remote', 'add', 'origin', remote.absolute.path]);
+  // Bootstrap substitutes the framework revision with the resolved object id, so
+  // the product's copy of a rendered file carries exactly that. Reproducing it
+  // here is what makes the merge base equal to what the product already has.
+  _renderInto(productRepo, baseFiles, vars: {'frameworkRevision': revA});
   productFiles.forEach(
     (path, content) => _writeFile(productRepo, path, content),
   );
@@ -120,8 +167,10 @@ _Fixture _createFixture({
     root: root,
     frameworkRepo: frameworkRepo,
     productRepo: productRepo,
+    remote: remote,
     revA: revA,
     revB: revB,
+    revC: revC,
   );
 }
 
@@ -150,7 +199,7 @@ _Fixture _createStagingFixture({
   final root = Directory.systemTemp.createTempSync('aef_staging_');
   final frameworkRepo = Directory('${root.path}/framework')..createSync();
   final productRepo = Directory('${root.path}/product')..createSync();
-  final remote = Directory('${root.path}/remote')..createSync();
+  final remote = _createBareRemote(root.path, 'remote.git');
 
   final revAFiles = <String, String>{
     ..._baseFiles,
@@ -183,7 +232,7 @@ _Fixture _createStagingFixture({
   // that renders nothing leaves behind.
   _git(productRepo, ['init', '-q', '-b', 'main', '.']);
   _configureIdentity(productRepo);
-  _git(productRepo, ['remote', 'add', 'origin', remote.path]);
+  _git(productRepo, ['remote', 'add', 'origin', remote.absolute.path]);
   revAFiles.forEach(
     (path, content) => _writeFile(productRepo, '__brick__/$path', content),
   );
@@ -200,6 +249,7 @@ _Fixture _createStagingFixture({
     root: root,
     frameworkRepo: frameworkRepo,
     productRepo: productRepo,
+    remote: remote,
     revA: revA,
     revB: revB,
   );
@@ -223,9 +273,25 @@ void _writeBrick(Directory frameworkRepo, Map<String, String> files) {
   files.forEach((path, content) => _writeFile(brick, path, content));
 }
 
-/// Mirrors what a Mason render of the brick produces in a product repository.
-void _renderInto(Directory target, Map<String, String> files) {
-  files.forEach((path, content) => _writeFile(target, path, content));
+/// Mirrors what a Mason render of the brick produces in a product repository:
+/// every file, with `{{var}}` placeholders substituted the way the CLI
+/// substitutes them.
+void _renderInto(
+  Directory target,
+  Map<String, String> files, {
+  Map<String, String> vars = const {},
+}) {
+  files.forEach(
+    (path, content) => _writeFile(target, path, _substituteVars(content, vars)),
+  );
+}
+
+String _substituteVars(String content, Map<String, String> vars) {
+  var result = content;
+  vars.forEach((name, value) {
+    result = result.replaceAll('{{$name}}', value);
+  });
+  return result;
 }
 
 void _writeFile(Directory root, String relativePath, String content) {
@@ -256,6 +322,42 @@ void _writeProductManifest(
   ).write().let((yaml) {
     File('${productRepo.path}/framework-manifest.yaml').writeAsStringSync(yaml);
   });
+}
+
+/// Reproduces what the pre-repair engine delivered to a real product: the
+/// provenance pin abbreviated in every rendered file, while the manifest keeps
+/// the full object id. [extraEdits] are applied on top, to represent genuine
+/// product customizations of the same files.
+void _abbreviateProductPin(
+  _Fixture fixture, {
+  Map<String, String> appended = const {},
+}) {
+  final shortPin = fixture.revA.substring(0, 7);
+  for (final entity in fixture.productRepo.listSync(
+    recursive: true,
+    followLinks: false,
+  )) {
+    if (entity is! File) continue;
+    final relative = entity.path.substring(fixture.productRepo.path.length + 1);
+    // The manifest is not part of this: it pins the resolved object id, which is
+    // exactly what made the delivered file disagree with it.
+    if (relative == 'framework-manifest.yaml' || relative.startsWith('.git/')) {
+      continue;
+    }
+    final text = entity.readAsStringSync();
+    if (!text.contains(fixture.revA)) continue;
+    entity.writeAsStringSync(text.replaceAll(fixture.revA, shortPin));
+  }
+  appended.forEach((path, text) {
+    final file = File('${fixture.productRepo.path}/$path');
+    file.writeAsStringSync('${file.readAsStringSync()}$text');
+  });
+  _git(fixture.productRepo, ['add', '-A', '-f']);
+  _git(fixture.productRepo, [
+    'commit',
+    '-qm',
+    'product abbreviates its provenance pin',
+  ]);
 }
 
 void _configureIdentity(Directory repo) {
@@ -297,6 +399,28 @@ String _fileAt(String repoPath, String revision, String path) {
 /// Contents of the delivered upgrade branch for [path].
 String _fileOnBranch(_Fixture fixture, String branch, String path) =>
     _fileAt(fixture.productRepo.path, branch, path);
+
+/// The branch name the engine delivers for an `revisionA -> revisionB` upgrade.
+String _branchFor(String revisionA, String revisionB) =>
+    'framework/upgrade-${revisionA.substring(0, 12)}-${revisionB.substring(0, 12)}';
+
+/// Object id [ref] resolves to in the product repository's **remote**, or null
+/// when the remote does not have it.
+///
+/// Read from the bare repository itself rather than through the product, so an
+/// assertion about "the remote has it" cannot be satisfied by a ref that only
+/// exists in the product's local store.
+String? _remoteHead(_Fixture fixture, String ref) {
+  final probe = _git(fixture.remote, ['rev-parse', '--verify', '--quiet', ref]);
+  if (probe.exitCode != 0) return null;
+  return (probe.stdout as String).trim();
+}
+
+/// Accepts the delivered upgrade branch into the product's `main`, the way a
+/// human does after reviewing it.
+void _acceptUpgrade(_Fixture fixture, String branch) {
+  _gitOut(fixture.productRepo, ['merge', '--ff-only', branch]);
+}
 
 List<Directory> _scratchDirs() => Directory.systemTemp
     .listSync()
@@ -381,6 +505,105 @@ void main() {
         File('${fixture.productRepo.path}/AGENTS.md').readAsStringSync(),
         _customizedAgents,
       );
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test(
+    'the upgrade branch is delivered to the product real remote',
+    () async {
+      // The scratch clone's origin is the product's *local path*, so a push from
+      // there exits 0, writes a ref into the product repository, and reaches the
+      // hosting provider of nothing. Asserting against the product's local store
+      // cannot tell the two apart; asserting against the real remote can.
+      final fixture = _createFixture(
+        incomingFiles: const {
+          'docs/engineering/ROADMAP.md': 'upstream roadmap\n',
+        },
+      );
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      final branch = _branchFor(fixture.revA, fixture.revB);
+
+      final result = await _runUpgrade(fixture);
+
+      expect(
+        result.family,
+        ResultFamily.upgradeReadyForReview,
+        reason: 'upgrade result: ${result.message} ${result.blockers}',
+      );
+
+      // The remote really is a repository, so "it is not there" is evidence.
+      expect(
+        _gitOut(fixture.remote, ['rev-parse', '--is-bare-repository']),
+        'true',
+      );
+
+      final localHead = _gitOut(fixture.productRepo, ['rev-parse', branch]);
+      expect(
+        _remoteHead(fixture, 'refs/heads/$branch'),
+        localHead,
+        reason:
+            'the delivered commit must exist on the product remote, not only '
+            'in the product local store',
+      );
+      expect(
+        _gitOut(fixture.remote, ['rev-parse', '$localHead^']),
+        _gitOut(fixture.productRepo, ['rev-parse', 'HEAD']),
+        reason:
+            'the delivered commit is one commit on the product real history',
+      );
+      expect(
+        result.message,
+        contains(fixture.remote.absolute.path),
+        reason: 'the result must say where the branch was delivered',
+      );
+
+      // The local review branch exists too, so the review command the result
+      // reports resolves by the bare branch name.
+      expect(_gitOut(fixture.productRepo, ['status', '--porcelain']), isEmpty);
+      expect(
+        _gitOut(fixture.productRepo, ['diff', '--stat', 'HEAD..$branch']),
+        isNotEmpty,
+      );
+
+      // The transient ref the commit travelled under is gone: delivery must not
+      // leave a second, unnameable handle on the merged tree behind.
+      expect(
+        _gitOut(fixture.productRepo, [
+          'for-each-ref',
+          '--format=%(refname)',
+          'refs/aef-upgrade/',
+        ]),
+        isEmpty,
+      );
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test(
+    'a product with no delivery remote is blocked before any work',
+    () async {
+      final fixture = _createFixture();
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      _gitOut(fixture.productRepo, ['remote', 'remove', 'origin']);
+
+      final result = await _runUpgrade(fixture);
+
+      expect(result.family, ResultFamily.upgradeBlocked);
+      expect(result.humanActionRequired, isTrue);
+      expect(result.blockers.join(' '), contains('origin'));
+      // Refused before anything was created: no branch anywhere.
+      final branch = _branchFor(fixture.revA, fixture.revB);
+      expect(
+        _git(fixture.productRepo, [
+          'show-ref',
+          '--verify',
+          '--quiet',
+          'refs/heads/$branch',
+        ]).exitCode,
+        isNot(0),
+      );
+      expect(_remoteHead(fixture, 'refs/heads/$branch'), isNull);
     },
     timeout: _e2eTimeout,
   );
@@ -477,7 +700,6 @@ void main() {
         removedAtIncoming: ['docs/engineering/WORK_STATE.md'],
       );
       addTearDown(() => fixture.root.deleteSync(recursive: true));
-
       final result = await _runUpgrade(fixture);
 
       expect(result.family, ResultFamily.upgradeReadyForReview);
@@ -690,6 +912,88 @@ void main() {
     timeout: _e2eTimeout,
   );
 
+  test(
+    'an upgrade branch that exists on the real remote is refused up front',
+    () async {
+      // The state a real product is in after a previous run: the branch was
+      // delivered, so it is on the remote, and nothing local refers to it. Probing
+      // only local refs cannot see this, and the push would then land on top of a
+      // review that is still in progress.
+      final fixture = _createFixture();
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      final branch = _branchFor(fixture.revA, fixture.revB);
+
+      // Pushed to the remote by URL: a push by URL leaves no ref of its own behind in
+      // the product, which is exactly the state under test — the branch is only
+      // on the remote.
+      final productHead = _gitOut(fixture.productRepo, ['rev-parse', 'HEAD']);
+      _gitOut(fixture.productRepo, [
+        'push',
+        fixture.remote.absolute.path,
+        '$productHead:refs/heads/$branch',
+      ]);
+      expect(
+        _git(fixture.productRepo, [
+          'show-ref',
+          '--verify',
+          '--quiet',
+          'refs/heads/$branch',
+        ]).exitCode,
+        isNot(0),
+        reason: 'the product itself has no local ref for the branch',
+      );
+      expect(
+        _git(fixture.productRepo, [
+          'show-ref',
+          '--verify',
+          '--quiet',
+          'refs/remotes/origin/$branch',
+        ]).exitCode,
+        isNot(0),
+        reason:
+            'nor is there a remote-tracking ref, so only the remote probe '
+            'can see this branch',
+      );
+
+      final result = await _runUpgrade(fixture);
+
+      expect(result.family, ResultFamily.upgradeBlocked);
+      expect(result.humanActionRequired, isTrue);
+      expect(result.blockers.join(' '), contains('already exists'));
+      expect(result.blockers.join(' '), contains('refs/heads/$branch'));
+      expect(
+        _remoteHead(fixture, 'refs/heads/$branch'),
+        _gitOut(fixture.productRepo, ['rev-parse', 'HEAD']),
+        reason: 'the review in progress must not be overwritten',
+      );
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test(
+    'an unreadable remote is refused rather than assumed branch-free',
+    () async {
+      // "The remote could not be asked" is not evidence that the branch is absent,
+      // and the upgrade's job is to never overwrite a review in progress.
+      final fixture = _createFixture();
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      _gitOut(fixture.productRepo, [
+        'remote',
+        'set-url',
+        'origin',
+        '${fixture.root.path}/does-not-exist',
+      ]);
+
+      final result = await _runUpgrade(fixture);
+
+      expect(result.family, ResultFamily.upgradeBlocked);
+      expect(result.humanActionRequired, isTrue);
+      expect(result.blockers.join(' '), contains('cannot be checked'));
+      expect(result.blockers.join(' '), contains('does-not-exist'));
+    },
+    timeout: _e2eTimeout,
+  );
+
   test('a copied artifact is an add, not a rename of the file that still '
       'exists', () async {
     // Upstream copies the *old* content of AGENTS.md to a new path and edits
@@ -869,6 +1173,305 @@ void main() {
         FrameworkManifest.parse(manifest).revision,
         fixture.revB,
         reason: 'the product must be pinned to an unambiguous object id',
+      );
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test('the rendered provenance pin is the resolved revision, and the manifest '
+      'records it', () async {
+    // An abbreviated target must not become the provenance identifier the
+    // product's artifacts carry: the rendered line has to be the same immutable
+    // object id the manifest pins, whatever was typed on the command line.
+    final fixture = _createFixture(
+      incomingFiles: const {
+        'docs/engineering/ROADMAP.md': 'upstream roadmap\n',
+      },
+    );
+    addTearDown(() => fixture.root.deleteSync(recursive: true));
+
+    await _runUpgrade(fixture, targetRevision: fixture.revB.substring(0, 12));
+    final branch = _branchFor(fixture.revA, fixture.revB);
+
+    expect(
+      _fileOnBranch(fixture, branch, 'PROVENANCE.md'),
+      'Framework revision: ${fixture.revB}\n',
+      reason: 'the render must carry the resolved object id',
+    );
+
+    final manifest = FrameworkManifest.parse(
+      _fileOnBranch(fixture, branch, 'framework-manifest.yaml'),
+    );
+    expect(manifest.revision, fixture.revB);
+    expect(
+      manifest.templateInputs['frameworkRevision'],
+      fixture.revB,
+      reason:
+          'template_inputs records the value the render substituted, so a '
+          'carried-forward instantiation pin is not a false record',
+    );
+  }, timeout: _e2eTimeout);
+
+  test(
+    'a second upgrade of a product that already carries a pin is clean',
+    () async {
+      // The sequence that produced the conflict this replaces: upgrade with an
+      // abbreviated target, accept it, then upgrade again. The provenance line has
+      // exactly one legitimate change per upgrade — a one-sided pin bump. It
+      // conflicts only if the delivered line is not the same identifier the next
+      // base render resolves to.
+      final fixture = _createFixture(
+        withThirdRevision: true,
+        thirdRevisionFiles: const {
+          'docs/engineering/UPGRADE_NOTES.md': 'notes at revision C\n',
+        },
+      );
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      final revC = fixture.revC!;
+
+      final first = await _runUpgrade(
+        fixture,
+        targetRevision: fixture.revB.substring(0, 12),
+      );
+      expect(
+        first.family,
+        ResultFamily.upgradeReadyForReview,
+        reason: 'first upgrade: ${first.message} ${first.blockers}',
+      );
+      _acceptUpgrade(fixture, _branchFor(fixture.revA, fixture.revB));
+      expect(
+        File('${fixture.productRepo.path}/PROVENANCE.md').readAsStringSync(),
+        'Framework revision: ${fixture.revB}\n',
+        reason: 'the accepted branch is what the product now carries',
+      );
+
+      final second = await _runUpgrade(
+        fixture,
+        targetRevision: revC.substring(0, 12),
+      );
+
+      expect(
+        second.family,
+        ResultFamily.upgradeReadyForReview,
+        reason: 'second upgrade: ${second.message} ${second.blockers}',
+      );
+      expect(second.blockers.join('\n'), isNot(contains('conflict')));
+      expect(second.message, contains('Conflicts: 0'));
+      expect(
+        _fileOnBranch(fixture, _branchFor(fixture.revB, revC), 'PROVENANCE.md'),
+        'Framework revision: $revC\n',
+      );
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test(
+    'an upgrade whose every change is a one-sided upstream edit is not a no-op',
+    () async {
+      // The delivered branch is real work in this case, so reporting a no-op
+      // after pushing it would tell the human there is nothing to review.
+      final fixture = _createFixture(
+        withThirdRevision: true,
+        thirdRevisionFiles: const {
+          'docs/engineering/WORK_STATE.md': 'work state at revision C\n',
+        },
+      );
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      final revC = fixture.revC!;
+      await _runUpgrade(fixture, targetRevision: fixture.revB);
+      _acceptUpgrade(fixture, _branchFor(fixture.revA, fixture.revB));
+
+      final result = await _runUpgrade(fixture, targetRevision: revC);
+
+      expect(
+        result.family,
+        ResultFamily.upgradeReadyForReview,
+        reason: '${result.message} ${result.blockers}',
+      );
+      expect(
+        result.message,
+        contains('Modified: 2'),
+        reason:
+            'both one-sided edits count: the work state text, and the '
+            'provenance pin, which changes on every upgrade by construction',
+      );
+      expect(
+        _fileOnBranch(
+          fixture,
+          _branchFor(fixture.revB, revC),
+          'docs/engineering/WORK_STATE.md',
+        ),
+        'work state at revision C\n',
+      );
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test(
+    'a product whose pin was delivered abbreviated upgrades without conflict',
+    () async {
+      // What a consumer actually hit: the delivered file said `e37b2a3` while
+      // the manifest pinned `e37b2a3fa344…`. Both name one commit, so this is
+      // not a competing edit and must not be adjudicated as one.
+      const pinFiles = <String, String>{
+        'PROVENANCE.md': 'Framework revision: {{frameworkRevision}}\n',
+        'docs/engineering/PIN.md':
+            'Framework revision: {{frameworkRevision}}\n',
+      };
+      final fixture = _createFixture(
+        baseFiles: {..._baseFiles, ...pinFiles},
+        withThirdRevision: true,
+        thirdRevisionFiles: const {'CHANGELOG.md': 'revision C\n'},
+      );
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      final revC = fixture.revC!;
+      _abbreviateProductPin(fixture);
+      expect(
+        File('${fixture.productRepo.path}/PROVENANCE.md').readAsStringSync(),
+        'Framework revision: ${fixture.revA.substring(0, 7)}\n',
+        reason: 'the fixture must reproduce the abbreviated delivery',
+      );
+
+      final result = await _runUpgrade(fixture, targetRevision: fixture.revB);
+
+      expect(
+        result.family,
+        ResultFamily.upgradeReadyForReview,
+        reason: '${result.message} ${result.blockers}',
+      );
+      expect(result.blockers.join('\n'), isNot(contains('conflict')));
+      expect(result.message, contains('Conflicts: 0'));
+      expect(
+        result.message,
+        contains('Provenance pin spellings canonicalized: 2'),
+        reason: 'the normalization is reported, never silent',
+      );
+      final branch = _branchFor(fixture.revA, fixture.revB);
+      for (final path in pinFiles.keys) {
+        expect(
+          _fileOnBranch(fixture, branch, path),
+          'Framework revision: ${fixture.revB}\n',
+          reason: '$path carried the pin abbreviated and must now carry the id',
+        );
+      }
+      // The next upgrade must be clean too: the delivered tree is the one the
+      // next base render reproduces exactly.
+      _acceptUpgrade(fixture, branch);
+      final second = await _runUpgrade(
+        fixture,
+        targetRevision: revC.substring(0, 12),
+      );
+      expect(
+        second.family,
+        ResultFamily.upgradeReadyForReview,
+        reason: 'follow-up upgrade: ${second.message} ${second.blockers}',
+      );
+      expect(second.message, contains('Conflicts: 0'));
+      expect(
+        second.message,
+        contains('Provenance pin spellings canonicalized: 0'),
+        reason: 'after the repair the pin is spelled the one canonical way',
+      );
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test(
+    'a pin that is not another spelling of the base id is never canonicalized',
+    () async {
+      // The rule is "another spelling of the SAME object id", not "any hex
+      // string". A product that points the line at a different commit, or at an
+      // abbreviation shorter than git's 4-character minimum, is making a claim
+      // this must not silently overwrite.
+      final fixture = _createFixture(
+        baseFiles: {
+          ..._baseFiles,
+          'PROVENANCE.md': 'Framework revision: {{frameworkRevision}}\n',
+          'docs/engineering/PIN.md':
+              'Framework revision: {{frameworkRevision}}\n',
+        },
+      );
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      final foreignPin = 'deadbee${fixture.revA.substring(8)}';
+      File(
+        '${fixture.productRepo.path}/PROVENANCE.md',
+      ).writeAsStringSync('Framework revision: $foreignPin\n');
+      File(
+        '${fixture.productRepo.path}/docs/engineering/PIN.md',
+      ).writeAsStringSync(
+        'Framework revision: ${fixture.revA.substring(0, 3)}\n',
+      );
+      _git(fixture.productRepo, ['add', '-A', '-f']);
+      _git(fixture.productRepo, [
+        'commit',
+        '-qm',
+        'product pins something else',
+      ]);
+
+      final result = await _runUpgrade(fixture, targetRevision: fixture.revB);
+
+      expect(
+        result.family,
+        ResultFamily.upgradeConflict,
+        reason: '${result.message} ${result.blockers}',
+      );
+      expect(
+        result.message,
+        contains('Provenance pin spellings canonicalized: 0'),
+        reason:
+            'neither a foreign object nor a sub-minimum abbreviation counts',
+      );
+      expect(result.message, contains('Conflicts: 2'));
+    },
+    timeout: _e2eTimeout,
+  );
+
+  test(
+    'an abbreviated pin plus a real local edit still conflicts',
+    () async {
+      // The negative case that keeps the normalization honest: it applies only to
+      // a file that differs from base *solely* by how the pin is spelled. One
+      // file has both the abbreviated pin and a genuine local edit, and it must
+      // still come back as a conflict with the product's own text intact.
+      const pinFiles = <String, String>{
+        'PROVENANCE.md': 'Framework revision: {{frameworkRevision}}\n',
+        'docs/engineering/PIN.md':
+            'Framework revision: {{frameworkRevision}}\n',
+      };
+      final fixture = _createFixture(baseFiles: {..._baseFiles, ...pinFiles});
+      addTearDown(() => fixture.root.deleteSync(recursive: true));
+      _abbreviateProductPin(
+        fixture,
+        appended: const {'PROVENANCE.md': 'local edit\n'},
+      );
+
+      final result = await _runUpgrade(fixture, targetRevision: fixture.revB);
+
+      expect(
+        result.family,
+        ResultFamily.upgradeConflict,
+        reason: '${result.message} ${result.blockers}',
+      );
+      expect(
+        result.message,
+        contains('Conflicts: 1'),
+        reason: 'a genuine local edit is still a conflict, not a rewrite',
+      );
+      expect(
+        result.message,
+        contains('Provenance pin spellings canonicalized: 1'),
+        reason:
+            'only the file whose sole difference was the spelling is repaired',
+      );
+      final branch = _branchFor(fixture.revA, fixture.revB);
+      expect(
+        _fileOnBranch(fixture, branch, 'PROVENANCE.md'),
+        contains('local edit'),
+        reason: "the product's own text must survive verbatim",
+      );
+      expect(
+        _fileOnBranch(fixture, branch, 'docs/engineering/PIN.md'),
+        'Framework revision: ${fixture.revB}\n',
       );
     },
     timeout: _e2eTimeout,
