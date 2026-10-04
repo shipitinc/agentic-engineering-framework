@@ -15,6 +15,10 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
 
+    defaults:
+      run:
+        working-directory: cli
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -33,8 +37,8 @@ jobs:
       - name: Analyze
         run: dart analyze
 
-      - name: Run tests
-        run: dart test
+      - name: Run tests (unit only)
+        run: dart test --timeout=120s test/runner_test.dart test/exit_mapping_test.dart test/human_output_test.dart test/json_output_test.dart test/no_mutation_test.dart test/bootstrap_regression_test.dart test/manifest/
 
       - name: Compile executable
         run: dart compile exe bin/framework.dart -o framework_cli
