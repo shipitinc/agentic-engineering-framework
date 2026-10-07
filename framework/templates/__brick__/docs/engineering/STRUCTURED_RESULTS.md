@@ -231,7 +231,7 @@ Every structured result **must** conform to this top-level envelope:
 ```json
 {
   "result_type": "DESIGN_REVIEW",
-  "status": "APPROVED | CHANGES_REQUIRED | HUMAN_DECISION_REQUIRED",
+  "status": "APPROVED | APPROVED_WITH_NON_BLOCKING_FINDINGS | CHANGES_REQUIRED | HUMAN_DECISION_REQUIRED",
   "payload": {
     "revision_id": "STRING",
     "reviewed_head_sha": "STRING",
@@ -241,8 +241,20 @@ Every structured result **must** conform to this top-level envelope:
       {
         "severity": "HIGH | MEDIUM | LOW",
         "category": "DESIGN_SYSTEM | UX_ACCESSIBILITY | INFORMATION_ARCHITECTURE | IMPLEMENTATION_FEASIBILITY | TRACEABILITY | ARTIFACT_VERIFICATION | ASSET_REUSE",
+        "blast_radius": "REACHES_IMPLEMENTATION | EVIDENCE_HYGIENE",
         "description": "STRING",
         "artifact_ref": "STRING"
+      }
+    ],
+    "non_blocking_findings": [
+      {
+        "severity": "HIGH | MEDIUM | LOW",
+        "category": "DESIGN_SYSTEM | UX_ACCESSIBILITY | INFORMATION_ARCHITECTURE | IMPLEMENTATION_FEASIBILITY | TRACEABILITY | ARTIFACT_VERIFICATION | ASSET_REUSE",
+        "blast_radius": "EVIDENCE_HYGIENE",
+        "description": "STRING",
+        "artifact_ref": "STRING",
+        "file_path": "STRING",
+        "line_range": "STRING"
       }
     ],
     "traceability_gaps": ["STRING"],
@@ -267,6 +279,31 @@ Every structured result **must** conform to this top-level envelope:
   "next_actions": ["DCR_PROCESS", "HUMAN_APPROVAL", "DESIGN_CONTRACT_FREEZE", "DESIGN_REVISION"]
 }
 ```
+
+#### Finding disposition by blast radius
+
+Every entry in `findings[]` carries a mandatory `blast_radius`. The classification taxonomy and its
+discriminator — *can this finding change what the implementation does?* — are defined in
+[DESIGN_GOVERNANCE.md](DESIGN_GOVERNANCE.md) § Finding Classification by Blast Radius. Classification
+is by **reach, not by symptom**.
+
+- `REACHES_IMPLEMENTATION` — always blocking. The finding is emitted in `findings[]` and forces
+  `CHANGES_REQUIRED` (or `HUMAN_DECISION_REQUIRED` when it is a genuine Level 2/3 gate).
+- `EVIDENCE_HYGIENE` — **non-blocking by default in a pre-implementation artifact**. Emitted in
+  `non_blocking_findings[]` — the field name and its `description` / `file_path` / `line_range`
+  members mirror § 2 `non_blocking_followups[]` so the two review paths read identically, plus the
+  design-specific `severity` / `category` / `blast_radius` / `artifact_ref` — and the verdict becomes
+  `APPROVED_WITH_NON_BLOCKING_FINDINGS`.
+
+`non_blocking_findings[]` is **recorded, not waived**: every entry is still required before
+Gate D5 (Design Contract Freeze), and the freeze is refused while any is open. `non_blocking`
+governs only the gate between the revision and the freeze, never the freeze itself.
+
+This is a **symmetry repair with `ENGINEERING_REVIEW`**, not a new concept — see § 2
+(`non_blocking_followups[]` + `APPROVE_WITH_NON_BLOCKING_FOLLOWUP`) and
+[QA_GOVERNANCE.md](QA_GOVERNANCE.md) rule 5 (`OPTIONAL` / `NOT_IN_DEFAULT_PIPELINE` rows are
+non-blocking by construction). `APPROVED_WITH_NON_BLOCKING_FINDINGS` normalizes to envelope `status:
+APPROVED_WITH_NON_BLOCKING_FINDINGS`; `HUMAN_DECISION_REQUIRED` is unchanged by this addition.
 
 ### 5. QA_CONTRACT (QA Architect)
 

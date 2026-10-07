@@ -23,6 +23,12 @@ a full review of the whole change unless the evidence genuinely requires it. Fol
 - Confirm each handed-in finding is genuinely resolved (not merely claimed).
 - Check the correction diff for regressions to previously-approved areas.
 - Verify applicable gates still pass at the corrected HEAD.
+- Classify **any new defect the corrections themselves introduced** by blast radius per
+  DESIGN_GOVERNANCE.md § Finding Classification by Blast Radius — `REACHES_IMPLEMENTATION` (a
+  regression that blocks) or `EVIDENCE_HYGIENE` (recorded, non-blocking). Classify by reach, not by
+  symptom: ask whether it can change what the implementation does. A correction-introduced
+  `EVIDENCE_HYGIENE` slip does **not** refuse approval of a loop whose handed-in findings are all
+  closed; it is recorded under `NON_BLOCKING_FINDINGS`.
 
 ## Required final structured result (emit verbatim, filled in)
 
@@ -37,9 +43,16 @@ REGRESSIONS:
 
 BLOCKERS:
 
+NON_BLOCKING_FINDINGS:
+
+BLAST_RADIUS: <for each new defect, REACHES_IMPLEMENTATION | EVIDENCE_HYGIENE>
+
 READY_FOR_MERGE: YES | NO
 ```
 
-Set `READY_FOR_MERGE: YES` only when `RESULT: APPROVE_CORRECTIONS` with no open blockers or
-regressions. If corrections are insufficient, return `DO_NOT_APPROVE_CORRECTIONS` with concrete,
-still-open findings so the correction lane can act again.
+Set `READY_FOR_MERGE: YES` when `RESULT: APPROVE_CORRECTIONS` with every handed-in finding closed and
+no `REACHES_IMPLEMENTATION` regression open. `EVIDENCE_HYGIENE` items — whether pre-existing or
+introduced by the corrections — are recorded under `NON_BLOCKING_FINDINGS` and do not by themselves
+refuse approval; they remain required before their own freeze gate. If corrections are insufficient,
+return `DO_NOT_APPROVE_CORRECTIONS` with concrete, still-open findings so the correction lane can act
+again.

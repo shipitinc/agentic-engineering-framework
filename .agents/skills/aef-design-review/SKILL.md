@@ -1,6 +1,6 @@
 ---
 name: aef-design-review
-description: Read-only independent design review checklist for this framework — verify exact-revision provenance, inspect complete design artifacts, verify traceability, assess design system compliance, UX/accessibility, IA integrity, and implementation feasibility. Use when reviewing Design Briefs or Design Revisions.
+description: Read-only independent design review checklist for this framework — verify exact-revision provenance, inspect complete design artifacts, verify traceability, assess design system compliance, UX/accessibility, IA integrity, and implementation feasibility, and classify every finding by blast radius (REACHES_IMPLEMENTATION | EVIDENCE_HYGIENE). Use when reviewing Design Briefs or Design Revisions.
 ---
 
 # Independent Design Review
@@ -35,13 +35,32 @@ evidence, not permission to skip a gate.
    - Confirm all requirements covered or explicitly gapped.
    - No orphan design elements without requirement trace.
 
-6. **Learning completeness**
+6. **Finding disposition — classify by reach, not by symptom**
+   - Assign every finding a `blast_radius` per DESIGN_GOVERNANCE.md § Finding Classification by
+     Blast Radius. The discriminator is one question: *can this finding change what the
+     implementation does?*
+   - `REACHES_IMPLEMENTATION` → always blocking. A normative rule the code contradicts; a MUST-add
+     snippet that does not compile; an ownership file list that breaks path-ownership serialisation;
+     a privacy/disclosure boundary; a state or ownership transition.
+   - `EVIDENCE_HYGIENE` → non-blocking by default in a pre-implementation artifact. A stale
+     `file:line` range, a stale count, a table preamble that misdescribes its own table, a
+     non-reproducing published command, or a register that disagrees with itself in a non-normative
+     position.
+   - Judge by **position**, not by surface form: a "register that disagrees with itself" is hygiene
+     when it is a count table and `REACHES_IMPLEMENTATION` when it is a traceability row asserting
+     which requirement a normative rule serves. Classifying by symptom is taxonomy gaming.
+   - Never drop a finding silently. A hygiene finding is recorded in `NON_BLOCKING_FINDINGS` and
+     remains **required before Gate D5** (Design Contract Freeze); "non-blocking" governs the gate
+     between the revision and its freeze, never the freeze.
+
+7. **Learning completeness**
    - Confirm durable discoveries were classified and persisted per
      `docs/engineering/LEARNING_POLICY.md`, in the correct authoritative artifact.
 
 ## Verdicts
 
 - `DESIGN_REVIEW_APPROVED` — no blockers; gates pass; provenance verified; risk level agreed.
+- `DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` — no `REACHES_IMPLEMENTATION` finding is open, and one or more `EVIDENCE_HYGIENE` findings are recorded in `NON_BLOCKING_FINDINGS`. Set `CORRECTION_REQUIRED: NO` and `HUMAN_DECISION_REQUIRED: NO`; the recorded findings are carried to Gate D5, where they must be corrected before the freeze.
 - `DESIGN_REVIEW_CHANGES_REQUIRED` — changes needed. Set `CORRECTION_REQUIRED: YES` unless finding is genuine `HUMAN_DECISION_REQUIRED`.
 - `DESIGN_REVIEW_HUMAN_DECISION_REQUIRED` — Level 2/3 risk requiring human approval. Set `HUMAN_DECISION_REQUIRED: YES` and `HUMAN_DECISION_TYPE: DESIGN`.
 

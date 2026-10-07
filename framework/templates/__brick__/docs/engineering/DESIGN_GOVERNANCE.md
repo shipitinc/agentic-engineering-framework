@@ -27,6 +27,9 @@ traceability, and proper separation of concerns between design and implementatio
   - Verify completeness, consistency, feasibility, and alignment with requirements/architecture.
   - Assess design system consistency, UX coherence, accessibility, information architecture integrity.
   - Classify design-change risk levels independently.
+  - Classify every finding by blast radius (`REACHES_IMPLEMENTATION` | `EVIDENCE_HYGIENE`) per
+    [Finding Classification by Blast Radius](#finding-classification-by-blast-radius) — by reach,
+    never by symptom — and record hygiene findings rather than blocking on them.
   - Challenge Design Agent claims with evidence.
 - **Constraints**:
   - **Read-only with respect to design artifacts** — never edits, commits, or pushes design files.
@@ -135,13 +138,71 @@ Design Revision passes all gates (Independent Design Review + Human Approval for
 
 ---
 
+## Finding Classification by Blast Radius
+
+Every Design Review finding must be classified on exactly one dimension before a verdict is
+emitted: **what the finding can reach**. Classification is by **reach, not by symptom**.
+
+**The discriminator, stated plainly: _can this finding change what the implementation does?_**
+
+### `REACHES-IMPLEMENTATION` — always blocking
+
+The finding is true **and** it is a defect in something the implementation will satisfy, obey, or
+be constrained by. It is **always blocking**: it forces `CHANGES_REQUIRED`, or
+`HUMAN_DECISION_REQUIRED` when it is a genuine Level 2/3 product/design decision. Examples:
+
+- A normative rule the code contradicts.
+- A `MUST`-add snippet that does not compile on the pinned SDK.
+- A §ownership file list that omits files the revision's own rules require — this breaks
+  path-ownership serialisation (the `AGENTS.md` concurrency invariant).
+- A privacy or disclosure boundary.
+- A state or ownership transition.
+
+### `EVIDENCE_HYGIENE` — non-blocking at the review gate, required at the freeze
+
+The finding is true **but** it cannot change what the implementation does. In a pre-implementation
+artifact it is **non-blocking by default**: it is recorded in `payload.non_blocking_findings[]` and
+the revision proceeds. Examples:
+
+- A stale `file:line` range inside a quotation.
+- A stale `grep | wc -l` count.
+- A table preamble that misdescribes its own table.
+- A published command that does not reproduce.
+- A register that disagrees with itself **in a non-normative position**.
+
+### Classify by reach, not by symptom
+
+Surface form does not decide the class — **position** does. A "register that disagrees with itself"
+is `EVIDENCE_HYGIENE` when it is a **count table**, and `REACHES-IMPLEMENTATION` when it is a
+**traceability row asserting which requirement a normative rule serves**. Classifying by symptom
+lets the same wrong class be argued both ways; reach is the only sound test, so it is the test that
+is applied.
+
+### Symmetry with `ENGINEERING_REVIEW`
+
+This section is a **symmetry repair, not a new concept**. `ENGINEERING_REVIEW` already carries
+`payload.non_blocking_followups[]` and the verdict `APPROVE_WITH_NON_BLOCKING_FOLLOWUP` (see
+[STRUCTURED_RESULTS.md](STRUCTURED_RESULTS.md) § 2), and [QA_GOVERNANCE.md](QA_GOVERNANCE.md)
+rule 5 already makes `OPTIONAL` / `NOT_IN_DEFAULT_PIPELINE` evidence rows non-blocking by
+construction. `DESIGN_REVIEW` was the sole outlier: it had no non-blocking disposition at all, so a
+design reviewer had no structured way to say "wrong, but it cannot reach the implementation", and
+every true finding had to become `CHANGES_REQUIRED`.
+
+### Non-blocking is deferred, never waived
+
+A finding classified `EVIDENCE_HYGIENE` is **recorded and still required**. The correction
+requirement is **moved onto Gate D5**, not deleted. "Non-blocking" governs the gate **between a
+revision and its freeze** — it never governs the freeze itself.
+
+---
+
 ## Process Gates
 
 ### Gate D1: Design Brief Review
 - **Trigger**: Design Brief created by Design Agent.
 - **Reviewer**: Independent Design Reviewer.
 - **Criteria**: Completeness, traceability to requirements/architecture, feasible scope, clear acceptance criteria.
-- **Output**: `APPROVED` → proceed to Design Exploration; `CHANGES_REQUIRED` → Design Agent revises.
+- **Output**: `APPROVED` → proceed to Design Exploration; `APPROVED_WITH_NON_BLOCKING_FINDINGS` → proceed, with the recorded hygiene findings carried to Gate D5; `CHANGES_REQUIRED` → Design Agent revises.
 
 ### Gate D2: Human Design Brief Approval
 - **Trigger**: Design Brief passes Gate D1.
@@ -154,7 +215,7 @@ Design Revision passes all gates (Independent Design Review + Human Approval for
 - **Reviewer**: Independent Design Reviewer.
 - **Criteria**: Design system compliance, UX/accessibility, IA integrity, implementation feasibility, traceability.
 - **Risk Assessment**: Reviewer independently assesses and records risk level.
-- **Output**: `APPROVED` → proceed to DCR/Human Approval; `CHANGES_REQUIRED` → Design Agent revises.
+- **Output**: `APPROVED` → proceed to DCR/Human Approval; `APPROVED_WITH_NON_BLOCKING_FINDINGS` → proceed, with the recorded hygiene findings carried to Gate D5; `CHANGES_REQUIRED` → Design Agent revises.
 
 ### Gate D4: DCR / Human Approval (per Risk Level)
 - **Level 0**: `AUTO` — no gate, routed to implementation.
@@ -164,7 +225,13 @@ Design Revision passes all gates (Independent Design Review + Human Approval for
 
 ### Gate D5: Design Contract Freeze
 - **Trigger**: Design Revision passes all applicable gates.
-- **Action**: Manager freezes the revision as Design Contract, records provenance.
+- **Precondition — all recorded non-blocking findings corrected**: every finding classified
+  `EVIDENCE_HYGIENE` and recorded in the review's `payload.non_blocking_findings[]` **must be
+  corrected before the freeze**. The freeze is **refused** while any recorded non-blocking finding
+  is still open. "Non-blocking" governs *the gate between the revision and the freeze* — never the
+  freeze itself.
+- **Action**: Manager verifies the precondition, then freezes the revision as Design Contract,
+  records provenance.
 - **Output**: `DESIGN_CONTRACT_FROZEN` — triggers Implementation and QA Contract Definition.
 
 ---
@@ -177,6 +244,9 @@ Design Revision passes all gates (Independent Design Review + Human Approval for
 4. **Substantial UI changes require an approved Design Revision** — implementers must not invent consequential UX.
 5. **Implementation-discovered UI gaps route back via DCR** — not resolved in implementation lane.
 6. **Risk level classification is mandatory** for every Design Revision and DCR.
+6a. **Finding disposition is mandatory** for every Design Review finding — each finding carries a
+`blast_radius` and, when it is `EVIDENCE_HYGIENE`, is recorded in `non_blocking_findings[]` and
+still required before Gate D5. A finding is never silently dropped.
 7. **Design Contract is immutable** once frozen — changes require new Design Revision + DCR.
 8. **Traceability is mandatory** — every design element traces to requirements/architecture.
 9. **Only the Engineering Manager advances lifecycle state** — Design Agent and Reviewer produce results; Manager consumes and transitions.
@@ -205,14 +275,20 @@ Design Agent and Independent Design Reviewer must emit machine-readable structur
 ```json
 {
   "result_type": "DESIGN_REVIEW",
-  "status": "APPROVED" | "CHANGES_REQUIRED" | "HUMAN_DECISION_REQUIRED",
+  "status": "APPROVED" | "APPROVED_WITH_NON_BLOCKING_FINDINGS" | "CHANGES_REQUIRED" | "HUMAN_DECISION_REQUIRED",
   "provenance": { "reviewer_id": "", "revision_id": "", "head_sha": "" },
-  "payload": { "risk_level": 0, "findings": [], "traceability_gaps": [] },
+  "payload": { "risk_level": 0, "findings": [], "non_blocking_findings": [], "traceability_gaps": [] },
   "evidence": { "gate_results": {} },
   "blockers": [],
   "next_actions": ["DCR_PROCESS" | "HUMAN_APPROVAL" | "DESIGN_CONTRACT_FREEZE"]
 }
 ```
+
+Every entry in `findings[]` and `non_blocking_findings[]` carries a
+`blast_radius: REACHES_IMPLEMENTATION | EVIDENCE_HYGIENE`. The authoritative field shapes and the
+reach-based disposition rules are in [STRUCTURED_RESULTS.md](STRUCTURED_RESULTS.md) § 4; the
+classification taxonomy and its discriminator are in
+[Finding Classification by Blast Radius](#finding-classification-by-blast-radius) above.
 
 ---
 
