@@ -1,7 +1,9 @@
 import 'package:args/args.dart';
 
+import 'check/check_citations.dart';
 import 'command_result.dart';
 import 'commands.dart';
+import 'help.dart';
 import 'output_renderer.dart';
 import 'result_family.dart';
 import 'version.dart';
@@ -42,6 +44,11 @@ class FrameworkCliRunner {
           'json',
           negatable: false,
           help: 'Emit deterministic machine-readable JSON output.',
+        )
+        ..addFlag(
+          'help',
+          negatable: false,
+          help: 'Print help for this command, including its threat model.',
         );
       // Add --target for upgrade command
       if (name == CommandNames.upgrade) {
@@ -54,6 +61,30 @@ class FrameworkCliRunner {
       // Add --target for bootstrap command
       if (name == CommandNames.bootstrap) {
         sub.addOption('target', help: 'Target directory to bootstrap into.');
+      }
+      // Citation/command drift checker arguments.
+      if (name == CommandNames.checkCitations) {
+        sub
+          ..addOption(
+            'dir',
+            help:
+                'Directory of design artifacts to check (required for '
+                'check-citations).',
+          )
+          ..addOption(
+            'root',
+            help:
+                'Tree that citations are resolved against (default: current '
+                'directory).',
+          )
+          ..addFlag(
+            'execute-commands',
+            negatable: false,
+            help:
+                'Accepted only to be refused: executing commands embedded in '
+                'untrusted artifacts is not implemented by design. See '
+                '--help for the threat model.',
+          );
       }
       parser.addCommand(name, sub);
     }
@@ -84,6 +115,9 @@ class FrameworkCliRunner {
     }
 
     final useJson = command['json'] as bool;
+    if (command['help'] as bool) {
+      return _renderHelp(command.name!, useJson: useJson);
+    }
     final result = await _dispatch(command.name!, command);
     return _render(result, useJson: useJson);
   }
@@ -102,6 +136,15 @@ class FrameworkCliRunner {
         return runDoctor();
       case CommandNames.version:
         return runVersion();
+      case CommandNames.checkCitations:
+        final dir = command['dir'] as String?;
+        final root = command['root'] as String?;
+        if (command['execute-commands'] as bool) {
+          // Deliberate refusal, not a stub: an explicit blocker is far more
+          // actionable to a caller than silently ignoring the request.
+          return executionRefusedResult();
+        }
+        return await runCheckCitations(dir: dir, root: root);
       default:
         // Unreachable: the parser only accepts registered commands.
         return _usageError("Unknown command '$name'.");
@@ -123,6 +166,22 @@ class FrameworkCliRunner {
     final output = useJson
         ? _renderer.renderJson(result)
         : _renderer.renderHuman(result);
+    return CliInvocation(result: result, output: output);
+  }
+
+  /// Renders `command --help`.
+  ///
+  /// The help text is the [CommandResult.message] of a successful result, so the
+  /// help remains derived from the same domain object as every other rendering;
+  /// with `--json` it is therefore emitted inside the standard envelope rather
+  /// than as unstructured text.
+  CliInvocation _renderHelp(String command, {bool useJson = false}) {
+    final result = CommandResult(
+      family: ResultFamily.commandComplete,
+      command: command,
+      message: helpTextFor(command),
+    );
+    final output = useJson ? _renderer.renderJson(result) : result.message;
     return CliInvocation(result: result, output: output);
   }
 }
