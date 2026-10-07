@@ -53,6 +53,12 @@ READY_FOR_MERGE: YES | NO
 Set `READY_FOR_MERGE: YES` when `RESULT: APPROVE_CORRECTIONS` with every handed-in finding closed and
 no `REACHES_IMPLEMENTATION` regression open. `EVIDENCE_HYGIENE` items — whether pre-existing or
 introduced by the corrections — are recorded under `NON_BLOCKING_FINDINGS` and do not by themselves
-refuse approval; they remain required before their own freeze gate. If corrections are insufficient,
+refuse approval. **The obligation that follows a recorded item is the one belonging to the review
+path it came from.** On the **engineering** path — this lane's `ENGINEERING_REVIEW` — a hygiene item
+rides to merge as a `non_blocking_followups[]` entry, exactly as `APPROVE_WITH_NON_BLOCKING_FOLLOWUP`
+does; the engineering path has **no** freeze gate and does not import design-gate strictness. When a
+focused re-review is dispatched inside a **design** correction loop, the recorded items are instead
+carried as the design `non_blocking_findings[]` open set for Gate D5 (Design Contract Freeze) per
+DESIGN_GOVERNANCE.md. On neither path is a recorded finding dropped. If corrections are insufficient,
 return `DO_NOT_APPROVE_CORRECTIONS` with concrete, still-open findings so the correction lane can act
 again.

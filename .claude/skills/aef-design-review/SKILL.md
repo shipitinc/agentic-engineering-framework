@@ -52,6 +52,11 @@ evidence, not permission to skip a gate.
    - Never drop a finding silently. A hygiene finding is recorded in `NON_BLOCKING_FINDINGS` and
      remains **required before Gate D5** (Design Contract Freeze); "non-blocking" governs the gate
      between the revision and its freeze, never the freeze.
+   - Give each hygiene finding a stable `finding_id` and carry it forward **verbatim** into every
+     later `DESIGN_REVIEW` of the same `revision_id`, recording `resolution: CORRECTED` with a
+     `resolution_ref` once it is fixed. A `finding_id` you do not mention stays **open** — never let
+     absence stand for closure. The Manager determines "still open" from `resolution`, not from
+     absence, per DESIGN_GOVERNANCE.md Gate D5.
 
 7. **Learning completeness**
    - Confirm durable discoveries were classified and persisted per
@@ -60,7 +65,7 @@ evidence, not permission to skip a gate.
 ## Verdicts
 
 - `DESIGN_REVIEW_APPROVED` — no blockers; gates pass; provenance verified; risk level agreed.
-- `DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` — no `REACHES_IMPLEMENTATION` finding is open, and one or more `EVIDENCE_HYGIENE` findings are recorded in `NON_BLOCKING_FINDINGS`. Set `CORRECTION_REQUIRED: NO` and `HUMAN_DECISION_REQUIRED: NO`; the recorded findings are carried to Gate D5, where they must be corrected before the freeze.
+- `DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` — no `REACHES_IMPLEMENTATION` finding is open, and one or more `EVIDENCE_HYGIENE` findings are recorded in `NON_BLOCKING_FINDINGS`, each carrying its `finding_id` and `resolution`. Set `CORRECTION_REQUIRED: NO` and `HUMAN_DECISION_REQUIRED: NO`; the recorded findings are carried to Gate D5 as the open set, where they must be corrected before the freeze.
 - `DESIGN_REVIEW_CHANGES_REQUIRED` — changes needed. Set `CORRECTION_REQUIRED: YES` unless finding is genuine `HUMAN_DECISION_REQUIRED`.
 - `DESIGN_REVIEW_HUMAN_DECISION_REQUIRED` — Level 2/3 risk requiring human approval. Set `HUMAN_DECISION_REQUIRED: YES` and `HUMAN_DECISION_TYPE: DESIGN`.
 

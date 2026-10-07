@@ -190,7 +190,7 @@ member exists; a terminal Manager lane reports `PARK`).
 | Workflow phase | Manager action | Lane | Skill | Consumes | Gate before advancing |
 |----------------|----------------|------|-------|----------|-----------------------|
 | Foundation | research → recommendation → ADR | Manager (self) + `research` lanes | `aef-repository-learning` | requirements artifact | major architecture choice is a human gate |
-| Design governance | brief → review → revisions → review → freeze | `design-agent`, `design-reviewer` | `aef-design-workflow`, `aef-design-review` | `DESIGN_REVISION`, `DESIGN_REVIEW` | `RESULT: DESIGN_REVISION_COMPLETE` + `READY_FOR_INDEPENDENT_DESIGN_REVIEW: YES` → dispatch review; `RESULT: DESIGN_REVIEW_APPROVED` → freeze path; Human Design Brief approval; Human Visual Approval before promotion **only where the project's `WORKFLOW.md` declares that gate** (see below) |
+| Design governance | brief → review → revisions → review → freeze | `design-agent`, `design-reviewer` | `aef-design-workflow`, `aef-design-review` | `DESIGN_REVISION`, `DESIGN_REVIEW` | `RESULT: DESIGN_REVISION_COMPLETE` + `READY_FOR_INDEPENDENT_DESIGN_REVIEW: YES` → dispatch review; `RESULT: DESIGN_REVIEW_APPROVED` \| `RESULT: DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` → freeze path, the latter **carrying its recorded `non_blocking_findings[]` as the Gate D5 open set** (the freeze is refused while any is still open); Human Design Brief approval; Human Visual Approval before promotion **only where the project's `WORKFLOW.md` declares that gate** (see below) |
 | QA strategy | define contract in parallel with design | `qa-architect` | `aef-qa-contract` | `QA_CONTRACT` | `RESULT: QA_CONTRACT_FROZEN` before implementation completion (`RESULT: QA_CONTRACT_CREATED` is not enough) |
 | Implementation | dispatch against Design + QA Contract | `implementer` | `aef-implementation-workflow` | `IMPLEMENTATION_RESULT` | `RESULT: IMPLEMENTED` only when required deterministic validation passes; otherwise `RESULT: IMPLEMENTATION_BLOCKED` |
 | Engineering review | auto-dispatch a **different** session | `engineering-reviewer` | `aef-independent-review` | `ENGINEERING_REVIEW` | `RESULT: APPROVE_FOR_MERGE \| APPROVE_WITH_NON_BLOCKING_FOLLOWUP`; `RESULT: DO_NOT_MERGE` enters §8 instead |
@@ -204,10 +204,11 @@ member exists; a terminal Manager lane reports `PARK`).
 defined by each agent file under `.agents/agents/` and listed per lane in `subtask-report.md`
 § `RESULT:` vocabulary per lane. The child's token is **authoritative**; the child never emits an
 envelope `status`; the **Manager** normalizes the token into the envelope `status` using the table in
-`subtask-report.md` § Result normalization, whose values are only real members of the `Status Values
-(Enum)` table in `docs/engineering/STRUCTURED_RESULTS.md`. A token that is unknown, misspelled, or
-replaced by an envelope `status` makes the result **malformed**: the Manager rejects it and the child
-re-emits (see §16).
+`subtask-report.md` § Result normalization, whose values are only real members of the owning
+`result_type`'s own per-type `status` enum in `docs/engineering/STRUCTURED_RESULTS.md`, or of the
+global `Status Values (Enum)` table where that type declares none. A token that is unknown,
+misspelled, or replaced by an envelope `status` makes the result **malformed**: the Manager rejects
+it and the child re-emits (see §16).
 
 **Never fork these skills.** The Manager adds no validation, review, or correction rules of its own;
 it delegates to the existing skills and enforces their gates.

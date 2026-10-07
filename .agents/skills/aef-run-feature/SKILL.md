@@ -89,8 +89,9 @@ Every transition below keys on the **child agent's own `RESULT:` token** — eac
 vocabulary, so no composite or invented token is ever used.
 
 - `RESULT: DESIGN_REVISION_COMPLETE` + `READY_FOR_INDEPENDENT_DESIGN_REVIEW: YES` → auto `design-reviewer`.
-- `RESULT: DESIGN_REVIEW_APPROVED` + risk level 0/1 → auto Design Contract freeze (Level 1 with notification).
-- `RESULT: DESIGN_REVIEW_APPROVED` + risk level 2/3 → `HUMAN_DECISION_REQUIRED` (DESIGN type).
+- `RESULT: DESIGN_REVIEW_APPROVED` or `RESULT: DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` + risk level 0/1 → auto Design Contract freeze (Level 1 with notification).
+- `RESULT: DESIGN_REVIEW_APPROVED` or `RESULT: DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` + risk level 2/3 → `HUMAN_DECISION_REQUIRED` (DESIGN type).
+- `RESULT: DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` → carry the emitted `non_blocking_findings[]` forward as the Gate D5 (Design Contract Freeze) open set; the freeze is refused while any entry is still open. The finding is deferred to the freeze, never waived.
 - `RESULT: DESIGN_REVIEW_CHANGES_REQUIRED` → auto `design-agent` correction → auto `design-reviewer` re-review.
 - `RESULT: DESIGN_REVIEW_HUMAN_DECISION_REQUIRED` → `HUMAN_DECISION_REQUIRED` (DESIGN type).
 - `RESULT: QA_CONTRACT_FROZEN` + `RESULT: IMPLEMENTED` → auto `engineering-reviewer`.

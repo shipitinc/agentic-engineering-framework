@@ -31,7 +31,7 @@ verbatim. This template never defines, renames, or extends that vocabulary — t
 
 | `TASK_TYPE` | Emitting agent | `RESULT:` tokens (verbatim from the agent file) |
 |-------------|----------------|-----------------------------------------------|
-| `design-review` | `design-reviewer` — `.agents/agents/design-reviewer.md` | `DESIGN_REVIEW_APPROVED` \| `DESIGN_REVIEW_CHANGES_REQUIRED` \| `DESIGN_REVIEW_HUMAN_DECISION_REQUIRED` |
+| `design-review` | `design-reviewer` — `.agents/agents/design-reviewer.md` | `DESIGN_REVIEW_APPROVED` \| `DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` \| `DESIGN_REVIEW_CHANGES_REQUIRED` \| `DESIGN_REVIEW_HUMAN_DECISION_REQUIRED` |
 | `implement` | `implementer` — `.agents/agents/implementer.md` | `IMPLEMENTED` \| `IMPLEMENTATION_BLOCKED` |
 | `review` | `engineering-reviewer` — `.agents/agents/engineering-reviewer.md` | `APPROVE_FOR_MERGE` \| `APPROVE_WITH_NON_BLOCKING_FOLLOWUP` \| `DO_NOT_MERGE` |
 | `correct` | `correction-implementer` — `.agents/agents/correction-implementer.md` | `CORRECTION_COMPLETE` \| `CORRECTION_BLOCKED` |
@@ -82,6 +82,7 @@ satisfied, because it is an open item for the contract owner.
 | `design-agent` | `DESIGN_REVISION_COMPLETE` | `DESIGN_REVISION` | `COMPLETE` | — |
 | `design-agent` | `DESIGN_REVISION_BLOCKED` | `DESIGN_REVISION` | `BLOCKED` | `blockers[]` |
 | `design-reviewer` | `DESIGN_REVIEW_APPROVED` | `DESIGN_REVIEW` | `APPROVED` | — |
+| `design-reviewer` | `DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` | `DESIGN_REVIEW` | `APPROVED_WITH_NON_BLOCKING_FINDINGS` | `non_blocking_findings[]` populated, each entry carrying `finding_id` + `resolution`; `CORRECTION_REQUIRED: NO`, `HUMAN_DECISION_REQUIRED: NO`; the recorded findings become the Gate D5 (Design Contract Freeze) open set and the freeze is refused while any is still open — the finding is deferred to the freeze, never waived |
 | `design-reviewer` | `DESIGN_REVIEW_CHANGES_REQUIRED` | `DESIGN_REVIEW` | `CHANGES_REQUIRED` | `CORRECTION_REQUIRED: YES` |
 | `design-reviewer` | `DESIGN_REVIEW_HUMAN_DECISION_REQUIRED` | `DESIGN_REVIEW` | `HUMAN_DECISION_REQUIRED` | `HUMAN_DECISION_REQUIRED: YES`, `HUMAN_DECISION_TYPE: DESIGN` |
 | `qa-architect` | `QA_CONTRACT_CREATED` | `QA_CONTRACT` | `CREATED` | awaits the contract review/freeze gate |

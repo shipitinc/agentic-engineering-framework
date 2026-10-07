@@ -248,13 +248,16 @@ Every structured result **must** conform to this top-level envelope:
     ],
     "non_blocking_findings": [
       {
+        "finding_id": "STRING",
         "severity": "HIGH | MEDIUM | LOW",
         "category": "DESIGN_SYSTEM | UX_ACCESSIBILITY | INFORMATION_ARCHITECTURE | IMPLEMENTATION_FEASIBILITY | TRACEABILITY | ARTIFACT_VERIFICATION | ASSET_REUSE",
         "blast_radius": "EVIDENCE_HYGIENE",
         "description": "STRING",
         "artifact_ref": "STRING",
         "file_path": "STRING",
-        "line_range": "STRING"
+        "line_range": "STRING",
+        "resolution": "OPEN | CORRECTED",
+        "resolution_ref": "STRING"  // Required when resolution=CORRECTED; names the corrected location
       }
     ],
     "traceability_gaps": ["STRING"],
@@ -298,6 +301,18 @@ is by **reach, not by symptom**.
 `non_blocking_findings[]` is **recorded, not waived**: every entry is still required before
 Gate D5 (Design Contract Freeze), and the freeze is refused while any is open. `non_blocking`
 governs only the gate between the revision and the freeze, never the freeze itself.
+
+**Open is determined, never inferred from absence.** Each entry carries a `finding_id` that is
+**stable across emits of the same `revision_id`**: a later `DESIGN_REVIEW` reuses the prior
+`finding_id` verbatim, so the Manager can match carries across emits. An entry closes **only** when a
+later `DESIGN_REVIEW` records that same `finding_id` with `resolution: CORRECTED` and a
+`resolution_ref` naming the corrected location. A carried-forward `finding_id` the fresh emit does
+not mention is **still open** — silence is never closure, and `resolution` is what makes "still
+open" determinable rather than inferred. The Manager carries the open set forward from the most
+recent emit for that `revision_id` and refuses Gate D5 while it is non-empty. Correcting a finding
+produces a new Design Revision, and invariant 2 of DESIGN_GOVERNANCE.md already requires an
+Independent Design Review of every revision, so the fresh emit that closes it exists in the
+lifecycle — no new lane is required.
 
 This is a **symmetry repair with `ENGINEERING_REVIEW`**, not a new concept — see § 2
 (`non_blocking_followups[]` + `APPROVE_WITH_NON_BLOCKING_FOLLOWUP`) and

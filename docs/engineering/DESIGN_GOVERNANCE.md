@@ -230,6 +230,16 @@ revision and its freeze** — it never governs the freeze itself.
   corrected before the freeze**. The freeze is **refused** while any recorded non-blocking finding
   is still open. "Non-blocking" governs *the gate between the revision and the freeze* — never the
   freeze itself.
+- **Precondition check — open vs closed is determined, never inferred**: every entry in
+  `non_blocking_findings[]` carries a `finding_id` that is **stable across emits of the same
+  `revision_id`**, so the Manager can match carries forward. The Manager carries the open set
+  forward from the most recent `DESIGN_REVIEW` emit for that `revision_id`; an entry closes **only**
+  when a fresh `DESIGN_REVIEW` records that same `finding_id` with `resolution: CORRECTED` and a
+  `resolution_ref` naming the corrected location. A carried-forward `finding_id` the fresh emit
+  omits is **still open** — absence is never closure, so "no recorded open findings" can never be
+  confused with "none were ever recorded". The correcting emit already exists in the lifecycle: a
+  correction produces a new Design Revision and invariant 2 requires an Independent Design Review of
+  every revision, so no new lane is required to close a finding.
 - **Action**: Manager verifies the precondition, then freezes the revision as Design Contract,
   records provenance.
 - **Output**: `DESIGN_CONTRACT_FROZEN` — triggers Implementation and QA Contract Definition.
@@ -246,7 +256,9 @@ revision and its freeze** — it never governs the freeze itself.
 6. **Risk level classification is mandatory** for every Design Revision and DCR.
 6a. **Finding disposition is mandatory** for every Design Review finding — each finding carries a
 `blast_radius` and, when it is `EVIDENCE_HYGIENE`, is recorded in `non_blocking_findings[]` and
-still required before Gate D5. A finding is never silently dropped.
+still required before Gate D5. A finding is never silently dropped, and it closes only on an
+explicit `resolution: CORRECTED` recorded against its carried-forward `finding_id` in a later
+`DESIGN_REVIEW` of the same `revision_id` — never by absence from a later emit.
 7. **Design Contract is immutable** once frozen — changes require new Design Revision + DCR.
 8. **Traceability is mandatory** — every design element traces to requirements/architecture.
 9. **Only the Engineering Manager advances lifecycle state** — Design Agent and Reviewer produce results; Manager consumes and transitions.
