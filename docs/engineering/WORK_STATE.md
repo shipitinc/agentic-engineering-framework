@@ -550,9 +550,154 @@ Three further defects were found while repairing those two, all in the same engi
   against its stale `install_hash`, which is inert today (ADR 0004 A3 records why).
 - **Known, untouched by this change:** `NF-002` — the CI workflow never reaches a test — still stands.
 
+## Issue #5 — design-review finding disposition + citation checker (merged, not pushed)
+
+Resolved from consumer issue `shipitinc/agentic-engineering-framework#5` (teamhub, 2026-10-07). Two
+work items, disjoint ownership, each through the full independent-review loop.
+
+- **Lane A — reach-based finding disposition.** `b5c3b3e` → `5a6c60e` on
+  `issue5-disposition-correction`. `engineering-reviewer` → **`DO_NOT_MERGE`** (1 BLOCKER, 2 MEDIUM,
+  3 LOW) → correction → `focused-reviewer` → **`APPROVE_CORRECTIONS`**, no blockers, no regressions.
+  Zero Dart.
+- **Lane B — `check-citations` CLI.** `1d56782` → `ee896b0` → `80dd37c` on
+  `issue5-checker-correction`. `engineering-reviewer` → **`DO_NOT_MERGE`** (0 blockers, 1 HIGH,
+  2 MEDIUM, 5 LOW) → correction → `focused-reviewer` → **`DO_NOT_APPROVE_CORRECTIONS`** (the L4 safety
+  guard was *vacuous*) → correction → `focused-reviewer` → **`APPROVE_CORRECTIONS`**.
+  This is the bounded loop's second and final cycle; it closed on the second pass.
+- **Integrated:** `main` `7c2d979` → `bd93ef0` (fast-forward to Lane A, then `--no-ff` merge for Lane B
+  so both sets of reviewed commits survive verbatim). No squash, no force, no amend; both lane chains
+  intact and every reviewed commit an ancestor of `main` with its original object id.
+- **Gates at `bd93ef0`:** `dart format` clean (36 files, 0 changed), `dart analyze` no issues,
+  `dart test` **170/170**, `dart compile exe` succeeds; adapter drift `PLATFORM_ADAPTERS_IN_SYNC: 138`
+  (brick 57 / root 81) exit 0; root `.agents/` mirror byte-identical to brick canonical; both
+  `STRUCTURED_RESULTS.md` copies byte-identical.
+- **Not pushed.** Integration is complete and verified; the push is a separate human-authorized step.
+
+### What changed, and why
+
+- **`DESIGN_REVIEW` gained a non-blocking finding disposition.** It previously had **none at all** —
+  `payload.findings[]` + `blockers[]` and a three-member status enum — so a design reviewer had no
+  structured way to say "true, but cannot change what the implementation does", and every finding had
+  to become `CHANGES_REQUIRED`, forcing a correction lane then a fresh review lane.
+  `ENGINEERING_REVIEW` already had `non_blocking_followups[]` + `APPROVE_WITH_NON_BLOCKING_FOLLOWUP`, and
+  `QA_GOVERNANCE.md` rule 5 already made `OPTIONAL` / `NOT_IN_DEFAULT_PIPELINE` rows non-blocking by
+  construction. **`DESIGN_REVIEW` was the sole outlier**, so this is a symmetry repair, not a new concept.
+- **Additive:** `blast_radius: REACHES_IMPLEMENTATION | EVIDENCE_HYGIENE` per finding;
+  `payload.non_blocking_findings[]`; status member `APPROVED_WITH_NON_BLOCKING_FINDINGS`; agent token
+  `DESIGN_REVIEW_APPROVED_WITH_NON_BLOCKING_FINDINGS` with consumption paths at all four sites
+  (`subtask-report.md` role row + normalization table, `aef-orchestrator` phase row, `aef-run-feature`
+  routing). `schema_version` stays `1.0`; the global `Status Values (Enum)` table was deliberately
+  **not** expanded (see NF-001 below).
+- **Classification is by reach, not by symptom** — the discriminator is *"can this finding change what
+  the implementation does?"* A "register that disagrees with itself" is hygiene in a **count table** and
+  `REACHES_IMPLEMENTATION` in a **traceability row asserting which requirement a normative rule serves**.
+  The consumer's original list was symptom-shaped and would have been gameable.
+- **Human Decision `313e9aab-2eba-48c8-9e61-a969b0adbc51` (`.decisions/`, type `DESIGN`, RESOLVED as
+  `OPTION_A`)** took the gate-relaxation decision. Its load-bearing condition — *non-blocking means
+  RECORDED AND STILL REQUIRED before Design Contract freeze, never silently dropped* — is enforced by a
+  **Gate D5 precondition** plus a **determination mechanism**: each `non_blocking_findings[]` entry
+  carries `finding_id` (stable across emits of the same `revision_id`), `resolution: OPEN | CORRECTED`,
+  and `resolution_ref`; **closure requires a fresh `DESIGN_REVIEW` recording that `finding_id` as
+  `CORRECTED`, and a carried-forward id the fresh emit omits stays OPEN.** Absence is never closure, so
+  "no open findings" can no longer be confused with "none were ever recorded".
+  `HUMAN_DECISION_REQUIRED` is untouched throughout: Level 2/3 DCR approval and human visual approval
+  are unchanged.
+- **`check-citations` is a new read-only CLI command** resolving `file:line` citations and extracting
+  fenced commands. It is the machine enforcement of the citation-drift defect class.
+  **It never executes anything.** There is no subprocess primitive anywhere in `cli/lib/src/check/`, no
+  execution parameter on `runCheckCitations`, and `--execute-commands` is a **total refusal** evaluated
+  *before* `--help` so no flag ordering reaches help, a scan, or exit 0. Both reviews attacked this
+  adversarially — the reviewer proved the guard real by injecting three genuine process primitives into
+  throwaway copies and watching the suite go red, and ran 38 scanner cases against the test's own
+  hand-written Dart lexer. A partial scan reports `drift_found: indeterminate` and **never a false `no`**.
+  Unreadable / non-UTF-8 / UTF-16 input exits **40**, not 255 (that crash was HIGH 1 and is fixed).
+
+### Follow-ups — none is a blocker; all are content changes needing their own review
+
+- **X1 — the design-review checklist names no tool at all.** `check-citations` has **zero** references
+  outside `cli/`; there is no existing slot where a tool belongs. Naming it requires first deciding
+  whether that checklist should name tools. Owner: framework design governance.
+- **X2 — vocabulary mismatch: the checker detects, it cannot classify.** It emits symptom-typed tokens
+  (`CITATION_DRIFT {UNRESOLVED_PATH, OUTSIDE_ROOT, LINE_BEYOND_EOF, INVERTED_RANGE, …}`) and emits **no**
+  `blast_radius` — correctly so, since Lane A's class depends on *position in the artifact*, which the
+  checker does not model. **Neither lane says so.** The risk is a reviewer mapping every finding to
+  `EVIDENCE_HYGIENE` by symptom — the exact reasoning Lane A forbids. Needs a documented derivation rule.
+- **X3 — a third outcome with no legal disposition.** `CITATION_UNVERIFIED`, `ARTIFACT_SKIPPED`, and exit
+  40 ("indeterminate, not a verdict") have no expression in Lane A's two-member `blast_radius` enum;
+  `grep -n indeterminate` across the design-governance docs returns zero. An unreadable artifact cannot
+  be expressed in a `DESIGN_REVIEW` emit.
+- **X4 — measured coverage on this repo's own prose is near-zero.** Running the binary against the
+  integrated tree: `--dir docs` → 12 artifacts, **1** citation, 0 commands; `--dir .` → 32 artifacts,
+  **1** citation, 0 commands. The governance corpus cites paths and §-sections, not `path:line`, so 170
+  green tests say nothing about coverage of this corpus. **Claiming machine enforcement of citation drift
+  is premature until the citation form/corpus is decided.** Owner: framework design governance.
+- **X5 — latent policy tension, not active.** `check-citations` exits `20 PREFLIGHT_POLICY_FAILURE` on
+  any drift, so wiring it into CI would be *stricter* than Gates D1/D3, which permit `EVIDENCE_HYGIENE`
+  findings to be non-blocking. Nothing is wired (`grep -rn "check-citations" .github/` → 0 hits). Revisit
+  if CI is ever wired.
+- **X6 — spelling drift introduced by Lane A, survived two reviews.** The enum token is declared
+  underscored (`STRUCTURED_RESULTS.md:244`) while prose uses the hyphenated form **4** times vs **59**
+  underscored — specifically the section heading `DESIGN_GOVERNANCE.md:148` and prose `:176`, in both
+  root and brick copies. An agent keying on the literal heading token would mis-read it. This is exactly
+  the drift class `check-citations` exists to detect, and the checker cannot see it.
+- **NF-006 (new) — FIFO or device node named `*.md` hangs `readAsStringSync` forever.** Round 1 guarded
+  *exceptions*; a FIFO does not throw, it blocks. **Correctly declined as out of scope**: git refuses to
+  track a FIFO (verified), so it cannot arrive from a fork or PR — it needs a local `mkfifo`. The
+  residual is real: there is **no time or size bound** on reading an artifact. Fix is a
+  `FileSystemEntity.typeSync(p) == file` pre-check. Owner: framework tooling.
+- **NF-007 (new) — `UNLISTABLE` rows are readdir-ordered** while the file list is sorted. Run-to-run
+  determinism holds (verified 5/5 byte-identical incl. a 2000-artifact tree); only order-*independence*
+  is missing. Owner: framework tooling.
+- **NF-008 (new) — `cli/framework_cli` is not gitignored.** The documented build gate
+  (`dart compile exe`) leaves an untracked ~7.6 MB binary that `git add -A` would commit. Reported by
+  both lanes, deliberately not fixed (`.gitignore` was outside their ownership). Owner: framework tooling.
+- **NF-001 (pre-existing, extended).** The per-type-vs-global `Status Values (Enum)` conflict now also
+  covers `APPROVED_WITH_NON_BLOCKING_FINDINGS`. **Harmless** — `DESIGN_REVIEW` declares its own enum and
+  per `subtask-report.md:63-68` that declaration binds — and the global table was deliberately left
+  unexpanded. The conflict set grew by one member. Contract owner.
+- **R1 (non-blocking, from Lane A's re-review) — Gate D5's precondition is prose-enforced, not
+  code-enforced.** There is no JSON-Schema file and no envelope validator anywhere in this framework, and
+  every other gate (Gate D5 itself, QA-contract freeze, risk classification) is expressed the same way.
+  What changed materially is that the obligation now names an actor, a carrier, a trigger field, and
+  evidence. Not a defect of this change.
+- **R2 (non-blocking, from Lane A's re-review) — `focused-reviewer.md`'s design branch is defensive.**
+  It describes a dispatch no current routing rule produces, and does not name the carrying artifact or
+  actor. Correctly scoped to Gate D5; drops nothing.
+
+### Durable lessons persisted by this work (executable, not prose)
+
+- **A guard that reduces its own coverage degrades to a vacuous pass — which is worse than no guard,
+  because it looks like evidence.** The L4 safety guard's comment stripper treated the `/**` inside a
+  `///` doc comment as a block-comment opener, blanking the remainder of `commands.dart`; it silently
+  missed the three process-bearing entry points, and a mutation adding `runBootstrap` to the checker
+  **passed the entire suite**. Fixed by making the scanner a real character lexer *and* asserting the
+  known process-bearing symbols are actually found — **"fix the extraction, not the expectation"** — plus
+  deriving the module set instead of hand-listing it, so coverage cannot be narrowed without failing.
+  Made executable in `cli/test/check_citations_test.dart`.
+- **"Assert the output is sorted" is not a test unless the unsorted order is made implausible.** A
+  48-entry fixture turns a coincidental match into an effective impossibility.
+- **A recursive directory listing is all-or-nothing.** Wrapping `root.listSync(recursive: true)` in a
+  `try` converts a crash into `artifacts_scanned: 0` + `drift_found: no` + exit 0 — a **false green**,
+  strictly worse than the crash it replaced. It needed replacing with a per-directory walk.
+- **`PathAccessException` implements `FileSystemException`**, so `on FileSystemException` catches it.
+- **Mutation specifications should be compile-checked before being handed to a lane** — the brief's
+  literal mutation used a top-level `assert`, which is a keyword error and does not compile.
+- **A new per-type enum member silently inherits a contradiction** with any prose asserting "every
+  normalized status is a global-enum member" — already false for `READY`/`SUCCESS`/`CREATED`/`FROZEN`.
+  Adding the row creates the contradiction; the precedence sentence must be corrected in the same change.
+
 ## Next steps for the framework itself
 
 - **Framework complete** (Phases 3-8). No further phase implementation required.
+- **Push `main` `bd93ef0`** — integration is complete and verified, but the push is human-authorized and
+  has **not** been performed.
+- **Register the new revision** in `cli/lib/src/version.dart`, `cli/tool/compute_brick_hash.dart`, and
+  `_getExpectedBrickHash()` in `cli/lib/src/commands.dart`, so non-test bootstrap resolves it again.
+  The release hash cannot be computed before the commit exists, which is why it stays outstanding — and
+  this change **does** modify brick content, so the hash must be registered at the next release.
+- **Decide X4/X1 before claiming machine enforcement of citation drift.** The checker works and is
+  reviewed, but it finds ~1 citation in this repository's own governance corpus because that corpus uses
+  a citation form it does not match.
 - **Commit the ADR 0003 / orchestrator change** (independently approved). After the commit, register the
   new revision in `cli/lib/src/version.dart`, `cli/tool/compute_brick_hash.dart`, and
   `_getExpectedBrickHash()` in `cli/lib/src/commands.dart` so non-test bootstrap resolves it again.
