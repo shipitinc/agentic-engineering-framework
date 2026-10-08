@@ -274,7 +274,20 @@ String helpTextFor(String command) {
     ..writeln(
       '  Every key=value pair is space-free except the last, so the line',
     )
-    ..writeln('  tokenizes deterministically.');
+    ..writeln('  tokenizes deterministically.')
+    ..writeln()
+    ..writeln(
+      '  Every artifact=<path> in every row above is relative to the scan root',
+    )
+    ..writeln(
+      '  (the --root this run reports, . for the root itself) — one base for all',
+    )
+    ..writeln(
+      '  of them, including both ARTIFACT_SKIPPED classes. UNREADABLE names the',
+    )
+    ..writeln(
+      '  artifact file; UNLISTABLE names the directory it could not list.',
+    );
   return buffer.toString().trimRight();
 }
 

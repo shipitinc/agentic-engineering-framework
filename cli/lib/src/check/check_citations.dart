@@ -284,7 +284,16 @@ class ArtifactSkipped {
   /// Why the artifact or directory was skipped.
   final ArtifactSkipClass skipClass;
 
-  /// POSIX path relative to the artifact root, `.` for the root itself.
+  /// POSIX path of the artifact or directory, **relative to the scan root** —
+  /// the same base every other `artifact=` in the report uses, so one `--root`
+  /// resolves them all. `.` is the scan root itself.
+  ///
+  /// This used to be relative to the *artifact* root for [ArtifactSkipClass.unlistable]
+  /// and to the scan root for [ArtifactSkipClass.unreadable], so the same run
+  /// emitted two bases for one key and a caller resolving uniformly against
+  /// `--root` mis-resolved every `UNLISTABLE` row. One base, always the scan
+  /// root: `--help` prints `root:` in the same report, and it is the base the
+  /// citation and command rows were already using.
   final String relativePath;
 
   /// A human-readable explanation, free of spaces.
@@ -357,10 +366,13 @@ DriftReport checkArtifacts({
   final commands = <ExtractedCommand>[];
   final commandDrift = <String>[];
   final artifactsSkipped = <ArtifactSkipped>[
-    for (final relative in listing.unlistable)
+    // Rebased onto the scan root here rather than in the walk: the walk itself
+    // needs artifact-root-relative paths to decide what is scannable and which
+    // nested directories to prune, so only the *reported* path moves base.
+    for (final directory in listing.unlistable)
       ArtifactSkipped(
         skipClass: ArtifactSkipClass.unlistable,
-        relativePath: relative,
+        relativePath: _scanRelativeTo(scanRoot, directory),
         detail: 'directory-could-not-be-listed-contents-unchecked',
       ),
   ];
@@ -648,7 +660,7 @@ List<CommandDrift> _checkCommand(
 /// siblings.
 _ArtifactListing _listArtifacts(Directory root) {
   final files = <File>[];
-  final unlistable = <String>[];
+  final unlistable = <Directory>[];
   if (!root.existsSync()) {
     return _ArtifactListing(files: files, unlistable: unlistable);
   }
@@ -661,7 +673,7 @@ void _walkArtifactTree(
   Directory root,
   Directory directory,
   List<File> files,
-  List<String> unlistable,
+  List<Directory> unlistable,
 ) {
   final List<FileSystemEntity> entries;
   try {
@@ -669,7 +681,7 @@ void _walkArtifactTree(
   } on FileSystemException {
     // Guarded, following the CLI's existing idiom. Recorded and stepped over:
     // the rest of the tree is still scanned.
-    unlistable.add(_dirRelativeTo(root, directory));
+    unlistable.add(directory);
     return;
   }
   for (final entity in entries) {
@@ -683,8 +695,7 @@ void _walkArtifactTree(
       // [isScannableArtifact]), so it is pruned here instead of being listed
       // and filtered afterwards. The walk's own starting directory is exempt,
       // which is what keeps `--dir .claude` working.
-      final name = _dirRelativeTo(root, entity).split('/').last;
-      if (name.startsWith('.')) continue;
+      if (_baseNameOf(entity).startsWith('.')) continue;
       _walkArtifactTree(root, entity, files, unlistable);
     }
   }
@@ -697,9 +708,10 @@ class _ArtifactListing {
   /// Scannable artifacts, sorted by relative path.
   final List<File> files;
 
-  /// POSIX paths, relative to the artifact root, of directories that could not
-  /// be listed.
-  final List<String> unlistable;
+  /// The directories that could not be listed, as the directories themselves:
+  /// they are rebased onto the scan root when the skip row is rendered, so the
+  /// walk never has to know which base the report uses.
+  final List<Directory> unlistable;
 }
 
 String _pathRelativeTo(Directory root, String path) {
@@ -714,11 +726,19 @@ String _pathRelativeTo(Directory root, String path) {
 String _relativeTo(Directory root, File file) =>
     _pathRelativeTo(root, file.path);
 
-/// The directory [directory] relative to [root], `.` for the root itself.
-String _dirRelativeTo(Directory root, Directory directory) {
-  final relative = _pathRelativeTo(root, directory.path);
-  return relative == normalizeFilesystemPath(root.path) ? '.' : relative;
+/// [directory] as a POSIX path relative to the scan root, `.` for the root
+/// itself.
+///
+/// The single base for every `artifact=` in the report.
+String _scanRelativeTo(Directory root, Directory directory) {
+  final candidate = normalizeFilesystemPath(directory.path);
+  if (candidate == normalizeFilesystemPath(root.path)) return '.';
+  return _pathRelativeTo(root, candidate);
 }
+
+/// The last path segment of [directory], as a POSIX name.
+String _baseNameOf(Directory directory) =>
+    normalizeFilesystemPath(directory.path).split('/').last;
 
 /// The directory part of [relativePath], using `.` for a top-level path.
 String _dirNameOf(String relativePath) {

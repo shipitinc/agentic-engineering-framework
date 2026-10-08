@@ -938,7 +938,13 @@ void main() {
           hasLength(1),
           reason: 'the unlistable directory must be reported',
         );
-        expect(unlistable.single, contains('artifact=locked'));
+        expect(
+          unlistable.single,
+          contains('artifact=docs/locked'),
+          reason:
+              'the UNLISTABLE row names a directory, relative to the scan root '
+              '— the same base every other artifact= in the report uses',
+        );
         // The whole point: a directory that cannot be listed must not take the
         // rest of the tree's report down with it.
         expect(
@@ -1026,6 +1032,83 @@ void main() {
       expect(invocation.result.message, isNot(contains('drift_found: yes')));
     });
 
+    test(
+      'every skip class resolves artifact= against the one scan root',
+      () async {
+        // One run that produces *both* classes, because the defect this pins was
+        // only visible across them: `UNREADABLE` rendered scan-root-relative and
+        // `UNLISTABLE` artifact-root-relative, so a caller resolving `artifact=`
+        // uniformly against `--root` mis-resolved every `UNLISTABLE` row — and
+        // nothing in the report said which base each row used.
+        File(
+          '${root.path}/docs/blob.md',
+        ).writeAsBytesSync(<int>[0xC3, 0x28, 0xFF]);
+        final Directory locked = Directory('${root.path}/docs/locked')
+          ..createSync(recursive: true);
+        File('${locked.path}/inner.md').writeAsStringSync('# Inner\n');
+        Process.runSync('chmod', <String>['000', locked.path]);
+        addTearDown(
+          () => Process.runSync('chmod', <String>['755', locked.path]),
+        );
+
+        final invocation = await run(check('docs'));
+
+        final unreadable = artifactSkippedOf(
+          invocation,
+          ArtifactSkipClass.unreadable,
+        );
+        final unlistable = artifactSkippedOf(
+          invocation,
+          ArtifactSkipClass.unlistable,
+        );
+        expect(
+          unreadable,
+          hasLength(1),
+          reason: invocation.result.blockers.join('\n'),
+        );
+        expect(
+          unlistable,
+          hasLength(1),
+          reason: invocation.result.blockers.join('\n'),
+        );
+
+        // The literal assertion, so the base is pinned by value and not merely
+        // by "the path contains a slash somewhere".
+        expect(
+          unreadable.single,
+          'ARTIFACT_SKIPPED UNREADABLE artifact=docs/blob.md '
+          'detail=artifact-could-not-be-read-as-utf8-text',
+        );
+        expect(
+          unlistable.single,
+          'ARTIFACT_SKIPPED UNLISTABLE artifact=docs/locked '
+          'detail=directory-could-not-be-listed-contents-unchecked',
+        );
+
+        // The property, stated over the whole report: every `artifact=` in every
+        // row resolves against the scan root, so the set of paths a caller must
+        // resolve is exactly the set of report keys. A `UNLISTABLE` row names a
+        // directory, so this accepts either entity type.
+        final keys = RegExp(
+          r'artifact=(\S+)',
+        ).allMatches(invocation.result.blockers.join('\n'));
+        expect(keys, isNotEmpty, reason: 'the fixture must produce skip rows');
+        for (final match in keys) {
+          final artifact = match.group(1)!;
+          expect(
+            FileSystemEntity.typeSync('${root.path}/$artifact'),
+            isNot(FileSystemEntityType.notFound),
+            reason:
+                'artifact=$artifact does not resolve against --root '
+                '(${root.path}); every artifact= key must use the one base',
+          );
+        }
+      },
+      skip: Platform.isWindows
+          ? 'POSIX file modes; Windows cannot express mode 000 this way'
+          : null,
+    );
+
     test('the skip rows are machine-readable in --json too', () async {
       File('${root.path}/docs/blob.md').writeAsBytesSync(<int>[0xC3, 0x28]);
 
@@ -1067,7 +1150,7 @@ void main() {
         ).toWireLine(),
         ArtifactSkipped(
           skipClass: ArtifactSkipClass.unlistable,
-          relativePath: 'locked',
+          relativePath: 'docs/locked',
           detail: 'directory-could-not-be-listed-contents-unchecked',
         ).toWireLine(),
         CitationUnverified(
@@ -1091,6 +1174,187 @@ void main() {
         );
       }
     });
+  });
+
+  group('the artifact walk: symlinks, dot-directories, and order', () {
+    // The per-directory walk replaced `listSync(recursive: true, followLinks:
+    // false)` in round 1 and was verified by differential testing against the
+    // previous binary. Nothing in the suite pinned its *semantics*, so two
+    // mutations survived it: dropping `followLinks: false`, and dropping the
+    // sort. These are the pins.
+
+    test(
+      'a symlink is never followed, in either direction',
+      () async {
+        // Two distinct link shapes, because `followLinks: false` rules them out for
+        // two different reasons: a link to a *file* must not be read as an
+        // artifact, and a link to a *directory* must not be descended into — the
+        // second is also what makes a link loop harmless.
+        final outside = Directory('${root.path}/outside')
+          ..createSync(recursive: true);
+        File('${outside.path}/secret.md').writeAsStringSync('# Secret\n');
+        writeArtifact('docs/real.md', '# Real\n');
+        Link(
+          '${root.path}/docs/linked-file.md',
+        ).createSync('${root.path}/docs/real.md');
+        Link('${root.path}/docs/linked-dir').createSync(outside.path);
+        // A self-referential link: following it would recurse forever.
+        Link('${root.path}/docs/loop').createSync('${root.path}/docs');
+
+        final invocation = await run(check('docs'));
+
+        // `artifacts_scanned: 2` is the real file plus the setUp fixture's
+        // `docs/target.md`.
+        expect(
+          invocation.exitCode,
+          0,
+          reason: invocation.result.blockers.join('\n'),
+        );
+        expect(
+          invocation.result.message,
+          contains('artifacts_scanned: 2'),
+          reason:
+              'only the real files are artifacts; a linked file, a linked '
+              'directory and a link loop are none of them',
+        );
+
+        expect(
+          invocation.result.message,
+          contains('artifacts_skipped: 0'),
+          reason:
+              'not following a link is not a skip, and must not be reported '
+              'as one',
+        );
+        for (final leaked in const ['linked-file.md', 'linked-dir', 'loop']) {
+          expect(
+            invocation.result.blockers.join('\n'),
+            isNot(contains(leaked)),
+            reason: 'a symlink leaked into the report as $leaked',
+          );
+        }
+      },
+      skip: Platform.isWindows ? 'symlink creation needs elevation' : null,
+    );
+
+    test('a readable nested dot-directory contributes nothing', () async {
+      writeArtifact('docs/ok.md', '# Ok\n');
+      writeArtifact('docs/.hidden/secret.md', '# Hidden\n');
+      writeArtifact('docs/.git/nested/deeper.md', '# Deeper\n');
+
+      final invocation = await run(check('docs'));
+
+      expect(
+        invocation.exitCode,
+        0,
+        reason: invocation.result.blockers.join('\n'),
+      );
+      expect(
+        invocation.result.message,
+        contains('artifacts_scanned: 2'),
+        reason: 'a dot-directory is pruned, not merely filtered afterwards',
+      );
+    });
+
+    test(
+      'an unlistable nested dot-directory is never even listed',
+      () async {
+        // The prune itself, not its visible effect. A readable dot-directory would
+        // be filtered anyway, so removing the prune changes nothing observable —
+        // which is why the earlier version of this claim could not be pinned. A
+        // dot-directory that *cannot* be listed separates the two: a pruned
+        // directory is never opened, so it produces no `UNLISTABLE` row, while a
+        // walked-then-filtered one does.
+        writeArtifact('docs/ok.md', '# Ok\n');
+        final Directory hidden = Directory('${root.path}/docs/.hidden')
+          ..createSync(recursive: true);
+        File('${hidden.path}/inner.md').writeAsStringSync('# Inner\n');
+        Process.runSync('chmod', <String>['000', hidden.path]);
+        addTearDown(
+          () => Process.runSync('chmod', <String>['755', hidden.path]),
+        );
+
+        final invocation = await run(check('docs'));
+
+        expect(
+          invocation.exitCode,
+          0,
+          reason:
+              'a pruned directory cannot contribute a skip, so the run is clean: '
+              '${invocation.result.blockers.join('\n')}',
+        );
+        expect(
+          artifactSkippedOf(invocation, ArtifactSkipClass.unlistable),
+          isEmpty,
+        );
+      },
+      skip: Platform.isWindows ? 'POSIX file modes' : null,
+    );
+
+    test('a dot-directory named as --dir is still scanned', () async {
+      // The exemption the prune is built around, pinned so a future "tightening"
+      // cannot silently break `--dir .claude`.
+      writeArtifact('.claude/design.md', '# Design\n');
+
+      final invocation = await run(check('.claude'));
+
+      expect(
+        invocation.exitCode,
+        0,
+        reason: invocation.result.blockers.join('\n'),
+      );
+      expect(
+        invocation.result.message,
+        contains('artifacts_scanned: 1'),
+        reason: 'the walk\'s own starting directory is exempt from the prune',
+      );
+    });
+
+    test(
+      'the artifact order is the sorted order, not the listing order',
+      () async {
+        // 48 artifacts across four directories. `listSync` returns whatever the
+        // filesystem hands back, so without the sort the order is readdir order;
+        // with it, the order is the relative path order. Forty-eight entries make
+        // a coincidental match between the two effectively impossible, which is
+        // what turns "assert sorted" into a test that can actually fail.
+        const count = 48;
+        final expected = <String>['docs/target.md'];
+        for (var index = 0; index < count; index++) {
+          final name = 'art-${index.toString().padLeft(2, '0')}.md';
+          final subdir = 'g${index % 4}';
+          // Each artifact carries its own missing citation, so the reported row
+          // order *is* the scan order — one distinguishable row per artifact.
+          writeArtifact(
+            'docs/$subdir/$name',
+            '# $name\n\n`cli/missing-$index.dart:1`\n',
+          );
+          expected.add('docs/$subdir/$name');
+        }
+        expected.sort();
+
+        final invocation = await run(check('docs'));
+
+        expect(invocation.exitCode, 20, reason: 'every artifact drifts');
+        expect(
+          invocation.result.message,
+          contains('artifacts_scanned: ${count + 1}'),
+          reason: 'the created artifacts plus the setUp fixture',
+        );
+        final order =
+            citationDriftOf(invocation, CitationDriftClass.unresolvedPath)
+                .map(
+                  (row) => RegExp(r'artifact=(\S+)').firstMatch(row)!.group(1)!,
+                )
+                .where((artifact) => artifact != 'docs/target.md')
+                .toList();
+        final created = expected.where((p) => p != 'docs/target.md').toList();
+        expect(
+          order,
+          equals(created),
+          reason: 'the report must follow the sorted artifact order',
+        );
+      },
+    );
   });
 
   group('the safety requirement: no command is ever executed', () {
@@ -1364,19 +1628,14 @@ void main() {
       expect(sources, isNotEmpty, reason: 'the check library must exist');
 
       // Matched as patterns, not substrings, so a word such as
-      // `ExtractedCommand(` cannot be mistaken for a process spawn.
+      // `ExtractedCommand(` cannot be mistaken for a process spawn. The first
+      // six are the shared [_processPrimitivePatterns]; the last two are pure
+      // type names, which are only forbidden here because nothing under
+      // `check/**` may hold a process handle at all.
       final forbidden = <RegExp>[
-        RegExp(r'\bProcess\b'),
+        ..._processPrimitivePatterns,
         RegExp(r'\bProcessResult\b'),
         RegExp(r'\bProcessException\b'),
-        RegExp(r'\bIsolate\.spawn\b'),
-        RegExp(r'/bin/(?:ba)?sh'),
-        // A real shell spawn, spelled as an argv list. The threat-model prose
-        // in the same file legitimately *mentions* `sh -c`, so a bare substring
-        // would match the policy text rather than any call site.
-        RegExp(r'''['"](?:ba)?sh['"]\s*,\s*\[\s*['"]-c['"]'''),
-        RegExp(r'\bsystem\s*\('),
-        RegExp(r'\bexec\s*\('),
       ];
       for (final file in sources) {
         final text = file.readAsStringSync();
@@ -1411,13 +1670,7 @@ void main() {
       expect(sources, isNotEmpty, reason: libraryDir.path);
 
       final srcRoot = libraryDir.parent;
-      // Every module reachable from the checker that contains a process
-      // primitive. Adding to this list is free; the assertion below is what
-      // bites.
-      final processBearingModules = <String>[
-        'commands.dart',
-        'upgrade/upgrade.dart',
-      ];
+      final processBearingModules = _processBearingModules(srcRoot);
       final declaredElsewhere = <String, String>{};
       for (final relative in processBearingModules) {
         final module = File('${srcRoot.path}/$relative');
@@ -1442,6 +1695,29 @@ void main() {
         isNotEmpty,
         reason: 'the declared-symbol scan must find something',
       );
+      // The loud half. Every step above *reduces* the checked set, so each one
+      // can fail quietly: a comment stripper that blanks a file, a declaration
+      // scan that misses a line, a derivation that finds no modules at all. Each
+      // of those leaves a smaller — and therefore more innocent-looking — set,
+      // and the guard above still passes. These three are the public entry
+      // points that reach `Process.runSync('git', …)` through
+      // `_runPreflightChecks`, so an under-collected set is precisely the
+      // vacuous pass this test exists to prevent.
+      for (final entryPoint in const [
+        'runBootstrap',
+        'runUpgrade',
+        'runStatus',
+      ]) {
+        expect(
+          declaredElsewhere,
+          contains(entryPoint),
+          reason:
+              '$entryPoint is a reachable process-bearing entry point and it is '
+              'missing from the extracted set, so this guard is no longer '
+              'checking what it claims to check. Fix the extraction, not the '
+              'expectation.',
+        );
+      }
 
       for (final file in sources) {
         // Comments are stripped first: this file's own prose legitimately
@@ -1467,6 +1743,53 @@ void main() {
           );
         }
       }
+    });
+
+    test('the process-bearing module set is derived, never hand-listed', () async {
+      // The coverage set of the guard above used to be a hand-maintained list
+      // that was only existence-checked, so *removing* an entry — the exact
+      // mutation that widens the hole — failed nothing. The list is now derived
+      // from `lib/src`, so it cannot be narrowed by editing it away: a new
+      // module that spawns a process joins the set on its own, and deleting the
+      // last git-spawning module cannot shrink the assertion below.
+      final libraryDir = await _checkLibraryDirectory();
+      final srcRoot = libraryDir.parent;
+
+      final derived = _processBearingModules(srcRoot);
+
+      expect(
+        derived,
+        containsAll(<String>['commands.dart', 'upgrade/upgrade.dart']),
+        reason:
+            'the two modules known to spawn `git` must be in the derived set; '
+            'if they are not, the derivation itself is broken — got $derived',
+      );
+      // Every derived module really does carry a primitive, so the set is not
+      // padded by a loose pattern.
+      for (final relative in derived) {
+        final text = _stripComments(
+          File('${srcRoot.path}/$relative').readAsStringSync(),
+        );
+        expect(
+          _processPrimitivePatterns.any((pattern) => pattern.hasMatch(text)),
+          isTrue,
+          reason: '$relative was derived but holds no process primitive',
+        );
+      }
+      // And the set is not the whole tree: only the modules that actually reach
+      // a primitive are checked, so the allow-list above stays meaningful
+      // instead of degrading into "every name in lib/src".
+      expect(
+        derived.length,
+        lessThan(
+          srcRoot
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((file) => file.path.endsWith('.dart'))
+              .length,
+        ),
+        reason: 'the derived set must be a subset, not all of lib/src',
+      );
     });
 
     test('a malicious command body is echoed, never run', () async {
@@ -1532,37 +1855,186 @@ class _RecordingScanner {
   }
 }
 
-/// Removes `//` and block comments from [source].
+/// The source-level spellings of a subprocess primitive.
 ///
-/// Line numbers are not preserved; these scans only look at identifier tokens,
-/// so blanking the comment body is enough and far safer than a real lexer.
+/// The same primitives the forbidden-pattern guard uses (which adds
+/// `ProcessResult` and `ProcessException` on top, since those are pure types and
+/// only matter where nothing may spawn at all), so "this module can spawn a
+/// process" and "this module may not spawn a process" are decided by one list
+/// rather than two that can drift apart.
+///
+/// The shell patterns are matched as patterns, not substrings: the threat-model
+/// prose in `check_citations.dart` legitimately *mentions* `sh -c "…"`, so a
+/// bare substring would match the policy text rather than any call site.
+final List<RegExp> _processPrimitivePatterns = <RegExp>[
+  RegExp(r'\bProcess\b'),
+  RegExp(r'\bIsolate\.spawn\b'),
+  RegExp(r'/bin/(?:ba)?sh'),
+  RegExp(r'''['"](?:ba)?sh['"]\s*,\s*\[\s*['"]-c['"]'''),
+  RegExp(r'\bsystem\s*\('),
+  RegExp(r'\bexec\s*\('),
+];
+
+/// Every module under [srcRoot] whose *code* reaches a subprocess primitive, as
+/// `lib/src`-relative POSIX paths.
+///
+/// Derived rather than hand-listed. A hand-maintained list is only ever checked
+/// for existence, so deleting an entry — the mutation that widens the hole the
+/// guard exists to close — fails nothing at all. Deriving it means a new
+/// process-bearing module is picked up without anyone remembering to list it,
+/// and the known-bearers are asserted separately so a derivation that silently
+/// finds nothing cannot masquerade as a clean bill of health.
+///
+/// Comments are stripped before the match, so a module that only *mentions*
+/// `Process.runSync` in its documentation is not treated as bearing one.
+List<String> _processBearingModules(Directory srcRoot) {
+  final modules = <String>[];
+  for (final entity in srcRoot.listSync(recursive: true)) {
+    if (entity is! File || !entity.path.endsWith('.dart')) continue;
+    final code = _stripComments(entity.readAsStringSync());
+    if (!_processPrimitivePatterns.any((pattern) => pattern.hasMatch(code))) {
+      continue;
+    }
+    modules.add(
+      entity.path.substring(srcRoot.path.length + 1).replaceAll('\\', '/'),
+    );
+  }
+  modules.sort();
+  return modules;
+}
+
+/// Removes every comment from [source], leaving code and string literals intact.
+///
+/// A real scanner, not a text scan, and that distinction is the whole point of
+/// this function. The previous version looked for `/*` before `//`, so the doc
+/// comment `/// Excludes .git/** and framework-manifest.yaml from the snapshot.`
+/// at `commands.dart:343` was read as a block-comment opener: the rest of that
+/// file was blanked, `runBootstrap`, `runUpgrade` and `runStatus` never reached
+/// [_topLevelDeclarations], and the guard that uses those names passed *vacuously*
+/// — pasting a `Process.runSync` call into the checker was invisible to it.
+///
+/// Comments are blanked; string literals are kept verbatim, interpolations
+/// included. Keeping them is the safe direction for a guard: an identifier that
+/// appears inside a string is over-counted (and fails loudly), never
+/// under-counted. The scanner handles Dart's nested block comments, `r'…'` raw
+/// strings, `'''…'''` triples and `${…}` interpolation, because each of those
+/// can hide a comment marker or a comment can hide a string delimiter.
+///
+/// Line numbers are not preserved; these scans only look at identifier tokens.
 String _stripComments(String source) {
   final out = StringBuffer();
-  var inBlock = false;
-  for (final line in source.split('\n')) {
-    var text = line;
-    if (inBlock) {
-      final end = text.indexOf('*/');
-      if (end < 0) {
-        text = '';
+  var index = 0;
+  // Block comments nest in Dart, so this is a depth and not a flag.
+  var blockDepth = 0;
+  // Open string literals, each as `[quoteSequence, isRaw]`.
+  final strings = <List<Object>>[];
+  // The brace depth at which each open `${` began, so a `}` that closes a block
+  // rather than the interpolation is not mistaken for the interpolation's end.
+  final interpolations = <int>[];
+  var braceDepth = 0;
+
+  while (index < source.length) {
+    final char = source[index];
+
+    if (blockDepth > 0) {
+      if (source.startsWith('/*', index)) {
+        blockDepth++;
+        index += 2;
+      } else if (source.startsWith('*/', index)) {
+        blockDepth--;
+        index += 2;
       } else {
-        text = text.substring(end + 2);
-        inBlock = false;
+        index++;
       }
+      continue;
     }
-    final blockStart = text.indexOf('/*');
-    if (blockStart >= 0) {
-      final end = text.indexOf('*/', blockStart + 2);
-      if (end < 0) {
-        text = text.substring(0, blockStart);
-        inBlock = true;
-      } else {
-        text = text.substring(0, blockStart) + text.substring(end + 2);
+
+    if (strings.isNotEmpty) {
+      final open = strings.last;
+      final quote = open[0] as String;
+      final isRaw = open[1] as bool;
+      // An escape keeps the next character whatever it is, so `\"` cannot close
+      // the literal and `\\` cannot start one.
+      if (!isRaw && char == r'\') {
+        final end = index + 2;
+        out.write(
+          source.substring(index, end > source.length ? source.length : end),
+        );
+        index = end;
+        continue;
       }
+      if (source.startsWith(quote, index)) {
+        out.write(quote);
+        strings.removeLast();
+        index += quote.length;
+        continue;
+      }
+      // `$x` needs no handling — both characters are emitted as-is. `${` opens
+      // code, which may itself contain a nested string or a comment.
+      if (!isRaw && source.startsWith(r'${', index)) {
+        interpolations.add(braceDepth);
+        braceDepth++;
+        out.write(r'${');
+        index += 2;
+        continue;
+      }
+      out.write(char);
+      index++;
+      continue;
     }
-    final lineStart = text.indexOf('//');
-    if (lineStart >= 0) text = text.substring(0, lineStart);
-    out.writeln(text);
+
+    // Code.
+    if (source.startsWith('//', index)) {
+      // Checked *before* `/*`, which is what stops a `/**` inside a `///` line
+      // from opening a phantom block.
+      final end = source.indexOf('\n', index);
+      index = end < 0 ? source.length : end;
+      continue;
+    }
+    if (source.startsWith('/*', index)) {
+      blockDepth = 1;
+      index += 2;
+      continue;
+    }
+    if (char == 'r' &&
+        (source.startsWith("'", index + 1) ||
+            source.startsWith('"', index + 1))) {
+      out.write('r');
+      index++;
+      continue;
+    }
+    if (char == "'" || char == '"') {
+      final quote = source.startsWith('$char$char$char', index)
+          ? '$char$char$char'
+          : char;
+      strings.add(<Object>[quote, index > 0 && source[index - 1] == 'r']);
+      out.write(quote);
+      index += quote.length;
+      continue;
+    }
+    if (source.startsWith(r'${', index)) {
+      interpolations.add(braceDepth);
+      braceDepth++;
+      out.write(r'${');
+      index += 2;
+      continue;
+    }
+    if (char == '}' &&
+        interpolations.isNotEmpty &&
+        braceDepth == interpolations.last) {
+      interpolations.removeLast();
+      braceDepth--;
+      out.write(char);
+      index++;
+      continue;
+    }
+    if (char == '{') {
+      braceDepth++;
+    } else if (char == '}') {
+      braceDepth--;
+    }
+    out.write(char);
+    index++;
   }
   return out.toString();
 }
