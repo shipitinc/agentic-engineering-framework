@@ -4,17 +4,23 @@ import 'version.dart';
 
 /// Help text for [command], printed verbatim by `--help`.
 ///
-/// Every command's help states what it reads, what it writes (nothing), and the
-/// exit categories it can produce, so a caller never has to scrape prose or
-/// guess a semantic.
+/// `check-citations` gets a full contract: what it reads, what it writes
+/// (nothing), its threat model, and every exit category it can produce. The
+/// other commands get a usage summary and the command list only — they have not
+/// been given that contract here, so this function does not claim it for them.
 String helpTextFor(String command) {
+  final usageParts = <String>[
+    'framework',
+    command,
+    _usageSuffix(command),
+    '[--json]',
+    '[--help]',
+  ].where((part) => part.isNotEmpty);
   final buffer = StringBuffer()
     ..writeln('framework $frameworkCliVersion — $command')
     ..writeln()
     ..writeln('USAGE')
-    ..writeln(
-      '  framework $command ${_usageSuffix(command)} [--json] [--help]',
-    );
+    ..writeln('  ${usageParts.join(' ')}');
   if (command != CommandNames.checkCitations) {
     buffer
       ..writeln()
@@ -69,6 +75,42 @@ String helpTextFor(String command) {
     ..writeln(
       '  literal regex such as \\.dart:3 inside a command is not a citation.',
     )
+    ..writeln()
+    ..writeln(
+      '  Containment is checked lexically on the path, not on the resolved real',
+    )
+    ..writeln(
+      '  path: a symlink that sits INSIDE the root and points outside it is still',
+    )
+    ..writeln(
+      '  followed and read. A direct ../ or absolute spelling is refused, so this',
+    )
+    ..writeln(
+      '  leaks at most the line count of the target (e.g. detail=file-has-8-line(s)),',
+    )
+    ..writeln(
+      '  and never its content — but the limit is real, so do not point --dir at a',
+    )
+    ..writeln(
+      '  tree containing such symlinks and treat the result as a boundary.',
+    )
+    ..writeln()
+    ..writeln(
+      '  Unreadable input is a reported outcome, not a crash: an artifact or a',
+    )
+    ..writeln(
+      '  cited file that cannot be read (binary or non-UTF-8 bytes named *.md, or',
+    )
+    ..writeln(
+      '  no read permission) is reported as ARTIFACT_SKIPPED / CITATION_UNVERIFIED',
+    )
+    ..writeln(
+      '  and the scan continues over everything else. The run then reports',
+    )
+    ..writeln(
+      '  drift_found: indeterminate and exits 40, because a partial scan cannot',
+    )
+    ..writeln('  establish a verdict either way.')
     ..writeln()
     ..writeln(
       '  One residual non-idempotency, stated rather than hidden: the echoed',
@@ -181,6 +223,14 @@ String helpTextFor(String command) {
     ..writeln(
       '  for execution gets an actionable blocker instead of a parse error.',
     )
+    ..writeln('  The refusal is decided BEFORE --help is honoured, so')
+    ..writeln(
+      '  `check-citations --execute-commands --help` is refused (exit 20), not',
+    )
+    ..writeln(
+      '  answered with help text and exit 0: --help is not a way around the',
+    )
+    ..writeln('  refusal. Plain `--help` still prints this text and exits 0.')
     ..writeln()
     ..writeln('READ-ONLY GUARANTEE')
     ..writeln(
@@ -192,6 +242,12 @@ String helpTextFor(String command) {
     ..writeln(
       '  20 PREFLIGHT_POLICY_FAILURE drift found, bad arguments, or execution refused',
     )
+    ..writeln(
+      '  40 INTERNAL_TOOL_FAILURE    an artifact or cited file could not be read,',
+    )
+    ..writeln(
+      '                               so drift_found is indeterminate rather than a verdict',
+    )
     ..writeln()
     ..writeln('OUTPUT')
     ..writeln(
@@ -202,6 +258,12 @@ String helpTextFor(String command) {
     )
     ..writeln(
       '    CITATION_DRIFT <CLASS> artifact=<path> at=<line> path=<citedPath> claimed_line=<n> claimed_end=<n|-> detail=<text>',
+    )
+    ..writeln(
+      '    CITATION_UNVERIFIED artifact=<path> at=<line> path=<citedPath> claimed_line=<n> claimed_end=<n|-> detail=<text>',
+    )
+    ..writeln(
+      '    ARTIFACT_SKIPPED <UNREADABLE|UNLISTABLE> artifact=<path> detail=<text>',
     )
     ..writeln(
       '    COMMAND <path>:<line> lang=<tag|-> claimed=<value|-> claimed_revision=<sha|-> drift=<n> text=<body>',

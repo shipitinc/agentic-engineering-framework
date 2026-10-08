@@ -65,6 +65,39 @@ enum CitationDriftClass {
   final String wireName;
 }
 
+/// A citation that could not be checked because its target file was unreadable.
+///
+/// This is a *visibility* finding, not a drift class: it says "nothing is known
+/// about this citation", where every [CitationDriftClass] says "this is known
+/// to be wrong". The two are kept distinct so a caller can never mistake an
+/// unreadable file for a verified verdict — and so an unreadable file can never
+/// silently vanish from the report.
+class CitationUnverified {
+  const CitationUnverified({required this.citation, required this.detail});
+
+  /// The citation that could not be checked.
+  final Citation citation;
+
+  /// A human-readable explanation, free of spaces.
+  final String detail;
+
+  /// Deterministic, machine-parseable single-line rendering.
+  ///
+  /// Format:
+  /// `CITATION_UNVERIFIED artifact=<relPath> at=<line> path=<citedPath> claimed_line=<n> claimed_end=<n|-> detail=<text>`
+  ///
+  /// Same space-free `key=value` shape as [CitationDrift.toWireLine], and for
+  /// the same reason: a `path:line` label here would re-enter as a fresh
+  /// citation if this report were published into the artifact set.
+  String toWireLine(String artifactPath) {
+    return 'CITATION_UNVERIFIED '
+        'artifact=$artifactPath at=${citation.line} '
+        'path=${citation.rawPath} '
+        'claimed_line=${citation.start} claimed_end=${citation.end ?? '-'} '
+        'detail=$detail';
+  }
+}
+
 /// One `path:line` / `path:start-end` occurrence found in an artifact.
 class Citation {
   const Citation({
@@ -190,7 +223,9 @@ class CitationResolver {
   /// each of its ancestors up to the scan root.
   final List<Directory> _bases;
 
-  final Map<String, int> _lineCounts = <String, int>{};
+  /// Memoizes successes *and* failures, so a file cited a hundred times is
+  /// read (or refused) once.
+  final Map<String, int?> _lineCounts = <String, int?>{};
 
   /// The normalized POSIX path of the scan root.
   String get rootPath => _rootPath;
@@ -244,11 +279,23 @@ class CitationResolver {
   }
 
   /// Number of lines in [file], memoized per absolute path.
-  int lineCountOf(File file) {
+  ///
+  /// Returns null when [file] exists but could not be read: its bytes are not
+  /// valid UTF-8, or this process may not read it. A cited file is repository
+  /// content rather than trusted input, so an unreadable file is a *skip*, not
+  /// a reason to abandon the run — inventing a line count for it would
+  /// manufacture a false `LINE_BEYOND_EOF`. The caller reports the citation as
+  /// unverified instead, and the failure is memoized so one unreadable file
+  /// cannot abort the scan or be re-read for every citation.
+  int? lineCountOf(File file) {
     final key = normalizeFilesystemPath(file.path);
-    final cached = _lineCounts[key];
-    if (cached != null) return cached;
-    final count = countLines(file.readAsStringSync());
+    if (_lineCounts.containsKey(key)) return _lineCounts[key];
+    int? count;
+    try {
+      count = countLines(file.readAsStringSync());
+    } on FileSystemException {
+      count = null;
+    }
     _lineCounts[key] = count;
     return count;
   }

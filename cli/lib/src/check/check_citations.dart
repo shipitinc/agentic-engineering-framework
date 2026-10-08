@@ -31,16 +31,45 @@ const String kThreatModel =
     'commands is therefore not achievable here, so --execute-commands is refused '
     'rather than shipped.';
 
+/// The scan half of [runCheckCitations], injectable so a caller can observe
+/// whether a request ever reached the scan.
+///
+/// This exists for one reason: the "a refusal must short-circuit *before* the
+/// scan" ordering is a safety requirement, and asserting it on the returned
+/// message proves only that the returned refusal says nothing about a scan — an
+/// implementation that scanned and threw the result away satisfies that. An
+/// injectable seam lets a test assert the stronger, real property: the scanner
+/// was never invoked.
+///
+/// It cannot make the command execute anything. The default is [checkArtifacts],
+/// which has no execution primitive at all (see [kThreatModel]), and no CLI
+/// flag can substitute a scanner — the seam is a library parameter only.
+typedef ArtifactScanner =
+    DriftReport Function({
+      required Directory artifactRoot,
+      required Directory scanRoot,
+    });
+
 /// Runs the citation and command drift check.
 ///
 /// Read-only: reads the scanned artifacts and stats cited files, and never
 /// writes, never mutates, and never spawns a subprocess.
 ///
+/// [scanner] is the scan seam; see [ArtifactScanner]. It defaults to
+/// [checkArtifacts] and is never substituted by any command-line path.
+///
 /// Returns [ResultFamily.commandComplete] (exit 0) when nothing drifted and
 /// [ResultFamily.validationFailed] (exit 20) when any citation or command drift
 /// was found, when the arguments were unusable, or when `--execute-commands` was
-/// requested.
-Future<CommandResult> runCheckCitations({String? dir, String? root}) async {
+/// requested. Returns [ResultFamily.internalError] (exit 40) when some artifact
+/// or cited file could not be read: the scan continues over everything that
+/// *was* readable, but the verdict is then `indeterminate` rather than a
+/// false `no drift`.
+Future<CommandResult> runCheckCitations({
+  String? dir,
+  String? root,
+  ArtifactScanner scanner = checkArtifacts,
+}) async {
   if (dir == null || dir.trim().isEmpty) {
     return _usageFailure(
       'Missing required --dir: pass the directory of design artifacts to check.',
@@ -85,8 +114,11 @@ Future<CommandResult> runCheckCitations({String? dir, String? root}) async {
   final report = checkArtifacts(
     artifactRoot: normalizedArtifactRoot,
     scanRoot: normalizedScanRoot,
+    scanner: scanner,
   );
 
+  final skipCount =
+      report.artifactsSkipped.length + report.citationUnverified.length;
   final driftCount = report.citationDrift.length + report.commandDrift.length;
   final message = StringBuffer()
     ..writeln(
@@ -96,25 +128,38 @@ Future<CommandResult> runCheckCitations({String? dir, String? root}) async {
     ..writeln('root: ${normalizedScanRoot.path}')
     ..writeln('artifact_dir: ${normalizedArtifactRoot.path}')
     ..writeln('artifacts_scanned: ${report.artifactsScanned}')
+    ..writeln('artifacts_skipped: ${report.artifactsSkipped.length}')
     ..writeln('citations_checked: ${report.citationsChecked}')
+    ..writeln('citations_unverified: ${report.citationUnverified.length}')
     ..writeln('citation_drift: ${report.citationDrift.length}')
     ..writeln('commands_extracted: ${report.commands.length}')
     ..writeln('non_command_blocks: ${report.nonCommandBlocks}')
     ..writeln('unlabelled_blocks: ${report.unlabelledBlocks}')
     ..writeln('transcript_blocks: ${report.transcriptBlocks}')
     ..writeln('commands_executed: 0')
-    ..writeln('drift_found: ${driftCount == 0 ? 'no' : 'yes'}');
+    ..writeln(
+      'drift_found: ${driftCount == 0 ? (skipCount == 0 ? 'no' : 'indeterminate') : 'yes'}',
+    );
   for (final command in report.commands) {
     message.writeln(command.toWireLine());
   }
 
   return CommandResult(
-    family: driftCount == 0
+    // A skipped artifact makes the verdict `indeterminate`, so the result may
+    // not claim success — nor reuse the drift category, which would blame the
+    // caller's artifacts for a failure to read them. Exit 40 it is.
+    family: skipCount > 0
+        ? ResultFamily.internalError
+        : driftCount == 0
         ? ResultFamily.commandComplete
         : ResultFamily.validationFailed,
     command: CommandNames.checkCitations,
     message: message.toString().trimRight(),
     blockers: <String>[
+      // What could not be checked is reported first: it qualifies everything
+      // below it, and a caller must not read the drift list without it.
+      ...report.artifactsSkipped.map((skipped) => skipped.toWireLine()),
+      ...report.citationUnverified.map((row) => row.toWireLine()),
       ...report.citationDrift.map((drift) => drift.toWireLine()),
       ...report.commandDrift,
     ],
@@ -154,11 +199,13 @@ class DriftReport {
     required this.artifactsScanned,
     required this.citationsChecked,
     required this.citationDrift,
+    required this.citationUnverified,
     required this.commands,
     required this.commandDrift,
     required this.nonCommandBlocks,
     required this.unlabelledBlocks,
     required this.transcriptBlocks,
+    required this.artifactsSkipped,
   });
 
   /// Absolute scan root citations are resolved against.
@@ -176,6 +223,9 @@ class DriftReport {
   /// Citation drift found, in artifact then line order.
   final List<ResolvedCitationDrift> citationDrift;
 
+  /// Citations whose target file could not be read, in artifact then line order.
+  final List<ResolvedCitationUnverified> citationUnverified;
+
   /// Every runnable command extracted, never executed.
   final List<ExtractedCommand> commands;
 
@@ -191,8 +241,62 @@ class DriftReport {
   /// Shell-tagged fenced blocks identified as terminal transcripts.
   final int transcriptBlocks;
 
+  /// Artifacts and directories that could not be read, in walk order.
+  ///
+  /// Non-empty means the scan is incomplete; the run then reports
+  /// `drift_found: indeterminate` and exits 40 rather than claiming a verdict
+  /// it could not establish.
+  final List<ArtifactSkipped> artifactsSkipped;
+
   /// Total number of findings.
   int get driftCount => citationDrift.length + commandDrift.length;
+}
+
+/// Why a part of the artifact tree could not be checked.
+enum ArtifactSkipClass {
+  /// An artifact file exists but could not be read as UTF-8 text — a binary
+  /// blob or an image named `*.md`, or a file this process may not read.
+  unreadable('UNREADABLE'),
+
+  /// A directory below the artifact root could not be listed. Its contents are
+  /// unknown; every sibling that could be listed was still scanned.
+  unlistable('UNLISTABLE');
+
+  const ArtifactSkipClass(this.wireName);
+
+  /// Stable identifier emitted in machine-readable output.
+  final String wireName;
+}
+
+/// An artifact (or a directory of artifacts) that was skipped, never silently.
+///
+/// Design artifacts are untrusted input, so "I could not read this" is a
+/// routine outcome rather than an exceptional one. It is reported as a first
+/// class row instead of being swallowed, because a silently dropped artifact
+/// would otherwise turn into a false `drift_found: no`.
+class ArtifactSkipped {
+  const ArtifactSkipped({
+    required this.skipClass,
+    required this.relativePath,
+    required this.detail,
+  });
+
+  /// Why the artifact or directory was skipped.
+  final ArtifactSkipClass skipClass;
+
+  /// POSIX path relative to the artifact root, `.` for the root itself.
+  final String relativePath;
+
+  /// A human-readable explanation, free of spaces.
+  final String detail;
+
+  /// Deterministic, machine-parseable single-line rendering.
+  ///
+  /// Format:
+  /// `ARTIFACT_SKIPPED <CLASS> artifact=<relPath> detail=<text>`
+  String toWireLine() =>
+      'ARTIFACT_SKIPPED ${skipClass.wireName} '
+      'artifact=$relativePath detail=$detail';
 }
 
 /// A citation drift bound to the artifact it was found in.
@@ -209,18 +313,57 @@ class ResolvedCitationDrift {
   String toWireLine() => drift.toWireLine(artifact);
 }
 
+/// An unverified citation bound to the artifact it was found in.
+class ResolvedCitationUnverified {
+  const ResolvedCitationUnverified({
+    required this.artifact,
+    required this.unverified,
+  });
+
+  /// POSIX path of the artifact, relative to the scan root.
+  final String artifact;
+
+  /// The unverified citation itself.
+  final CitationUnverified unverified;
+
+  /// Deterministic, machine-parseable single-line rendering.
+  String toWireLine() => unverified.toWireLine(artifact);
+}
+
 /// Walks [artifactRoot] and performs both drift classes.
 ///
 /// Pure with respect to subprocesses: the only I/O is reading the artifacts and
 /// statting/reading cited files.
+///
+/// Robust with respect to unreadable input: a file or directory that cannot be
+/// read is recorded in [DriftReport.artifactsSkipped] and the scan continues,
+/// because a design artifact tree is untrusted input and one unreadable file
+/// must not suppress every other finding.
+///
+/// [scanner] is accepted only so [runCheckCitations] can hand in its seam; the
+/// function itself always performs the walk below.
 DriftReport checkArtifacts({
   required Directory artifactRoot,
   required Directory scanRoot,
+  ArtifactScanner? scanner,
 }) {
-  final artifactPaths = _listArtifacts(artifactRoot);
+  if (scanner != null && !identical(scanner, checkArtifacts)) {
+    return scanner(artifactRoot: artifactRoot, scanRoot: scanRoot);
+  }
+  final listing = _listArtifacts(artifactRoot);
+  final artifactPaths = listing.files;
   final citationDrift = <ResolvedCitationDrift>[];
+  final citationUnverified = <ResolvedCitationUnverified>[];
   final commands = <ExtractedCommand>[];
   final commandDrift = <String>[];
+  final artifactsSkipped = <ArtifactSkipped>[
+    for (final relative in listing.unlistable)
+      ArtifactSkipped(
+        skipClass: ArtifactSkipClass.unlistable,
+        relativePath: relative,
+        detail: 'directory-could-not-be-listed-contents-unchecked',
+      ),
+  ];
   var citationsChecked = 0;
   var nonCommandBlocks = 0;
   var unlabelledBlocks = 0;
@@ -240,13 +383,39 @@ DriftReport checkArtifacts({
         '${normalizeFilesystemPath(scanRoot.path)}/$artifactDirRelative',
       ),
     );
-    final content = artifactPath.readAsStringSync();
+
+    // Guarded, following the CLI's existing idiom. An artifact is untrusted
+    // input: a binary blob or an image named `*.md`, a UTF-16 file, or a file
+    // this process cannot read must not throw out of the whole run. Skipping
+    // it keeps the rest of the report, and the skip is reported, never dropped.
+    final String content;
+    try {
+      content = artifactPath.readAsStringSync();
+    } on FileSystemException {
+      artifactsSkipped.add(
+        ArtifactSkipped(
+          skipClass: ArtifactSkipClass.unreadable,
+          relativePath: artifactFromRoot,
+          detail: 'artifact-could-not-be-read-as-utf8-text',
+        ),
+      );
+      continue;
+    }
 
     for (final citation in citationsIn(content)) {
       citationsChecked++;
-      for (final drift in _checkCitation(citation, resolver)) {
+      final checked = _checkCitation(citation, resolver);
+      for (final drift in checked.drift) {
         citationDrift.add(
           ResolvedCitationDrift(artifact: artifactFromRoot, drift: drift),
+        );
+      }
+      if (checked.unverified != null) {
+        citationUnverified.add(
+          ResolvedCitationUnverified(
+            artifact: artifactFromRoot,
+            unverified: checked.unverified!,
+          ),
         );
       }
     }
@@ -287,15 +456,34 @@ DriftReport checkArtifacts({
     artifactsScanned: artifactPaths.length,
     citationsChecked: citationsChecked,
     citationDrift: citationDrift,
+    citationUnverified: citationUnverified,
     commands: commands,
     commandDrift: commandDrift,
     nonCommandBlocks: nonCommandBlocks,
     unlabelledBlocks: unlabelledBlocks,
     transcriptBlocks: transcriptBlocks,
+    artifactsSkipped: artifactsSkipped,
   );
 }
 
-List<CitationDrift> _checkCitation(
+/// What checking one citation established.
+class CitationCheckResult {
+  const CitationCheckResult({
+    this.drift = const <CitationDrift>[],
+    this.unverified,
+  });
+
+  /// Drift proven for this citation; empty when clean or merely unverifiable.
+  final List<CitationDrift> drift;
+
+  /// Set when the cited file could not be read, so the citation's line bound
+  /// could not be checked. Reported *in addition to* [drift], never instead of
+  /// it: an unreadable file must not hide a structural finding such as an
+  /// inverted range, and must not hide itself either.
+  final CitationUnverified? unverified;
+}
+
+CitationCheckResult _checkCitation(
   Citation citation,
   CitationResolver resolver,
 ) {
@@ -303,76 +491,105 @@ List<CitationDrift> _checkCitation(
   try {
     file = resolver.resolve(citation.rawPath);
   } on PathSafetyException catch (error) {
-    return <CitationDrift>[
-      CitationDrift(
-        driftClass: CitationDriftClass.outsideRoot,
-        citation: citation,
-        detail: error.reason,
-      ),
-    ];
+    return CitationCheckResult(
+      drift: <CitationDrift>[
+        CitationDrift(
+          driftClass: CitationDriftClass.outsideRoot,
+          citation: citation,
+          detail: error.reason,
+        ),
+      ],
+    );
   }
   if (file == null) {
-    return <CitationDrift>[
-      CitationDrift(
-        driftClass: CitationDriftClass.unresolvedPath,
-        citation: citation,
-        detail: 'path-does-not-exist-under-root',
-      ),
-    ];
+    return CitationCheckResult(
+      drift: <CitationDrift>[
+        CitationDrift(
+          driftClass: CitationDriftClass.unresolvedPath,
+          citation: citation,
+          detail: 'path-does-not-exist-under-root',
+        ),
+      ],
+    );
   }
 
+  // A null line count means the cited file exists but is unreadable (binary or
+  // non-UTF-8 content, or no read permission). Every check that needs the line
+  // count is then skipped; every check that does not, still runs.
   final lineCount = resolver.lineCountOf(file);
+  final unverified = lineCount == null
+      ? CitationUnverified(
+          citation: citation,
+          detail: 'cited-file-could-not-be-read-as-utf8-text',
+        )
+      : null;
+
   if (!citation.isRange) {
     if (citation.start < 1) {
-      return <CitationDrift>[
-        CitationDrift(
-          driftClass: CitationDriftClass.lineNotPositive,
-          citation: citation,
-          detail: 'line-0-is-not-a-line',
-        ),
-      ];
+      return CitationCheckResult(
+        drift: <CitationDrift>[
+          CitationDrift(
+            driftClass: CitationDriftClass.lineNotPositive,
+            citation: citation,
+            detail: 'line-0-is-not-a-line',
+          ),
+        ],
+        unverified: unverified,
+      );
     }
-    if (citation.start > lineCount) {
-      return <CitationDrift>[
-        CitationDrift(
-          driftClass: CitationDriftClass.lineBeyondEof,
-          citation: citation,
-          detail: 'file-has-$lineCount-line(s)',
-        ),
-      ];
+    if (lineCount != null && citation.start > lineCount) {
+      return CitationCheckResult(
+        drift: <CitationDrift>[
+          CitationDrift(
+            driftClass: CitationDriftClass.lineBeyondEof,
+            citation: citation,
+            detail: 'file-has-$lineCount-line(s)',
+          ),
+        ],
+        unverified: unverified,
+      );
     }
-    return const <CitationDrift>[];
+    return CitationCheckResult(unverified: unverified);
   }
 
   final end = citation.end!;
   if (citation.start > end) {
-    return <CitationDrift>[
-      CitationDrift(
-        driftClass: CitationDriftClass.invertedRange,
-        citation: citation,
-        detail: 'start-${citation.start}-is-after-end-$end',
-      ),
-    ];
+    return CitationCheckResult(
+      drift: <CitationDrift>[
+        CitationDrift(
+          driftClass: CitationDriftClass.invertedRange,
+          citation: citation,
+          detail: 'start-${citation.start}-is-after-end-$end',
+        ),
+      ],
+      unverified: unverified,
+    );
   }
   if (citation.start < 1 || end < 1) {
-    return <CitationDrift>[
-      CitationDrift(
-        driftClass: CitationDriftClass.lineNotPositive,
-        citation: citation,
-        detail: 'range-must-start-at-or-after-line-1',
-      ),
-    ];
+    return CitationCheckResult(
+      drift: <CitationDrift>[
+        CitationDrift(
+          driftClass: CitationDriftClass.lineNotPositive,
+          citation: citation,
+          detail: 'range-must-start-at-or-after-line-1',
+        ),
+      ],
+      unverified: unverified,
+    );
   }
-  if (citation.start > lineCount || end > lineCount) {
-    return <CitationDrift>[
-      CitationDrift(
-        driftClass: CitationDriftClass.rangeBeyondEof,
-        citation: citation,
-        detail: 'file-has-$lineCount-line(s)',
-      ),
-    ];
+  if (lineCount != null && (citation.start > lineCount || end > lineCount)) {
+    return CitationCheckResult(
+      drift: <CitationDrift>[
+        CitationDrift(
+          driftClass: CitationDriftClass.rangeBeyondEof,
+          citation: citation,
+          detail: 'file-has-$lineCount-line(s)',
+        ),
+      ],
+      unverified: unverified,
+    );
   }
-  return const <CitationDrift>[];
+  return CitationCheckResult(unverified: unverified);
 }
 
 List<CommandDrift> _checkCommand(
@@ -420,25 +637,87 @@ List<CommandDrift> _checkCommand(
   return drifts;
 }
 
-List<File> _listArtifacts(Directory root) {
-  if (!root.existsSync()) return const <File>[];
+/// The scannable artifacts under [root], plus any directory that could not be
+/// listed.
+///
+/// Walks one directory at a time rather than with a single
+/// `listSync(recursive: true)`: a recursive listing is all-or-nothing, so one
+/// unreadable subdirectory would take the entire report down with it — the very
+/// suppression the per-artifact rows exist to prevent. Listing per directory and
+/// catching per directory keeps a bad directory from hiding its readable
+/// siblings.
+_ArtifactListing _listArtifacts(Directory root) {
   final files = <File>[];
-  for (final entity in root.listSync(recursive: true, followLinks: false)) {
-    if (entity is! File) continue;
-    final relative = _relativeTo(root, entity);
-    if (isScannableArtifact(relative)) files.add(entity);
+  final unlistable = <String>[];
+  if (!root.existsSync()) {
+    return _ArtifactListing(files: files, unlistable: unlistable);
   }
+  _walkArtifactTree(root, root, files, unlistable);
   files.sort((a, b) => _relativeTo(root, a).compareTo(_relativeTo(root, b)));
-  return files;
+  return _ArtifactListing(files: files, unlistable: unlistable);
 }
 
-String _relativeTo(Directory root, File file) {
-  final rootPath = normalizeFilesystemPath(root.path);
-  var filePath = normalizeFilesystemPath(file.path);
-  if (filePath.startsWith('$rootPath/')) {
-    filePath = filePath.substring(rootPath.length + 1);
+void _walkArtifactTree(
+  Directory root,
+  Directory directory,
+  List<File> files,
+  List<String> unlistable,
+) {
+  final List<FileSystemEntity> entries;
+  try {
+    entries = directory.listSync(followLinks: false);
+  } on FileSystemException {
+    // Guarded, following the CLI's existing idiom. Recorded and stepped over:
+    // the rest of the tree is still scanned.
+    unlistable.add(_dirRelativeTo(root, directory));
+    return;
   }
-  return filePath;
+  for (final entity in entries) {
+    // `followLinks: false` means a symlink is a `Link`, never a `File` or a
+    // `Directory`, so links are skipped here exactly as the recursive listing
+    // skipped them: this walk follows no symlink and loops through none.
+    if (entity is File) {
+      if (isScannableArtifact(_relativeTo(root, entity))) files.add(entity);
+    } else if (entity is Directory) {
+      // A nested dot-directory can hold no scannable artifact (see
+      // [isScannableArtifact]), so it is pruned here instead of being listed
+      // and filtered afterwards. The walk's own starting directory is exempt,
+      // which is what keeps `--dir .claude` working.
+      final name = _dirRelativeTo(root, entity).split('/').last;
+      if (name.startsWith('.')) continue;
+      _walkArtifactTree(root, entity, files, unlistable);
+    }
+  }
+}
+
+/// The scannable files and the directories that could not be listed.
+class _ArtifactListing {
+  const _ArtifactListing({required this.files, required this.unlistable});
+
+  /// Scannable artifacts, sorted by relative path.
+  final List<File> files;
+
+  /// POSIX paths, relative to the artifact root, of directories that could not
+  /// be listed.
+  final List<String> unlistable;
+}
+
+String _pathRelativeTo(Directory root, String path) {
+  final rootPath = normalizeFilesystemPath(root.path);
+  var candidate = normalizeFilesystemPath(path);
+  if (candidate.startsWith('$rootPath/')) {
+    candidate = candidate.substring(rootPath.length + 1);
+  }
+  return candidate;
+}
+
+String _relativeTo(Directory root, File file) =>
+    _pathRelativeTo(root, file.path);
+
+/// The directory [directory] relative to [root], `.` for the root itself.
+String _dirRelativeTo(Directory root, Directory directory) {
+  final relative = _pathRelativeTo(root, directory.path);
+  return relative == normalizeFilesystemPath(root.path) ? '.' : relative;
 }
 
 /// The directory part of [relativePath], using `.` for a top-level path.

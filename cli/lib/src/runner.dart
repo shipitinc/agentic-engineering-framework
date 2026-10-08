@@ -30,10 +30,17 @@ class CliInvocation {
 /// derived from the same [CommandResult] domain object, so JSON and
 /// human-readable renderings can never diverge.
 class FrameworkCliRunner {
-  FrameworkCliRunner({OutputRenderer? renderer})
+  FrameworkCliRunner({OutputRenderer? renderer, this.scanner})
     : _renderer = renderer ?? const OutputRenderer();
 
   final OutputRenderer _renderer;
+
+  /// The scan seam handed to `runCheckCitations`; null means [checkArtifacts].
+  ///
+  /// Exists so a test can observe whether a request reached the scan at all.
+  /// No command-line path sets it — `bin/framework.dart` constructs this runner
+  /// with defaults — so it cannot be used to make the CLI skip its own scan.
+  final ArtifactScanner? scanner;
 
   /// Builds the top-level argument parser with one subcommand per command.
   ArgParser buildParser() {
@@ -115,11 +122,30 @@ class FrameworkCliRunner {
     }
 
     final useJson = command['json'] as bool;
+    // Precedence: the execution refusal is evaluated BEFORE the `--help`
+    // short-circuit, so `--execute-commands --help` is refused rather than
+    // answered with help text and exit 0. `runCheckCitations` has no execution
+    // parameter at all, so nothing is executed on either path; but "the refusal
+    // is not bypassable by flag ordering or by any alternate code path" is only
+    // true if `--help` is not such a path. Stated in `--help` as well.
+    final refusal = _executionRefusal(command);
+    if (refusal != null) return _render(refusal, useJson: useJson);
     if (command['help'] as bool) {
       return _renderHelp(command.name!, useJson: useJson);
     }
     final result = await _dispatch(command.name!, command);
     return _render(result, useJson: useJson);
+  }
+
+  /// The refusal for a request to execute artifact-embedded commands, or null.
+  ///
+  /// The single place this is decided: `_dispatch` and the `--help` branch both
+  /// sit below it, so no argument ordering can reach a scan under a request that
+  /// must be refused.
+  CommandResult? _executionRefusal(ArgResults command) {
+    if (command.name != CommandNames.checkCitations) return null;
+    if (!(command['execute-commands'] as bool)) return null;
+    return executionRefusedResult();
   }
 
   Future<CommandResult> _dispatch(String name, ArgResults command) async {
@@ -137,14 +163,15 @@ class FrameworkCliRunner {
       case CommandNames.version:
         return runVersion();
       case CommandNames.checkCitations:
+        // The `--execute-commands` refusal has already been decided, above the
+        // `--help` short-circuit, so nothing to check here.
         final dir = command['dir'] as String?;
         final root = command['root'] as String?;
-        if (command['execute-commands'] as bool) {
-          // Deliberate refusal, not a stub: an explicit blocker is far more
-          // actionable to a caller than silently ignoring the request.
-          return executionRefusedResult();
-        }
-        return await runCheckCitations(dir: dir, root: root);
+        return await runCheckCitations(
+          dir: dir,
+          root: root,
+          scanner: scanner ?? checkArtifacts,
+        );
       default:
         // Unreachable: the parser only accepts registered commands.
         return _usageError("Unknown command '$name'.");
