@@ -22,9 +22,17 @@ class CommandNames {
   static const String status = 'status';
   static const String doctor = 'doctor';
   static const String version = 'version';
+  static const String checkCitations = 'check-citations';
 
   /// All command names, in stable display order.
-  static const List<String> all = [bootstrap, upgrade, status, doctor, version];
+  static const List<String> all = [
+    bootstrap,
+    upgrade,
+    status,
+    doctor,
+    version,
+    checkCitations,
+  ];
 }
 
 /// Produces a [CommandResult] for an explicit NOT_IMPLEMENTED stub command.

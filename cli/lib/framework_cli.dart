@@ -5,9 +5,14 @@
 /// contract this package implements.
 library;
 
+export 'src/check/check_citations.dart';
+export 'src/check/citation.dart';
+export 'src/check/command_check.dart';
+export 'src/check/markdown.dart';
 export 'src/command_result.dart';
 export 'src/commands.dart';
 export 'src/exit_category.dart';
+export 'src/help.dart';
 export 'src/manifest/content_hash.dart';
 export 'src/manifest/framework_manifest.dart';
 export 'src/manifest/managed_artifact.dart';

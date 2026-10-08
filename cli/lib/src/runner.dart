@@ -1,7 +1,9 @@
 import 'package:args/args.dart';
 
+import 'check/check_citations.dart';
 import 'command_result.dart';
 import 'commands.dart';
+import 'help.dart';
 import 'output_renderer.dart';
 import 'result_family.dart';
 import 'version.dart';
@@ -28,10 +30,17 @@ class CliInvocation {
 /// derived from the same [CommandResult] domain object, so JSON and
 /// human-readable renderings can never diverge.
 class FrameworkCliRunner {
-  FrameworkCliRunner({OutputRenderer? renderer})
+  FrameworkCliRunner({OutputRenderer? renderer, this.scanner})
     : _renderer = renderer ?? const OutputRenderer();
 
   final OutputRenderer _renderer;
+
+  /// The scan seam handed to `runCheckCitations`; null means [checkArtifacts].
+  ///
+  /// Exists so a test can observe whether a request reached the scan at all.
+  /// No command-line path sets it — `bin/framework.dart` constructs this runner
+  /// with defaults — so it cannot be used to make the CLI skip its own scan.
+  final ArtifactScanner? scanner;
 
   /// Builds the top-level argument parser with one subcommand per command.
   ArgParser buildParser() {
@@ -42,6 +51,11 @@ class FrameworkCliRunner {
           'json',
           negatable: false,
           help: 'Emit deterministic machine-readable JSON output.',
+        )
+        ..addFlag(
+          'help',
+          negatable: false,
+          help: 'Print help for this command, including its threat model.',
         );
       // Add --target for upgrade command
       if (name == CommandNames.upgrade) {
@@ -54,6 +68,30 @@ class FrameworkCliRunner {
       // Add --target for bootstrap command
       if (name == CommandNames.bootstrap) {
         sub.addOption('target', help: 'Target directory to bootstrap into.');
+      }
+      // Citation/command drift checker arguments.
+      if (name == CommandNames.checkCitations) {
+        sub
+          ..addOption(
+            'dir',
+            help:
+                'Directory of design artifacts to check (required for '
+                'check-citations).',
+          )
+          ..addOption(
+            'root',
+            help:
+                'Tree that citations are resolved against (default: current '
+                'directory).',
+          )
+          ..addFlag(
+            'execute-commands',
+            negatable: false,
+            help:
+                'Accepted only to be refused: executing commands embedded in '
+                'untrusted artifacts is not implemented by design. See '
+                '--help for the threat model.',
+          );
       }
       parser.addCommand(name, sub);
     }
@@ -84,8 +122,30 @@ class FrameworkCliRunner {
     }
 
     final useJson = command['json'] as bool;
+    // Precedence: the execution refusal is evaluated BEFORE the `--help`
+    // short-circuit, so `--execute-commands --help` is refused rather than
+    // answered with help text and exit 0. `runCheckCitations` has no execution
+    // parameter at all, so nothing is executed on either path; but "the refusal
+    // is not bypassable by flag ordering or by any alternate code path" is only
+    // true if `--help` is not such a path. Stated in `--help` as well.
+    final refusal = _executionRefusal(command);
+    if (refusal != null) return _render(refusal, useJson: useJson);
+    if (command['help'] as bool) {
+      return _renderHelp(command.name!, useJson: useJson);
+    }
     final result = await _dispatch(command.name!, command);
     return _render(result, useJson: useJson);
+  }
+
+  /// The refusal for a request to execute artifact-embedded commands, or null.
+  ///
+  /// The single place this is decided: `_dispatch` and the `--help` branch both
+  /// sit below it, so no argument ordering can reach a scan under a request that
+  /// must be refused.
+  CommandResult? _executionRefusal(ArgResults command) {
+    if (command.name != CommandNames.checkCitations) return null;
+    if (!(command['execute-commands'] as bool)) return null;
+    return executionRefusedResult();
   }
 
   Future<CommandResult> _dispatch(String name, ArgResults command) async {
@@ -102,6 +162,16 @@ class FrameworkCliRunner {
         return runDoctor();
       case CommandNames.version:
         return runVersion();
+      case CommandNames.checkCitations:
+        // The `--execute-commands` refusal has already been decided, above the
+        // `--help` short-circuit, so nothing to check here.
+        final dir = command['dir'] as String?;
+        final root = command['root'] as String?;
+        return await runCheckCitations(
+          dir: dir,
+          root: root,
+          scanner: scanner ?? checkArtifacts,
+        );
       default:
         // Unreachable: the parser only accepts registered commands.
         return _usageError("Unknown command '$name'.");
@@ -123,6 +193,22 @@ class FrameworkCliRunner {
     final output = useJson
         ? _renderer.renderJson(result)
         : _renderer.renderHuman(result);
+    return CliInvocation(result: result, output: output);
+  }
+
+  /// Renders `command --help`.
+  ///
+  /// The help text is the [CommandResult.message] of a successful result, so the
+  /// help remains derived from the same domain object as every other rendering;
+  /// with `--json` it is therefore emitted inside the standard envelope rather
+  /// than as unstructured text.
+  CliInvocation _renderHelp(String command, {bool useJson = false}) {
+    final result = CommandResult(
+      family: ResultFamily.commandComplete,
+      command: command,
+      message: helpTextFor(command),
+    );
+    final output = useJson ? _renderer.renderJson(result) : result.message;
     return CliInvocation(result: result, output: output);
   }
 }
