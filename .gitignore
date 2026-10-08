@@ -26,3 +26,14 @@
 # and repository value. Default to visibility/versionability when uncertain; ignore
 # only paths demonstrated to be local/session-only and not useful for collaboration,
 # provenance, replay, or review.
+
+# Compiled CLI binaries produced by the documented build gate
+# (`dart compile exe bin/framework.dart -o framework_cli`, run by CI at
+# .github/workflows/ci.yml and documented in WORK_STATE.md). These are ~7.6 MB
+# machine-local build outputs, not source: they are reproduced by the gate and
+# carry no information the source does not. Scoped to exact filenames rather
+# than a pattern, so nothing else is swept up.
+cli/framework_cli
+cli/framework_cli.exe
+cli/bin/framework
+cli/bin/framework.exe

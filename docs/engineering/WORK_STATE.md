@@ -653,7 +653,8 @@ work items, disjoint ownership, each through the full independent-review loop.
   both lanes, deliberately not fixed (`.gitignore` was outside their ownership). Owner: framework tooling.
 - **NF-001 (pre-existing, extended).** The per-type-vs-global `Status Values (Enum)` conflict now also
   covers `APPROVED_WITH_NON_BLOCKING_FINDINGS`. **Harmless** — `DESIGN_REVIEW` declares its own enum and
-  per `subtask-report.md:63-68` that declaration binds — and the global table was deliberately left
+  per `.agents/skills/aef-orchestrator/templates/subtask-report.md:63-68` that declaration binds — and the
+  global table was deliberately left
   unexpanded. The conflict set grew by one member. Contract owner.
 - **R1 (non-blocking, from Lane A's re-review) — Gate D5's precondition is prose-enforced, not
   code-enforced.** There is no JSON-Schema file and no envelope validator anywhere in this framework, and
