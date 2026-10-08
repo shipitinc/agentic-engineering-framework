@@ -1,0 +1,202 @@
+# Human Decision — 313e9aab-2eba-48c8-9e61-a969b0adbc51
+
+decision_id: "313e9aab-2eba-48c8-9e61-a969b0adbc51"
+type: "DESIGN"
+status: "RESOLVED"
+
+question: >
+  Should DESIGN_REVIEW and focused re-review gain a formal non-blocking finding
+  disposition, so that a finding whose blast radius cannot reach the implementation
+  is recorded and merged instead of consuming a correction/re-review cycle?
+
+context:
+  summary: >
+    Raised from consumer issue shipitinc/agentic-engineering-framework#5 (teamhub,
+    2026-10-07), which measured nine review/correction lanes on one pre-implementation
+    design artifact set (5 files: 4 Markdown, 1 YAML, 0 Dart) producing 19 findings of
+    which 3 had any blast radius. The framework-side root cause is verified by
+    inspection: the DESIGN_REVIEW result contract has no non-blocking disposition at
+    all, so a design reviewer has no structured way to say "wrong, but does not reach
+    the implementation" — every finding must become CHANGES_REQUIRED. ENGINEERING_REVIEW
+    already has that disposition (`non_blocking_followups` +
+    APPROVE_WITH_NON_BLOCKING_FOLLOWUP) and QA_GOVERNANCE already has the concept
+    (OPTIONAL / NOT_IN_DEFAULT_PIPELINE rows non-blocking by construction).
+    DESIGN_REVIEW is the sole outlier. Changing what the design gate blocks on decides
+    what may be frozen as a Design Contract — the acceptance baseline for
+    implementation and QA — so it is a governance decision, not a routine change.
+  blocking_work_item:
+    item_type: "DESIGN_REVISION"
+    item_id: "313e9aab-2eba-48c8-9e61-a969b0adbc51"
+    item_ref: "Framework change: design-review finding disposition (issue #5 proposal 1)"
+  evidence:
+    documents:
+      - type: OTHER
+        id: "issue-5"
+        url: "https://github.com/shipitinc/agentic-engineering-framework/issues/5"
+      - type: OTHER
+        id: "design-governance-md"
+        url: "docs/engineering/DESIGN_GOVERNANCE.md"
+      - type: OTHER
+        id: "structured-results-md"
+        url: "docs/engineering/STRUCTURED_RESULTS.md"
+      - type: OTHER
+        id: "design-reviewer-md"
+        url: ".agents/agents/design-reviewer.md"
+      - type: OTHER
+        id: "focused-reviewer-md"
+        url: ".agents/agents/focused-reviewer.md"
+    quantitative_data:
+      - metric: "Lanes consumed on one pre-implementation design artifact set"
+        value: "9"
+        source: "issue #5 dispatch ledger, teamhub main @ c5e6d68"
+      - metric: "Findings closed across those lanes"
+        value: "19"
+        source: "issue #5"
+      - metric: "Findings with any blast radius"
+        value: "3 (B-1 teamRefId never reaches server on one-off event path; B-2 ownership file list omitted two required files; B-3 MUST-add Dart snippet does not compile)"
+        source: "issue #5"
+      - metric: "Findings that were evidence hygiene only"
+        value: "16 (stale line range in blockquote, preamble misdescribing its own table, 3 stale grep counts, register disagreement, restated list below a no-restatement claim)"
+        source: "issue #5"
+      - metric: "Files / lines touched by the whole stack"
+        value: "5 files (4 Markdown, 1 YAML, 0 Dart)"
+        source: "issue #5"
+      - metric: "Contrast: engineering-reviewer on a Dart diff, one pass"
+        value: "15 files / +2536 lines, 4 blockers, all real code defects"
+        source: "issue #5"
+    qualitative_tradeoffs:
+      - dimension: "Gate strictness"
+        option_a: "Blocking by default today; every true finding stops the gate."
+        option_b: "Reach-based; a finding that cannot change what is implemented is recorded."
+        assessment: >
+          A frozen Design Contract is the acceptance baseline for implementation and QA,
+          so a wrong citation in it is not inert forever — it misleads the implementer
+          who reads it later. The mitigation is that non-blocking findings are still
+          recorded and still must be fixed before the contract is frozen, which
+          preserves the guarantee while removing the per-finding lane cost.
+      - dimension: "Taxonomy basis"
+        option_a: "Classify by symptom (stale citation, stale count, bad preamble)."
+        option_b: "Classify by reach (can this change what the implementation does?)."
+        assessment: >
+          The consumer's list is symptom-shaped. A 'register that disagrees with itself'
+          is hygiene when it is a count table and REACHES-IMPLEMENTATION when it is a
+          traceability row asserting which requirement a normative rule serves. Reach is
+          the sound discriminator; symptoms are a subset of it.
+      - dimension: "Precedent inside the framework"
+        option_a: "Treat as novel policy."
+        option_b: "Treat as symmetry repair with ENGINEERING_REVIEW."
+        assessment: >
+          The non-blocking disposition already exists twice in the framework
+          (ENGINEERING_REVIEW, QA_GOVERNANCE rule 5). Adopting it for DESIGN_REVIEW makes
+          the three review paths consistent rather than introducing a new concept.
+  recommendation:
+    recommended_option: "OPTION_A"
+    rationale: >
+      Adopt the non-blocking disposition, defined by blast radius rather than symptom,
+      mirroring ENGINEERING_REVIEW. Confidence MEDIUM: the structural gap is verified and
+      the change is a real relaxation, so the human owns it. The recommendation is
+      hedged on one condition — non-blocking must mean RECORDED AND STILL REQUIRED before
+      Design Contract freeze, never silently dropped. Without that condition the change
+      would let a wrong citation ship into the contract unchecked, which is the one
+      outcome the consumer's own framing does not intend.
+    confidence: "MEDIUM"
+
+options:
+  - option_id: "OPTION_A"
+    label: "Reach-based disposition, still required before freeze"
+    description: >
+      DESIGN_REVIEW and focused re-review gain a formal non-blocking finding disposition
+      (a REACHES_IMPLEMENTATION vs EVIDENCE_HYGIENE dimension plus a recorded
+      non_blocking_findings field, mirroring ENGINEERING_REVIEW). Classification is by
+      blast radius: can this finding change what the implementation does? Anything that
+      can is always blocking. Evidence-hygiene findings are recorded, do not stop the
+      gate, and MUST still be corrected before the Design Contract is frozen.
+    implications: >
+      Removes roughly the 16-of-19 lane cost the consumer measured, makes the design path
+      consistent with the engineering and QA paths, and keeps the correction requirement
+      intact by moving it to the freeze gate (D5). Adds a field and a verdict disposition
+      to the DESIGN_REVIEW contract, which is a contract change requiring the independent
+      review that LEARNING_POLICY.md mandates for WORKFLOW_IMPROVEMENT. Does not require
+      new tooling.
+    estimated_effort: "One bounded framework change: DESIGN_GOVERNANCE.md, STRUCTURED_RESULTS.md (both copies), design-reviewer.md, focused-reviewer.md, aef-design-review skill, regenerated adapters."
+    risk_level: "MEDIUM"
+
+  - option_id: "OPTION_B"
+    label: "Leave semantics, ship the checker instead"
+    description: >
+      Do not change what the design gate blocks on. Instead build the citation and
+      command checker (issue #5 proposal 2) so the recurring class is machine-caught and
+      never appears in review at all.
+    implications: >
+      Keeps the gate exactly as strict as today, so no design contract can freeze with a
+      known-wrong citation unrecorded. Cost shifts to tooling: a new framework CLI command
+      needs an exit-code contract, brick registration, tests, and a design pass over
+      command execution safety. The consumer notes this proposal has been raised three
+      times and never built, which is itself evidence the scope needs bounding first.
+      Does not address the deeper issue that any residual hygiene finding still costs a
+      lane.
+    estimated_effort: "Substantial: new CLI command, exit-code contract, brick registration, test suite, plus a correctness pass over executing commands found inside design artifacts."
+    risk_level: "MEDIUM"
+
+  - option_id: "OPTION_C"
+    label: "Defer; record as tracked follow-up"
+    description: >
+      Accept the analysis, change nothing now. Record all three of issue #5's proposals
+      as tracked framework follow-ups with owners, alongside the existing NF series.
+    implications: >
+      No gate semantics change and no new tooling. The measured lane cost continues until
+      someone picks the item up, and the consumer is explicitly blocked from fixing it
+      product-locally because the taxonomy lives in framework-owned agent profiles.
+    estimated_effort: "Minutes."
+    risk_level: "LOW"
+
+  - option_id: "OPTION_D"
+    label: "Reject — keep every finding blocking"
+    description: >
+      Conclude the nine-lane convergence was correct behaviour and decline to relax the
+      design gate, on the grounds that a Design Contract is the acceptance baseline and
+      any known-false statement in it is unacceptable.
+    implications: >
+      Highest assurance, and consistent with the framework's stated bias toward strict
+      gates. Costs the consumer the lane-per-finding behaviour it measured, and leaves the
+      asymmetry between DESIGN_REVIEW and ENGINEERING_REVIEW in place.
+    estimated_effort: "None."
+    risk_level: "LOW"
+
+resolution:
+  selected_option: "OPTION_A"
+  decided_by: "repository human (framework maintainer), in-session structured question UI"
+  decided_at: "2026-10-07T00:00:00Z"
+  rationale: >
+    Adopt the reach-based non-blocking disposition, classified by blast radius rather
+    than symptom, mirroring ENGINEERING_REVIEW. The condition on the recommendation was
+    accepted: a non-blocking finding is RECORDED AND STILL REQUIRED before Design
+    Contract freeze — it is never silently dropped. This keeps the guarantee intact while
+    removing the per-finding lane cost the consumer measured (16 of 19 findings). The
+    human additionally decided, on a separate atomic question, that the citation/command
+    checker is IN SCOPE and should be built now as its own work item rather than tracked
+    as a follow-up.
+  follow_up_actions:
+    - action: >
+        Land the reach-based disposition in DESIGN_GOVERNANCE.md, STRUCTURED_RESULTS.md
+        (both copies), .agents/agents/design-reviewer.md, .agents/agents/focused-reviewer.md,
+        and the aef-design-review skill; regenerate platform adapters; move the correction
+        requirement for recorded non-blocking findings onto Gate D5 (Design Contract Freeze).
+      owner: "implementer lane (delegated by engineering-manager)"
+      due_date: ""
+    - action: >
+        Independently review the disposition change before integration. Authority is
+        independent review per LEARNING_POLICY.md (WORKFLOW_IMPROVEMENT), not
+        HUMAN_DECISION_REQUIRED — the human gate was taken above.
+      owner: "engineering-reviewer lane (delegated by engineering-manager)"
+      due_date: ""
+    - action: >
+        Build the citation/command checker as its own work item: new framework CLI command,
+        exit-code contract, brick registration, tests, and a safety pass over executing
+        commands extracted from design artifacts.
+      owner: "implementer lane (delegated by engineering-manager)"
+      due_date: ""
+
+created_by: "engineering-manager (top-level session, agentic-engineering-framework)"
+created_at: "2026-10-07T00:00:00Z"
+updated_at: "2026-10-07T00:00:00Z"
