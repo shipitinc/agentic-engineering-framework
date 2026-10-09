@@ -10,8 +10,9 @@ import 'package:test/test.dart';
 /// Every fixture is built in a fresh temporary directory and every assertion is
 /// pinned to that directory. Nothing here reads the developer's home directory
 /// or the repository checkout: this repo has already recorded one test defect of
-/// exactly that shape (`bootstrap_integration_test.dart` hardcodes an absolute
-/// home path and therefore runs on one machine only), and that is not repeated.
+/// exactly that shape (`bootstrap_integration_test.dart` once hardcoded an
+/// absolute home path; resolved by deriving the repo root from the suite's own
+/// package config), and that is not repeated.
 ///
 /// The negative cases matter as much as the positive ones. Each behaviour below
 /// was verified to *fail* when its logic is neutered; see the report for the

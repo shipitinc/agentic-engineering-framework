@@ -115,10 +115,10 @@ while [ "$i" -le "$N_WT" ]; do
   # mid-lane, which is exactly the failure this check exists to refuse.
   in_temp=0
   if [ -n "${TMPDIR:-}" ]; then
-    case "$wt" in "${TMPDIR%/}"/*) in_temp=1 ;; esac
+    case "$wt" in "${TMPDIR%/}"|"${TMPDIR%/}"/*) in_temp=1 ;; esac
   fi
   case "$wt" in
-    /tmp/*|/private/tmp/*|/var/folders/*|/private/var/folders/*|/var/tmp/*|/private/var/tmp/*)
+    /tmp|/tmp/*|/private/tmp|/private/tmp/*|/var/folders|/var/folders/*|/private/var/folders|/private/var/folders/*|/var/tmp|/var/tmp/*|/private/var/tmp|/private/var/tmp/*)
       in_temp=1 ;;
   esac
   if [ "$in_temp" -eq 1 ]; then
