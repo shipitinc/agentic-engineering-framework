@@ -985,6 +985,8 @@ String? _getExpectedBrickHash(String revision) {
         'b01235de0881318f0b0fd4658a97c5074db5a283d72816c12facad13fff16ab2',
     '930bb7b81e8a2b6bdf9106da99fac83325c6573e':
         '6ae588b928d7410484fc956cb89d3c63ba9ac971a08369cb54d5b0d36046953a',
+    '8b06a5d77caea1c875a5cdfd76012ecdf43f7518':
+        '82ed9a21977345d7bae83b1af4fba53ae17cac7638fc283a1677468240503374',
     // Add future revision hashes here as they are released
   };
   return knownHashes[revision];
