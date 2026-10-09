@@ -25,6 +25,8 @@ TeamHub-style override). `DECISION_DIR` = `.decisions/`.
 | `AEF-WR1-FIX1` | implement (correction) | `IMPLEMENTED` | `8f353c1` → `fe7c28f` | → `AEF-WR1-REV` | `frameworkRepoPath` derived via package-config resolution; KNOWN DEFECT D defect resolved; `dart test` green at HEAD |
 | `AEF-WR1-REV` | review | `APPROVE_WITH_NON_BLOCKING_FOLLOWUP` | `4e7869d` → `fe7c28f` | → `AEF-WR1-INT` | All gates independently re-run green; 3 non-blocking followups recorded (stale comment, WORK_STATE resolved-note, trivial preflight edge) |
 | `AEF-WR1-INT` | integrate | `MERGE_APPROVED` | `4e7869d` → `fe7c28f` | → HUMAN | Clean FF verified; gates green on integrated scratch tree; first report malformed → re-emitted valid |
+| `AEF-WR1-AUDIT` | review (post-merge audit) | `APPROVE_WITH_NON_BLOCKING_FOLLOWUP` | `4e7869d` → `7770b12` | closed | Fresh independent audit of the full adoptable delta; all gates re-run green at `7770b12`; 3 LOW non-blocking findings; report self-validates `VALID` |
+| `AEF-WR1-FIXTURE` | verification (Manager-run) | PASS | fixture `f43636b` → `7770b12` | closed | Disposable product + bare remote under `/Users/alkebut/air-aef-wt/upgrade-fixture/`; real `bootstrap`+`upgrade`; 1 honest conflict (`WORK_STATE.md`), customizations survived, manifest pinned full SHA, rerun refused (`UPGRADE_BLOCKED` exit 20) |
 
 ## Resolved inputs for this work item
 
