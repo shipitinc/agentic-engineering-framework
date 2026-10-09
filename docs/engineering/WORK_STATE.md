@@ -278,6 +278,12 @@ per their approved dispositions:
   end-to-end, and it builds its framework and product fixtures in temporary directories with **no
   absolute-path dependency**, so it does not repeat the host-bound mistake this entry records. The
   host-bound defect of `bootstrap_integration_test.dart` itself is **still unresolved**.
+  **Resolved 2026-10-08 (AEF-WR1-FIX1, `fe7c28f`):** `frameworkRepoPath` now resolves the repo
+  root via the suite's own package config (`Isolate.resolvePackageUri` on
+  `package:framework_cli/framework_cli.dart`, three parents), with a `FRAMEWORK_REPO_PATH` env
+  override — the test binds to whatever checkout runs it (`Platform.script` was correctly
+  rejected: under `dart test` it is a temp kernel dill). `dart test` verified 170/170 at
+  `fe7c28f` in the lane worktree, independently re-run green by review and integration lanes.
 - **The two `STRUCTURED_RESULTS.md` copies are byte-identical; no divergence exists.** Verified
   (independent review finding, corrected 2026-10-01): at HEAD `01e0e845` both copies were 585 lines and
   byte-identical with **zero** design markers, and in the current working tree both are 675 lines,
@@ -722,3 +728,38 @@ work items, disjoint ownership, each through the full independent-review loop.
   phased implementation.
 - Material workflow-framework changes require independent review; consequential governance changes
   require human approval.
+## Work item AEF-WR1 — workflow resilience (result admission, bounded waits, journey row, review cap)
+
+- **WORK_ITEM**: `AEF-WR1` — focused workflow improvement from measured TeamHub failures and
+  working Partnerhub practices. Scope: brick-shipped report validator + admission check, bounded
+  waits/cancellation recovery, durable `LANE_WORKTREE_ROOT`, upstreamed review-admissibility rule
+  (TeamHub D20), mandatory integrated-journey `E_*` row, probes-over-review preference,
+  iteration-vs-integration gate wording, explicit per-artifact design-review cap, X1–X3 closure,
+  optional harness-adapter templates.
+- **STATE**: `INTEGRATED` (main `4e7869d` → `fe7c28f`, clean FF, human-authorized)
+- **OWNERSHIP**: lane `AEF-WR1-IMPL` — see `docs/engineering/dispatch/LANES.md`.
+- **LANE**: worktree `/Users/alkebut/air-aef-wt/wr1`, branch `feat/wr1-result-admission`,
+  `BASE_SHA` `4e7869d297f12a9f51a50db6cb648735316acdca`.
+- **CONVENTIONS_USED**: `DISPATCH_STATE_DIR=docs/engineering/dispatch/`, `DECISION_DIR=.decisions/`,
+  `ISOLATION_CONVENTION` affirmed, `LANE_WORKTREE_ROOT=/Users/alkebut/air-aef-wt` (new, adopted
+  pre-emptively in this repo's own dispatch).
+- **RESOLVED_INPUTS**: four human decisions recorded verbatim in
+  `docs/engineering/dispatch/decisions-2026-10-08.yaml` (brick-shipped validator; explicit cap;
+  mandatory journey row; optional adapter templates).
+
+### AEF-WR1 outcome notes (Manager bookkeeping)
+
+- Lane chain: `AEF-WR1-IMPL` (`IMPLEMENTATION_BLOCKED`, scope landed @ `8f353c1`) →
+  `AEF-WR1-FIX1` (`IMPLEMENTED`, host-binding fix @ `fe7c28f`) → `AEF-WR1-REV`
+  (`APPROVE_WITH_NON_BLOCKING_FOLLOWUP`, all gates independently re-run) → `AEF-WR1-INT`
+  (`MERGE_APPROVED`, FF verified via `git merge-tree`, gates green on integrated scratch tree).
+- Dogfooding: `scripts/aef/validate-report.sh` validated every lane report and caught a real
+  malformed integrator report (missing mandatory header block) → re-emitted, then `VALID`.
+- **Non-blocking follow-ups (recorded, not gating):** stale comment
+  `cli/test/check_citations_test.dart:13` still references the removed hardcode;
+  `launch-preflight-check.sh` temp-root patterns don't match a worktree that *is* `/tmp`
+  (harmless — registered-worktree check still fails it).
+- Discoveries persisted by lanes: Mason render drops POSIX exec bits (documented in
+  `scripts/aef/README.md`); `Platform.script` under `dart test` is a kernel dill (encoded in
+  `bootstrap_integration_test.dart` helper); `LEARNINGS.md` does not exist — X1–X3 closures
+  were recorded in this file in place.

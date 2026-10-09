@@ -1,0 +1,56 @@
+# Resolved inputs for work item AEF-WR1 (workflow resilience)
+#
+# Decided 2026-10-08 by the human via the structured question UI
+# (ask_user_question), in-session. These were presented and answered directly;
+# they are recorded here verbatim for durability rather than back-filled into
+# formal PENDING→RESOLVED Human Decision objects, which would fabricate a
+# pending history that never existed.
+
+decisions:
+  - id: WR1-Q1
+    question: >
+      How should mechanical report validation reach product repositories, given
+      cli/ is framework-repo tooling that is not instantiated into products?
+    selected: BRICK_SHIPPED_SCRIPT
+    rejected: [CLI_COMMAND_ONLY, BOTH, PROSE_OBLIGATION_ONLY]
+    consequence: >
+      A small portable validator script is instantiated into every product repo
+      via the Mason brick (__brick__), placed in a namespaced directory
+      (scripts/aef/) to avoid collision with product files.
+
+  - id: WR1-Q2
+    question: >
+      Adopt TeamHub's hard per-artifact cap (one design review + one correction
+      pass per pre-implementation artifact) on top of the Gate D5 deferral
+      mechanism already shipped?
+    selected: ADD_EXPLICIT_CAP
+    rejected: [D5_DEFERRAL_ONLY]
+    consequence: >
+      DESIGN_GOVERNANCE.md, aef-design-review, and the reviewer agent files gain
+      the cap. Findings surfacing after the correction pass are recorded onto
+      the Gate D5 open set (EVIDENCE_HYGIENE) or routed to DCR/new revision
+      (REACHES_IMPLEMENTATION) — never an unbounded correction loop.
+
+  - id: WR1-Q3
+    question: >
+      Is the integrated-user-journey E_* evidence row mandatory in every QA
+      Contract, or a project-declared default products may narrow?
+    selected: MANDATORY_REQUIRED_ROW
+    rejected: [DECLARED_DEFAULT]
+    consequence: >
+      QA_GOVERNANCE.md, aef-qa-contract, and qa-contract.template.md require at
+      least one REQUIRED E_* row exercising an integrated user journey at the
+      pinned target_revision, EXECUTED (or formally SKIPPED with authority)
+      before Human QA initiation.
+
+  - id: WR1-Q4
+    question: >
+      Ship Partnerhub-style harness adapters (task-state save/load hooks,
+      pre-flight launch check) as product-repo templates, or keep them a
+      documented recipe?
+    selected: SHIP_OPTIONAL_TEMPLATES
+    rejected: [DOCUMENTED_RECIPE_ONLY]
+    consequence: >
+      Generalized, product-neutral versions ship under __brick__/scripts/aef/
+      with a README stating they are optional reference adapters requiring
+      product-side hook wiring. Canonical policy stays harness-neutral.
