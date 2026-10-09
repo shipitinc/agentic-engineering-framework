@@ -755,10 +755,10 @@ work items, disjoint ownership, each through the full independent-review loop.
   (`MERGE_APPROVED`, FF verified via `git merge-tree`, gates green on integrated scratch tree).
 - Dogfooding: `scripts/aef/validate-report.sh` validated every lane report and caught a real
   malformed integrator report (missing mandatory header block) → re-emitted, then `VALID`.
-- **Non-blocking follow-ups (recorded, not gating):** stale comment
-  `cli/test/check_citations_test.dart:13` still references the removed hardcode;
-  `launch-preflight-check.sh` temp-root patterns don't match a worktree that *is* `/tmp`
-  (harmless — registered-worktree check still fails it).
+- **Non-blocking follow-ups — addressed at `d3fbfc2`:** stale comment
+  `cli/test/check_citations_test.dart:13` updated to reflect the resolved defect;
+  `launch-preflight-check.sh` temp-root patterns now reject the temp roots
+  themselves, not only their subpaths.
 - Discoveries persisted by lanes: Mason render drops POSIX exec bits (documented in
   `scripts/aef/README.md`); `Platform.script` under `dart test` is a kernel dill (encoded in
   `bootstrap_integration_test.dart` helper); `LEARNINGS.md` does not exist — X1–X3 closures
