@@ -73,6 +73,8 @@ before the first dispatch**. If a required convention is absent and has no safe 
 | `DECISION_DIR` | `.decisions/` | Human Decision objects |
 | `WORKFLOW_STATE` | `docs/engineering/WORK_STATE.md` | Manager-owned lifecycle ledger |
 | `ISOLATION_CONVENTION` | `git worktree add -b <branch> <abs-path> <base>` | Lane isolation |
+| `LANE_WORKTREE_ROOT` | `<repo-parent>/<repo-name>-wt/` (env-overridable) | Durable root under which every lane worktree is created — never OS temporary space (§4) |
+| `LANE_WAIT_BUDGET` | `10 min` per bounded block | Bounded wait per dispatch block (§5) |
 | `MAX_CONCURRENT_WRITERS` | `3` | Concurrent production-writing lanes |
 | `ROUTING_POLICY` | **none shipped by the brick** — the brick instantiates no routing-policy file into a product repository, so a project declares its own routing policy file; where it declares none, the §12 dispatch-cost-class table applies directly | Cost-aware dispatch (§12) |
 
@@ -83,7 +85,10 @@ No convention above names a file that the brick does not instantiate into a prod
 The Manager MUST NOT dispatch a production-writing lane until **all** preconditions hold:
 
 1. A **dedicated isolated worktree** exists for the lane, created per `ISOLATION_CONVENTION` at a
-   path **outside** the canonical checkout. The canonical checkout is the Manager's lane only.
+   path **outside** the canonical checkout **and under `LANE_WORKTREE_ROOT`** — never inside OS
+   temporary space (`/var/folders`, `$TMPDIR`, `/tmp`), where the OS can reap the worktree
+   mid-lane (observed: lane worktrees deleted under a temp root while their lanes were in flight).
+   The canonical checkout is the Manager's lane only.
 2. The child is instructed to `cd` into the worktree and verify
    `git branch --show-current` and `git rev-parse HEAD` match `BRANCH` / `BASE_SHA` **before
    writing**.
@@ -128,12 +133,55 @@ child — normalizes it into an envelope `status` (§7).
 
 Every dispatch is persisted as a file before launch (see §14).
 
-## 5. Lane naming and traceability
+## 5. Lane naming, admission, and bounded waits
 
 Name lanes predictably: `<TASK_TYPE> — <FEATURE>` (e.g. `implement — checkout retry`). The
 `TASK_ID` plus `WORKTREE`/`BRANCH`/`BASE_SHA` make any lane auditable after the fact. Provenance is
 mandatory: a child result without exact repository/worktree/HEAD provenance is **invalid** and must
 be re-emitted.
+
+### Report admission (mandatory, fail closed)
+
+Before the Manager may act on **any** lane outcome it MUST:
+
+1. confirm `report.md` exists on disk at `<DISPATCH_STATE_DIR>/tasks/<TASK_ID>/report.md` — the
+   durable signal is the artifact on disk, never the child-session notification;
+2. run `scripts/aef/validate-report.sh tasks/<TASK_ID>/report.md --expect-task-type <TASK_TYPE>`
+   when the script is present in the repository, or perform the equivalent mechanical checks
+   itself when it is absent — file exists and is non-empty, a YAML front-matter/header block
+   exists, every mandatory key is present, `TASK_TYPE` is a legal enum member, and `RESULT` is
+   legal for that `TASK_TYPE` — **fail closed either way**;
+3. confirm the `RESULT` token is legal for the lane's agent per `subtask-report.md`
+   § `RESULT:` vocabulary per lane.
+
+A missing or malformed report is **`UNSCOPED`**, not consent: the Manager must not advance the
+lane on it, and a session notification is not a report. Record the admission check's outcome in
+the lane's Manager state (`state.json`, `LANES.md`).
+
+### Bounded waits and cancellation recovery
+
+Dispatch is asynchronous; the Manager waits on the **artifact**, not the child process:
+
+- **Artifact-as-completion**: the durable completion signal is `report.md` on disk — never the
+  provider's child-session notification, which can arrive early, late, or never.
+- **Bounded wait**: on dispatch, wait one bounded block (default budget `LANE_WAIT_BUDGET`,
+  10 minutes), then inspect `report.md`:
+  - a **valid** report exists → proceed per the admission step and terminate the child session;
+  - no report but the child is still active → allow **exactly one** additional bounded block;
+  - still no report → re-dispatch the lane **once** in a new isolated session; if that also
+    produces no report → mark the lane `BLOCKED: NO_REPORT` in `LANES.md`, park it, and surface
+    it to the human.
+- **Provider cancellation**: a lane cancelled at the provider produces no report; re-dispatch
+  **up to once**, then park `BLOCKED: PROVIDER_CANCELLED`. A cancelled attempt is **never**
+  counted as a verdict, and no Manager-side check substitutes for one.
+- **Reaped worktree**: if the lane worktree path vanished (OS temp reaping), recreate it from the
+  lane branch — `git worktree add` under `LANE_WORKTREE_ROOT` at the recorded `base_sha`/`head_sha`
+  — and verify `HEAD` before resuming.
+- **Manager-run gates are not the review gate**: any gate or check the Manager runs itself is a
+  consistency check only — it is never the independent-review gate, and a cancelled or reportless
+  review lane cannot be replaced by Manager verification. (Observed upstream: a correction lane
+  cancelled at the provider five times, produced zero reports, and could not be advanced on
+  Manager verification alone.)
 
 ## 6. Manager ledger states (bookkeeping, not lifecycle steps)
 
@@ -262,11 +310,16 @@ classify the impasse and escalate rather than looping (see the `aef-correction-l
   cannot substitute for it.
 - `RESULT: DO_NOT_MERGE` findings must be concrete and actionable enough for a correction lane to act on
   without re-deriving the analysis.
+- Approval binds the reviewed `HEAD_SHA` and gates *eligibility* for integration — it does not waive
+  the required gate set on the integrated tree (§10).
 
 ## 10. Integration
 
 Dispatch `integrator` only after independent approval. The Manager's integration rules:
 
+- after independent approval, the lane's declared **required gate set runs again on the integrated
+  tree** before acceptance — approval at the lane `HEAD_SHA` covers the lane diff, not the merged
+  result, and does not waive integrated-tree gates;
 - never integrate unapproved work, and never bypass a failed agent report as "just noise";
 - never force-push; never rewrite reviewed history unnecessarily;
 - no squash unless repository policy explicitly requires it;
@@ -394,8 +447,10 @@ substantive issue (two cycles — see the `aef-correction-loop` skill).
 
 ## 14. Persistence and crash/compaction resumption
 
-Harness-specific lifecycle hooks are **not** required and are not shipped by this framework.
-Instead, **all** Manager state that must survive a crash or context compaction is written as
+Harness-specific lifecycle hooks are **not** required by this framework. Optional reference
+adapters for hosts that support them ship under `scripts/aef/` (see `scripts/aef/README.md`);
+they are conveniences only — the contract is the plain-file state below, which works on any host.
+**All** Manager state that must survive a crash or context compaction is written as
 **plain markdown/JSON files** under `DISPATCH_STATE_DIR` (default `docs/engineering/dispatch/`):
 
 ```

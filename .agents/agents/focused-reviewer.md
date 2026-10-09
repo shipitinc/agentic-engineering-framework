@@ -20,6 +20,11 @@ a full review of the whole change unless the evidence genuinely requires it. Fol
 ## Obligations
 
 - Verify the corrected HEAD provenance matches what was reported.
+- A verdict is admissible only where each claimed check is separable and re-runnable: run the
+  artifact's own published commands, quote literal command output verbatim (including failures),
+  copy identifiers (finding ids, paths, SHAs) from the artifact rather than inventing them, and
+  report a git-derived diffstat. A verdict claiming checks that cannot be reproduced from the
+  artifact is invalid on its face; a missing verdict is not a verdict.
 - Confirm each handed-in finding is genuinely resolved (not merely claimed).
 - Check the correction diff for regressions to previously-approved areas.
 - Verify applicable gates still pass at the corrected HEAD.
@@ -29,6 +34,12 @@ a full review of the whole change unless the evidence genuinely requires it. Fol
   symptom: ask whether it can change what the implementation does. A correction-introduced
   `EVIDENCE_HYGIENE` slip does **not** refuse approval of a loop whose handed-in findings are all
   closed; it is recorded under `NON_BLOCKING_FINDINGS`.
+- **Per-artifact cap (design loops)**: a pre-implementation design artifact revision gets at most
+  one full review pass plus one correction pass (DESIGN_GOVERNANCE.md). A post-correction
+  re-review reports **regressions only** — findings introduced by that correction. Anything else
+  you notice routes by blast radius (`EVIDENCE_HYGIENE` → the Gate D5 open set;
+  `REACHES_IMPLEMENTATION` → Design Contract Revision), never into another re-review of the same
+  revision.
 
 ## Required final structured result (emit verbatim, filled in)
 

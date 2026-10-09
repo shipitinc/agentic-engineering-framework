@@ -302,7 +302,10 @@ These are explicitly **not** finalized and must not be treated as tested policy:
 - `UNRESOLVED_FRAMEWORK_AREA`: Ownership-conflict detection/enforcement mechanics for concurrent writers.
 - `UNRESOLVED_FRAMEWORK_AREA`: Standard format and storage location for ADRs in product repos.
 - `UNRESOLVED_FRAMEWORK_AREA`: Rollback and production-verification automation contracts.
-- `UNRESOLVED_FRAMEWORK_AREA`: How runtime/browser evidence is pinned to and verified against a revision.
+- **Resolved**: Runtime/browser evidence belongs to the exact pinned `target_revision` of the
+  integrated build it ran against; the integrated journey `E_*` row records the served-revision
+  SHA in `evidence_ref` (see [QA_GOVERNANCE.md](QA_GOVERNANCE.md) § Evidence Rows &
+  Determinations).
 - `UNRESOLVED_FRAMEWORK_AREA`: Exact visual QA tooling and golden baseline storage strategy per project.
 - `UNRESOLVED_FRAMEWORK_AREA`: Mobile API backward compatibility verification automation level.
 - `UNRESOLVED_FRAMEWORK_AREA`: Deployment Authority identity and credential management mechanics.

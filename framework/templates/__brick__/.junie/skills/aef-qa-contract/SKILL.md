@@ -29,6 +29,11 @@ work must be serialized or re-partitioned (AGENTS.md concurrency invariant).
 - **Golden baselines**: Define baseline components, source revisions, approval process (QA Architect or Human QA only).
 - **Regression requirements**: New regressions must add regression tests before re-verification.
 - **Gate criteria**: Explicit pass/fail thresholds per test category.
+- **Integrated journey row — mandatory**: every QA Contract MUST declare at least one `REQUIRED`
+  `E_*` evidence row exercising an integrated end-to-end user journey against the
+  integrated/deployed build at the pinned `target_revision`. The row must reach `EXECUTED` — or
+  carry a formal `SKIPPED` determination with `authority_ref` — **before Human QA initiation**.
+  A contract lacking the journey row fails validation; the reviewer/verifier rejects it.
 
 ## 3. Report exact HEAD / provenance
 

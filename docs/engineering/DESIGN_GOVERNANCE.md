@@ -194,6 +194,20 @@ A finding classified `EVIDENCE_HYGIENE` is **recorded and still required**. The 
 requirement is **moved onto Gate D5**, not deleted. "Non-blocking" governs the gate **between a
 revision and its freeze** — it never governs the freeze itself.
 
+### Per-artifact review cap
+
+Each pre-implementation design artifact revision receives **at most one full review pass plus one
+correction pass**. A post-correction verification (focused re-review) may report **regressions
+only** — findings introduced by that correction. Every other post-cap finding routes by blast
+radius, never into another review of the same revision:
+
+- `EVIDENCE_HYGIENE` → recorded onto the Gate D5 open set (`non_blocking_findings[]`, with a
+  stable `finding_id`), still required before the freeze.
+- `REACHES_IMPLEMENTATION` → a genuine design change: a Design Contract Revision / **new**
+  revision, not another correction lane.
+
+Stated boundless re-review of the same revision is out of scope for reviewers.
+
 ---
 
 ## Process Gates
@@ -215,6 +229,9 @@ revision and its freeze** — it never governs the freeze itself.
 - **Reviewer**: Independent Design Reviewer.
 - **Criteria**: Design system compliance, UX/accessibility, IA integrity, implementation feasibility, traceability.
 - **Risk Assessment**: Reviewer independently assesses and records risk level.
+- **Per-artifact cap**: each revision receives at most one full review pass plus one correction
+  pass; post-cap findings route per § Per-artifact review cap — never an unbounded re-review of
+  the same revision.
 - **Output**: `APPROVED` → proceed to DCR/Human Approval; `APPROVED_WITH_NON_BLOCKING_FINDINGS` → proceed, with the recorded hygiene findings carried to Gate D5; `CHANGES_REQUIRED` → Design Agent revises.
 
 ### Gate D4: DCR / Human Approval (per Risk Level)
@@ -259,6 +276,9 @@ revision and its freeze** — it never governs the freeze itself.
 still required before Gate D5. A finding is never silently dropped, and it closes only on an
 explicit `resolution: CORRECTED` recorded against its carried-forward `finding_id` in a later
 `DESIGN_REVIEW` of the same `revision_id` — never by absence from a later emit.
+6b. **Per-artifact review cap is explicit** — one full review pass plus one correction pass per
+pre-implementation artifact revision; post-cap findings route by blast radius (Gate D5 open set,
+or DCR/new revision), never an unbounded correction loop.
 7. **Design Contract is immutable** once frozen — changes require new Design Revision + DCR.
 8. **Traceability is mandatory** — every design element traces to requirements/architecture.
 9. **Only the Engineering Manager advances lifecycle state** — Design Agent and Reviewer produce results; Manager consumes and transitions.

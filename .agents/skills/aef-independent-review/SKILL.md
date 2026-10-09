@@ -26,6 +26,12 @@ optimistic implementer report is evidence, not permission to skip a gate.
    - Re-run each required gate yourself and record the command + result
      (`dart format --output=none --set-exit-if-changed .`, `dart analyze`, `dart test`).
    - Confirm no test was weakened, skipped, or removed to force green.
+   - **Admissibility**: every check your verdict claims must be separable and re-runnable from
+     the artifact under review. Run the artifact's own published commands, quote literal command
+     output verbatim — including failures — copy identifiers (finding ids, paths, SHAs) from the
+     artifact rather than inventing them, and report a git-derived diffstat. A verdict that
+     claims checks which cannot be reproduced from the artifact is invalid on its face; a
+     missing verdict is not a verdict.
 
 4. **Tests**
    - Confirm tests genuinely cover the change, including negative/edge cases and the specific

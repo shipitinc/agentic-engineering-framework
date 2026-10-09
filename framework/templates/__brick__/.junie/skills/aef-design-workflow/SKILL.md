@@ -25,6 +25,7 @@ work must be serialized or re-partitioned (AGENTS.md concurrency invariant).
 - **Design Brief first**: Produce a Design Brief from requirements and architecture constraints before any design exploration.
 - **Risk assessment mandatory**: Every Design Revision must include a risk level (0-3) with rationale per DESIGN_GOVERNANCE.md.
 - **Traceability mandatory**: Every design element must trace to requirements/architecture. Record `requirements_covered` and `requirements_gaps`.
+- **Citation/prose-reference hygiene**: where a design artifact cites `file:line` references or publishes commands, run the read-only `framework check-citations` drift check (where available) before submitting for review and resolve or disclose every reported row.
 - **Version explicitly**: Each Design Revision gets a revision number, metadata file, and changelog from previous revision.
 - **Design system compliance**: Verify against established design system (tokens, components, patterns).
 - **UX/accessibility**: Assess against WCAG standards and usability heuristics.

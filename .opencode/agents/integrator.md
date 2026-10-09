@@ -23,7 +23,9 @@ Use `Bash` for read-only verification and required gate execution. Do not modify
 - Verify the independently approved HEAD (the exact revision that was approved).
 - Verify current `main` and whether it advanced since the base; determine a safe integration strategy
   (e.g. fast-forward vs. requires rebase/merge) without performing it unless authorized.
-- Run required post-integration gates (format/analyze/test/build) against the approved HEAD.
+- Run required post-integration gates (format/analyze/test/build) against the approved HEAD, and
+  run the lane's declared required gate set **again on the integrated tree** before acceptance —
+  approval at the lane `HEAD_SHA` does not waive integrated-tree gates.
 - Verify local/remote provenance (branch, base SHA, approved HEAD, `origin/main`).
 - If integration authority is ambiguous, stop at `MERGE_APPROVED` rather than asking routine permission.
 

@@ -20,6 +20,12 @@ evidence, not permission to skip a gate.
    - Inspect the entire design artifact set, not just a summary.
    - Verify only declared `OWNED_PATHS` were changed; prohibited paths untouched.
    - Check traceability matrix: every design element traces to requirements/architecture.
+   - Where the artifact cites `file:line` references or publishes commands, run the read-only
+     `framework check-citations` drift check where available and weigh its output: the checker
+     detects drift *symptoms* (e.g. `CITATION_DRIFT`, `CITATION_UNVERIFIED`) — it does not
+     classify them. Blast-radius classification stays the reviewer's position-based judgement
+     (step 6). An indeterminate or unreadable citation is recorded as an **open
+     `EVIDENCE_HYGIENE` finding — never a pass**.
 
 3. **Gate verification**
    - **Design system compliance**: Verify tokens, components, patterns used correctly.
@@ -57,6 +63,11 @@ evidence, not permission to skip a gate.
      `resolution_ref` once it is fixed. A `finding_id` you do not mention stays **open** — never let
      absence stand for closure. The Manager determines "still open" from `resolution`, not from
      absence, per DESIGN_GOVERNANCE.md Gate D5.
+   - **Per-artifact cap**: a revision gets at most one full review pass plus one correction pass
+     (DESIGN_GOVERNANCE.md § Per-artifact review cap). A post-correction re-review reports
+     **regressions only**; anything else routes by blast radius — `EVIDENCE_HYGIENE` onto the Gate
+     D5 open set, `REACHES_IMPLEMENTATION` to a Design Contract Revision. Boundless re-review of
+     the same revision is out of scope.
 
 7. **Learning completeness**
    - Confirm durable discoveries were classified and persisted per

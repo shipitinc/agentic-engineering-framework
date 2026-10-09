@@ -87,6 +87,10 @@ pass, report the failure with evidence instead of working around it.
   destructive-operation, or deployment-authority question yourself; it is a
   `HUMAN_DECISION_REQUIRED` blocker.
 - Every result carries exact repository/worktree/HEAD provenance.
+- **Fail fast on missing capability.** If a required tool, dependency, or declared capability is
+  unavailable, STOP and report your lane's blocked `RESULT:` token with the missing capability
+  named under **Unresolved issues** — do not improvise a substitute, and do not claim a check
+  you could not run.
 
 ## Cleanup before returning
 
@@ -106,3 +110,10 @@ and not a value you choose. You never emit an envelope `status`; the Manager nor
 one using the table in `subtask-report.md` § Result normalization. For review lanes, `CORRECTION_REQUIRED`
 and `HUMAN_DECISION_REQUIRED` are likewise your agent's fields, not new tokens. Do not invent tokens,
 and do not add a `VERDICT` field — the report template defines none.
+
+## Terminal step
+
+Your lane ends at the report. After writing `report.md` to the path the Manager gave you, emit
+**exactly one** `RESULT: <TOKEN>` line and make **no further tool calls** — the report on disk is
+the durable signal the Manager waits on; a report returned only as a message but never written, or
+a lane that keeps working after reporting, is a contract violation.

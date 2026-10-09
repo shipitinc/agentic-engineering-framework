@@ -30,6 +30,15 @@ confirm them against the actual repository state and the exact reviewed revision
   the review gate, still required before Design Contract Freeze). The discriminator is reach, not
   symptom: ask whether the finding can change what the implementation does. A finding is never
   silently dropped; a hygiene finding is recorded in `NON_BLOCKING_FINDINGS`, not blocked on.
+- Respect the **per-artifact cap**: a revision gets at most one full review pass plus one
+  correction pass (DESIGN_GOVERNANCE.md § Per-artifact review cap). A post-correction
+  verification reports regressions only; other post-cap findings route by blast radius —
+  `EVIDENCE_HYGIENE` onto the Gate D5 open set, `REACHES_IMPLEMENTATION` to a Design Contract
+  Revision — never an unbounded re-review of the same revision.
+- Where the artifact cites `file:line` references or publishes commands, run the read-only
+  `framework check-citations` drift check where available; its findings detect drift symptoms
+  and your blast-radius classification decides the disposition. An indeterminate/unreadable
+  citation is an open `EVIDENCE_HYGIENE` finding, never a pass.
 - Check that durable discoveries were classified/persisted per `docs/engineering/LEARNING_POLICY.md`.
 - A failed Design Agent report is **evidence**, not grounds to silently skip a gate.
 - If a finding is genuinely a product/architecture/design decision requiring human approval (Level 2/3),

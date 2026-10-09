@@ -25,6 +25,10 @@ work must be serialized or re-partitioned (AGENTS.md concurrency invariant).
 - Identify the required deterministic gates for the stack and run them for real. For this repo's
   Dart CLI they are: `dart format --output=none --set-exit-if-changed .`, `dart analyze`, `dart test`.
 - Required gates must genuinely pass before claiming completion.
+- **Iteration vs. the required gate set.** While iterating you MAY run a targeted subset (a single
+  package, one test file) for speed — but the lane's declared required gate set MUST pass at the
+  reported `HEAD_SHA` before the result is ready for review dispatch. A failed subset run is a
+  failed gate; a subset pass is never the gate.
 - Never weaken, delete, `@Skip`/`@Ignore`, or bypass tests (`-x`, skip flags) to force green.
 - Assume test failures are caused by your change; make genuine fix attempts. After ~3 failed genuine
   attempts on the same issue, stop and report it as a blocker rather than hacking around it.

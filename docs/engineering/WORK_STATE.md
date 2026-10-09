@@ -617,15 +617,25 @@ work items, disjoint ownership, each through the full independent-review loop.
 - **X1 — the design-review checklist names no tool at all.** `check-citations` has **zero** references
   outside `cli/`; there is no existing slot where a tool belongs. Naming it requires first deciding
   whether that checklist should name tools. Owner: framework design governance.
+  **Resolved by work item `AEF-WR1`** (`feat/wr1-result-admission`): the checklists now name the tool —
+  `framework check-citations` is named in `aef-design-review/SKILL.md` (complete artifact inspection)
+  and `aef-design-workflow/SKILL.md` (design process discipline), wherever `file:line` citations or
+  published commands are in scope.
 - **X2 — vocabulary mismatch: the checker detects, it cannot classify.** It emits symptom-typed tokens
   (`CITATION_DRIFT {UNRESOLVED_PATH, OUTSIDE_ROOT, LINE_BEYOND_EOF, INVERTED_RANGE, …}`) and emits **no**
   `blast_radius` — correctly so, since Lane A's class depends on *position in the artifact*, which the
   checker does not model. **Neither lane says so.** The risk is a reviewer mapping every finding to
   `EVIDENCE_HYGIENE` by symptom — the exact reasoning Lane A forbids. Needs a documented derivation rule.
+  **Resolved by work item `AEF-WR1`**: the derivation rule is now stated where the tool is named —
+  `aef-design-review/SKILL.md` and `design-reviewer.md` say the checker detects drift *symptoms*
+  while blast-radius classification remains the reviewer's position-based judgement, which is
+  exactly the symptom-vs-reach split Lane A requires.
 - **X3 — a third outcome with no legal disposition.** `CITATION_UNVERIFIED`, `ARTIFACT_SKIPPED`, and exit
   40 ("indeterminate, not a verdict") have no expression in Lane A's two-member `blast_radius` enum;
   `grep -n indeterminate` across the design-governance docs returns zero. An unreadable artifact cannot
   be expressed in a `DESIGN_REVIEW` emit.
+  **Resolved by work item `AEF-WR1`**: the disposition for `indeterminate`/unreadable citations is now
+  recorded where the tool is named — **record as an open `EVIDENCE_HYGIENE` finding; never a pass**.
 - **X4 — measured coverage on this repo's own prose is near-zero.** Running the binary against the
   integrated tree: `--dir docs` → 12 artifacts, **1** citation, 0 commands; `--dir .` → 32 artifacts,
   **1** citation, 0 commands. The governance corpus cites paths and §-sections, not `path:line`, so 170

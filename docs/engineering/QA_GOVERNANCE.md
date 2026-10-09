@@ -66,6 +66,9 @@ implementation.
   - `artifact_retention_policy`: duration and storage location
 - `golden_baselines`: array of baseline IDs with source revision and approval status
 - `regression_test_requirements`: new regressions must add regression tests before re-verification
+- `evidence_rows`: array of `E_*` evidence row declarations — MUST include **at least one
+  `REQUIRED` row exercising an integrated end-to-end user journey** against the
+  integrated/deployed build at the pinned `target_revision` (see Evidence Rows & Determinations)
 - `gate_criteria`: pass/fail thresholds per test category
 - `created_by`: agent ID (QA Architect)
 - `created_at`: ISO8601 timestamp
@@ -207,6 +210,13 @@ were formally determined skipped.
 6. **Determination changes are recorded** on the QA Result
    (`evidence_determinations`) and in the QA Contract status ledger; the same
    `E_*` row id is used across both.
+7. **Every contract declares an integrated journey row.** Every QA Contract
+   MUST declare at least one `REQUIRED` `E_*` row exercising an integrated
+   end-to-end user journey against the integrated/deployed build at the pinned
+   `target_revision`. That row must reach `EXECUTED` — or carry a formal
+   `SKIPPED` determination with `authority_ref` — **before Human QA
+   initiation**. Human QA may not begin on a contract whose journey row is
+   missing, still planned (`READY_NOT_EXECUTED`), or blocked.
 
 ---
 
@@ -257,6 +267,13 @@ Every QA failure **must** be classified as exactly one of:
 - `DESIGN_DEFECT` → routes to DCR (DESIGN_GOVERNANCE.md).
 - `REQUIREMENT_GAP` → routes to Human Decision (HUMAN_DECISIONS.md).
 - `ENVIRONMENT_DEFECT` → routes to Infra/DevOps remediation.
+- **Probes over review passes for runtime-observable failures.** For a
+  runtime-observable failure class (e.g. a wrong HTTP status at a guard site),
+  remediation SHOULD prefer a committed regression probe in the QA suite over
+  another review pass — a probe produces durable, executable evidence; a review
+  pass does not. Review remains the right tool for normative/specification
+  defects (`DESIGN_DEFECT` → DCR, `REQUIREMENT_GAP` → Human Decision); probes
+  never replace specification review.
 
 ---
 
@@ -315,6 +332,10 @@ Every QA failure **must** be classified as exactly one of:
 
 ### Gate Q5: Human QA Execution (when required)
 - **Trigger**: QA Contract specifies `human: REQUIRED` or automated/visual gaps identified.
+- **Constraint**: Human QA may not begin while the contract's mandatory
+  integrated-journey `E_*` row is missing, `READY_NOT_EXECUTED`, or blocked —
+  it must first reach `EXECUTED`, or carry a formal `SKIPPED` with
+  `authority_ref` (Evidence Rows rule 7).
 - **Authority**: Human QA initiation via structured question UI.
 - **Executor**: Human testers coordinated by QA Executor.
 - **Output**: QA Result with `human` gate result.
@@ -344,6 +365,10 @@ Every QA failure **must** be classified as exactly one of:
 11. **A permanently-unrunnable `REQUIRED` gate must be formally determined** —
     made runnable, declared `SKIPPED` with reasons + `authority_ref`, or
     revised; it is never left as `REQUIRED` + `READY_NOT_EXECUTED` indefinitely.
+12. **Every QA Contract declares an integrated journey row** — at least one
+    `REQUIRED` `E_*` row exercising an integrated end-to-end user journey at
+    the pinned `target_revision`, reaching `EXECUTED` (or formal `SKIPPED` with
+    `authority_ref`) before Human QA initiation.
 
 ---
 

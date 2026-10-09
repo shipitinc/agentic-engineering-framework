@@ -259,6 +259,12 @@ void main() {
           '.agents/skills/aef-qa-execution/SKILL.md',
           '.agents/skills/aef-repository-learning/SKILL.md',
           '.agents/skills/aef-run-feature/SKILL.md',
+          'scripts/aef/README.md',
+          'scripts/aef/check-task-state.sh',
+          'scripts/aef/launch-preflight-check.sh',
+          'scripts/aef/load-task-state.sh',
+          'scripts/aef/save-task-state.sh',
+          'scripts/aef/validate-report.sh',
           // Generated platform adapters — never hand-edited; rendered from the
           // canonical `.agents/` artifacts by
           // cli/tool/generate_platform_adapters.dart. `.opencode/skills/` is
@@ -299,7 +305,7 @@ void main() {
           ],
         ];
 
-        expect(expectedPaths, hasLength(93));
+        expect(expectedPaths, hasLength(99));
 
         for (final expectedPath in expectedPaths) {
           expect(

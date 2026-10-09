@@ -27,6 +27,11 @@ value; confirm them against the actual repository state and the exact reviewed r
 - Inspect the **entire** diff, not just a summary. Check architecture/ownership boundaries against
   `AGENTS.md` and `docs/engineering/WORKFLOW.md` / relevant ADRs.
 - Re-run or verify each required gate and record the result and command.
+- A verdict is admissible only where each claimed check is separable and re-runnable: run the
+  artifact's own published commands, quote literal command output verbatim (including failures),
+  copy identifiers (finding ids, paths, SHAs) from the artifact rather than inventing them, and
+  report a git-derived diffstat. A verdict claiming checks that cannot be reproduced from the
+  artifact is invalid on its face; a missing verdict is not a verdict.
 - Verify tests genuinely cover the change (including negative/edge cases) and were not weakened.
 - Check that durable discoveries were classified/persisted per `docs/engineering/LEARNING_POLICY.md`.
 - A failed implementer report is **evidence**, not grounds to silently skip a gate.

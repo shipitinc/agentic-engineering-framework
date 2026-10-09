@@ -101,6 +101,24 @@ The QA Result reports each row's determination against these declarations.
 - **Determination Reasons**: {{determination_reasons}} (mandatory unless EXPECTED_TO_EXECUTE)
 {{/each}}
 
+<!--
+  MANDATORY ROW — integrated journey. Every QA Contract MUST declare at least
+  one REQUIRED E_* row exercising an integrated end-to-end user journey
+  against the integrated/deployed build at the pinned target_revision. It must
+  reach EXECUTED (or carry a formal SKIPPED with authority_ref) before Human
+  QA initiation. Example shape:
+
+  ### E-01: Integrated end-to-end user journey
+  - **Required**: REQUIRED
+  - **Test Method**: AUTOMATED | COMBINED
+  - **Artifact Ref**: <product journey spec, e.g. e2e/journeys/primary_journey.*>
+  - **Run Params**: <environment/base URL/params for the integrated build>
+  - **Prerequisites**: <integrated build deployed at target_revision; journey lane exists>
+  - **Traceability**: <primary user-journey requirement refs>
+  - **Contract Determination**: EXPECTED_TO_EXECUTE
+  - **Determination Reasons**: n/a — journey rows are EXPECTED_TO_EXECUTE
+-->
+
 > A `REQUIRED` row must reach `EXECUTED` or a formal `SKIPPED`. An `OPTIONAL` /
 > `NOT_IN_DEFAULT_PIPELINE` row may rest at `READY_NOT_EXECUTED` without a
 > decision. Nothing here is silently asserted — see QA_GOVERNANCE.md
