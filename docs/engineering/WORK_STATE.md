@@ -706,12 +706,10 @@ work items, disjoint ownership, each through the full independent-review loop.
 ## Next steps for the framework itself
 
 - **Framework complete** (Phases 3-8). No further phase implementation required.
-- **Push `main` `bd93ef0`** — integration is complete and verified, but the push is human-authorized and
-  has **not** been performed.
-- **Register the new revision** in `cli/lib/src/version.dart`, `cli/tool/compute_brick_hash.dart`, and
-  `_getExpectedBrickHash()` in `cli/lib/src/commands.dart`, so non-test bootstrap resolves it again.
-  The release hash cannot be computed before the commit exists, which is why it stays outstanding — and
-  this change **does** modify brick content, so the hash must be registered at the next release.
+- ~~Push `main` `bd93ef0`~~ — **done** (pushed through `930bb7b`, human-authorized 2026-10-08).
+- ~~Register the new revision~~ — **done** for `930bb7b` (embedded revision updated in
+  `cli/lib/src/version.dart`; brick hash `6ae588b9…` added to `knownHashes` in
+  `_getExpectedBrickHash()`). Re-register on each future release that changes brick content.
 - **Decide X4/X1 before claiming machine enforcement of citation drift.** The checker works and is
   reviewed, but it finds ~1 citation in this repository's own governance corpus because that corpus uses
   a citation form it does not match.
