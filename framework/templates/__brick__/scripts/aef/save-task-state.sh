@@ -2,9 +2,9 @@
 # save-task-state.sh — OPTIONAL host adapter: persist the agent's task list.
 #
 # Reads a `todo_write`-style hook JSON event from stdin and writes
-# `.devin/task-state.md` with `# Pending Tasks` / `# Completed Tasks` sections,
+# `$AEF_STATE_DIR/task-state.md` (default `.devin/`) with `# Pending Tasks` / `# Completed Tasks` sections,
 # so in-flight work survives a crash or session restart. If
-# `.devin/active-worktrees.md` exists its contents are appended so the
+# `$AEF_STATE_DIR/active-worktrees.md` exists its contents are appended so the
 # worktree mapping survives alongside the task list.
 #
 # This is a reference adapter, not framework policy: wiring it to a host hook
@@ -13,9 +13,10 @@
 
 set -u
 
-PROJECT_DIR="${DEVIN_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}"
-STATE_FILE="$PROJECT_DIR/.devin/task-state.md"
-WORKTREE_FILE="$PROJECT_DIR/.devin/active-worktrees.md"
+PROJECT_DIR="${AEF_PROJECT_DIR:-${DEVIN_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}}"
+STATE_DIR="${AEF_STATE_DIR:-$PROJECT_DIR/.devin}"
+STATE_FILE="$STATE_DIR/task-state.md"
+WORKTREE_FILE="$STATE_DIR/active-worktrees.md"
 
 INPUT=$(cat)
 

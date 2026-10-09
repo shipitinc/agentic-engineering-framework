@@ -1,15 +1,16 @@
 #!/bin/sh
 # check-task-state.sh — OPTIONAL host adapter: report persisted task state.
 #
-# Stop-style adapter: inspects `.devin/task-state.md` and, when tasks are still
+# Stop-style adapter: inspects `$AEF_STATE_DIR/task-state.md` (default `.devin/`) and, when tasks are still
 # marked in progress, emits a hook event that asks the agent to reconcile the
 # task list before stopping, so a crash cannot silently lose in-flight work.
 # Always exits 0 — advisory only.
 
 set -u
 
-PROJECT_DIR="${DEVIN_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}"
-STATE_FILE="$PROJECT_DIR/.devin/task-state.md"
+PROJECT_DIR="${AEF_PROJECT_DIR:-${DEVIN_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}}"
+STATE_DIR="${AEF_STATE_DIR:-$PROJECT_DIR/.devin}"
+STATE_FILE="$STATE_DIR/task-state.md"
 
 [ -f "$STATE_FILE" ] || exit 0
 

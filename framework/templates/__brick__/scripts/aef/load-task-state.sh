@@ -1,15 +1,16 @@
 #!/bin/sh
 # load-task-state.sh — OPTIONAL host adapter: restore persisted task state.
 #
-# SessionStart / post-compaction adapter: reads `.devin/task-state.md` and, when
+# SessionStart / post-compaction adapter: reads `$AEF_STATE_DIR/task-state.md` (default `.devin/`) and, when
 # in-flight work is present, emits a host hook event carrying the saved state so
 # the agent can resume it. Without python3 the state is printed verbatim (still
 # useful as plain context). Always exits 0 — advisory only.
 
 set -u
 
-PROJECT_DIR="${DEVIN_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}"
-STATE_FILE="$PROJECT_DIR/.devin/task-state.md"
+PROJECT_DIR="${AEF_PROJECT_DIR:-${DEVIN_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")}}"
+STATE_DIR="${AEF_STATE_DIR:-$PROJECT_DIR/.devin}"
+STATE_FILE="$STATE_DIR/task-state.md"
 
 [ -f "$STATE_FILE" ] || exit 0
 

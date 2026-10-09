@@ -274,9 +274,11 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
   mechanics; a **custom text merge engine is prohibited**. This selection was validated by an
   empirical proof-of-concept (`DART_MASON_GIT_POC_PASS`, no architecture blockers). ADR 0002 records
   the mandatory POC-derived mitigations, exit-code and structured-result contracts, and a phased
-  implementation plan. The **production CLI is not yet implemented** — implementation is explicitly
-  deferred to the phased plan (next state: Phase 1 CLI skeleton/domain model); the driver is **not**
-  production-ready merely because the POC passed. See [framework/templates/](../../framework/templates/).
+  implementation plan. The CLI implements the operations this workflow requires —
+  `bootstrap` renders this brick and writes the authoritative `framework-manifest.yaml`, and
+  `upgrade` performs and delivers the three-way merge as a reviewable commit; `status` and `doctor`
+  remain `NOT_IMPLEMENTED`, and neither is required for the invariants above. See
+  [framework/templates/](../../framework/templates/).
 
 ---
 
