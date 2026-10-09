@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 
 import 'package:framework_cli/framework_cli.dart';
 import 'package:test/test.dart';
@@ -16,8 +17,16 @@ void main() {
   group('bootstrap integration regression', () {
     late Directory sandbox;
     late Directory previousCwd;
-    final String frameworkRepoPath =
-        '/Users/alkebut/air/agentic-engineering-framework';
+
+    /// The repository root of the checkout under test — the
+    /// `workingDirectory` for the spawned `dart run cli/bin/framework.dart`.
+    ///
+    /// Derived from this checkout's own package resolution rather than a
+    /// host path (see [_resolveFrameworkRepoPath]), so the spawned bootstrap
+    /// binds to the checkout the suite is running in: the canonical repo
+    /// when it runs there, the lane worktree when it runs in a lane.
+    /// `FRAMEWORK_REPO_PATH` overrides the derivation, e.g. for CI.
+    final Future<String> frameworkRepoPath = _resolveFrameworkRepoPath();
 
     setUp(() {
       previousCwd = Directory.current;
@@ -86,7 +95,7 @@ void main() {
           '--target',
           targetDir.path,
         ],
-        workingDirectory: frameworkRepoPath,
+        workingDirectory: await frameworkRepoPath,
         environment: {'FRAMEWORK_CLI_TEST_MODE': 'true'},
       );
       expect(
@@ -405,4 +414,31 @@ void main() {
       timeout: Timeout(Duration(minutes: 2)),
     );
   });
+}
+
+/// Resolves the repository root that contains the checkout under test.
+///
+/// `Platform.script` cannot anchor this: under `dart test` it is a kernel
+/// artifact in a temporary directory, not the test file. The suite's own
+/// package resolution is stable, though — `package:framework_cli/` is mapped
+/// by this checkout's `cli/.dart_tool/package_config.json` to
+/// `<repo>/cli/lib/framework_cli.dart`, so the repository root is three
+/// directory levels above the resolved file. `FRAMEWORK_REPO_PATH` wins when
+/// set, e.g. to pin a specific checkout under CI.
+Future<String> _resolveFrameworkRepoPath() async {
+  final override = Platform.environment['FRAMEWORK_REPO_PATH'];
+  if (override != null && override.isNotEmpty) {
+    return override;
+  }
+  final libraryUri = await Isolate.resolvePackageUri(
+    Uri.parse('package:framework_cli/framework_cli.dart'),
+  );
+  if (libraryUri == null || !libraryUri.isScheme('file')) {
+    throw StateError(
+      'package:framework_cli resolved to $libraryUri, not a file in this '
+      'checkout; set FRAMEWORK_REPO_PATH to the repository root.',
+    );
+  }
+  // <repo>/cli/lib/framework_cli.dart → <repo>
+  return File.fromUri(libraryUri).parent.parent.parent.path;
 }
