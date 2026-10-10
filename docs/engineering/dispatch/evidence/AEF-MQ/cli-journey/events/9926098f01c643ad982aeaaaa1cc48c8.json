@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T02:54:05.396728Z",
+  "event_id": "9926098f01c643ad982aeaaaa1cc48c8",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "manager",
+  "metadata": {},
+  "outcome": "synthetic_qa_complete",
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:05.396741Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "manager",
+  "type": "run_stop"
+}

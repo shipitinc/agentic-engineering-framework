@@ -1,0 +1,1433 @@
+SYNTHETIC QA FIXTURE. Human outcome events are test data, never real human acceptance.
+
+START 2026-10-10T02:52:12.229705+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["dart", "--version"]
+Dart SDK version: 3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on "linux_x64"
+
+END 2026-10-10T02:52:12.233629+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.233652+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["python3", "--version"]
+Python 3.12.14
+
+END 2026-10-10T02:52:12.236935+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.236956+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "--version"]
+git version 2.51.1
+
+END 2026-10-10T02:52:12.240386+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.240869+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-old"]
+
+END 2026-10-10T02:52:12.267187+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.267212+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old
+COMMAND ["git", "config", "user.email", "qa@example.invalid"]
+
+END 2026-10-10T02:52:12.270508+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.270532+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old
+COMMAND ["git", "config", "user.name", "Synthetic QA"]
+
+END 2026-10-10T02:52:12.275019+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.275599+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old
+COMMAND ["git", "add", "."]
+
+END 2026-10-10T02:52:12.281683+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.281707+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old
+COMMAND ["git", "commit", "-qm", "fixture product"]
+
+END 2026-10-10T02:52:12.302708+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.302757+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "--bare", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-old-remote.git"]
+
+END 2026-10-10T02:52:12.323402+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.323426+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old
+COMMAND ["git", "remote", "add", "origin", "/workspace/scratch/2c5d5034fecb/qa-consumer-old-remote.git"]
+
+END 2026-10-10T02:52:12.327939+00:00 EXIT 0
+
+START 2026-10-10T02:52:12.327988+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-baseline
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/aef-baseline/cli/bin/framework.dart", "bootstrap", "--target", "/workspace/scratch/2c5d5034fecb/qa-consumer-old"]
+[BLOCKED] bootstrap: BOOTSTRAP_BLOCKED
+Framework source validation failed
+exit_category=PREFLIGHT_POLICY_FAILURE exit_code=20
+blockers:
+  - FRAMEWORK_BRICK_PATH environment variable not set. Required for distributed CLI execution outside framework repo.
+human_action_required: yes
+
+END 2026-10-10T02:52:41.656334+00:00 EXIT 20
+RETRY: development test mode (unregistered source revisions). SYNTHETIC QA FIXTURE. Human outcome events are test data, never real human acceptance.
+
+START 2026-10-10T02:53:03.914767+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["dart", "--version"]
+Dart SDK version: 3.13.5 (stable) (Tue Sep 29 01:00:52 2026 -0700) on "linux_x64"
+
+END 2026-10-10T02:53:03.918312+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.918337+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["python3", "--version"]
+Python 3.12.14
+
+END 2026-10-10T02:53:03.920871+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.920893+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "--version"]
+git version 2.51.1
+
+END 2026-10-10T02:53:03.924546+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.925929+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-old2"]
+
+END 2026-10-10T02:53:03.947596+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.947626+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "config", "user.email", "qa@example.invalid"]
+
+END 2026-10-10T02:53:03.952264+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.952292+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "config", "user.name", "Synthetic QA"]
+
+END 2026-10-10T02:53:03.955639+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.956436+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "add", "."]
+
+END 2026-10-10T02:53:03.964052+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.964088+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "commit", "-qm", "fixture product"]
+
+END 2026-10-10T02:53:03.988328+00:00 EXIT 0
+
+START 2026-10-10T02:53:03.988389+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "--bare", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-old2-remote.git"]
+
+END 2026-10-10T02:53:04.021320+00:00 EXIT 0
+
+START 2026-10-10T02:53:04.021353+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "remote", "add", "origin", "/workspace/scratch/2c5d5034fecb/qa-consumer-old2-remote.git"]
+
+END 2026-10-10T02:53:04.026223+00:00 EXIT 0
+
+START 2026-10-10T02:53:04.026290+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-baseline
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/aef-baseline/cli/bin/framework.dart", "bootstrap", "--target", "/workspace/scratch/2c5d5034fecb/qa-consumer-old2"]
+[OK] bootstrap: BOOTSTRAP_COMPLETE
+Bootstrap COMPLETE — real Mason render + authoritative manifest.
+Target: /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+Revision: c1476185dd3c9bcd3ba7113c0bcdd6a78c694cdc
+Manifest written with 99 artifacts (hashes + provenance).
+exit_category=SUCCESS exit_code=0
+
+END 2026-10-10T02:53:37.786959+00:00 EXIT 0
+
+START 2026-10-10T02:53:37.787122+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "add", "."]
+
+END 2026-10-10T02:53:37.933797+00:00 EXIT 0
+
+START 2026-10-10T02:53:37.933840+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "commit", "-qm", "old bootstrap"]
+
+END 2026-10-10T02:53:38.108378+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.108596+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "worktree", "add", "--detach", "/workspace/scratch/2c5d5034fecb/qa-framework-prior", "a7e1aa3"]
+Preparing worktree (detached HEAD a7e1aa3)
+HEAD is now at a7e1aa3 feat(metrics): record portable task events and honest duration summaries
+
+END 2026-10-10T02:53:38.428379+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.428434+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-framework-prior/cli
+COMMAND ["dart", "pub", "get", "--offline"]
+Resolving dependencies...
+Downloading packages...
++ _fe_analyzer_shared 109.0.0
++ analyzer 14.5.0
++ archive 4.4.0
++ args 2.7.0
++ async 2.13.1
++ boolean_selector 2.1.2
++ checked_yaml 2.0.4
++ cli_config 0.2.0
++ collection 1.19.1
++ convert 3.1.2
++ coverage 1.15.1
++ crypto 3.0.7
++ ffi 2.2.0
++ ffi_leak_tracker 0.1.2
++ file 7.0.1
++ frontend_server_client 4.1.0
++ glob 2.2.0
++ http 1.6.0
++ http_multi_server 3.2.2
++ http_parser 4.1.2
++ io 1.1.0
++ json_annotation 4.12.0
++ lints 5.1.1
++ logging 1.3.0
++ mason 0.1.3
++ mason_logger 0.3.6
++ matcher 0.12.20
++ meta 1.19.0
++ mime 2.1.0
++ mustache_template 2.0.6
++ node_preamble 2.0.2
++ package_config 3.0.0
++ path 1.9.1
++ pool 1.5.3
++ posix 6.5.2
++ pub_semver 2.2.1
++ shelf 1.4.2
++ shelf_packages_handler 3.0.2
++ shelf_static 1.1.3
++ shelf_web_socket 3.0.0
++ source_map_stack_trace 2.1.2
++ source_maps 0.10.14
++ source_span 1.10.2
++ stack_trace 1.12.2
++ stream_channel 2.1.4
++ string_scanner 1.4.1
++ term_glyph 1.2.2
++ test 1.33.0
++ test_api 0.7.15
++ test_core 0.6.21
++ typed_data 1.4.0
++ vm_service 15.3.0
++ watcher 1.2.1
++ web 1.1.1
++ web_socket 1.0.1
++ web_socket_channel 3.0.3
++ webkit_inspection_protocol 1.2.1
++ win32 6.4.0
++ yaml 3.1.4
+Changed 59 dependencies!
+
+END 2026-10-10T02:53:38.711467+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.712507+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-metrics"]
+
+END 2026-10-10T02:53:38.738371+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.738408+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "config", "user.email", "qa@example.invalid"]
+
+END 2026-10-10T02:53:38.742313+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.742344+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "config", "user.name", "Synthetic QA"]
+
+END 2026-10-10T02:53:38.747625+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.748314+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "add", "."]
+
+END 2026-10-10T02:53:38.754760+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.754797+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "commit", "-qm", "fixture product"]
+
+END 2026-10-10T02:53:38.773561+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.773623+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "--bare", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-metrics-remote.git"]
+
+END 2026-10-10T02:53:38.800875+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.800900+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "remote", "add", "origin", "/workspace/scratch/2c5d5034fecb/qa-consumer-metrics-remote.git"]
+
+END 2026-10-10T02:53:38.805989+00:00 EXIT 0
+
+START 2026-10-10T02:53:38.806050+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-framework-prior
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/qa-framework-prior/cli/bin/framework.dart", "bootstrap", "--target", "/workspace/scratch/2c5d5034fecb/qa-consumer-metrics"]
+[OK] bootstrap: BOOTSTRAP_COMPLETE
+Bootstrap COMPLETE — real Mason render + authoritative manifest.
+Target: /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+Revision: a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb
+Manifest written with 101 artifacts (hashes + provenance).
+exit_category=SUCCESS exit_code=0
+
+END 2026-10-10T02:53:59.398393+00:00 EXIT 0
+
+START 2026-10-10T02:53:59.400156+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-framework-prior
+COMMAND ["git", "rev-parse", "HEAD"]
+a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb
+
+END 2026-10-10T02:53:59.412383+00:00 EXIT 0
+
+START 2026-10-10T02:53:59.412508+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "manager", "--type", "run_start", "--ref", "synthetic-evidence.md", "--metadata", "{\"scope\": \"synthetic integrated QA\", \"model\": null, \"harness\": \"Python subprocess\", \"framework_revision\": \"a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb\"}"]
+{
+  "at": "2026-10-10T02:53:59.485624Z",
+  "event_id": "58ad014c6c3f4f7cb8c2bd11dea6b034",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "manager",
+  "metadata": {
+    "framework_revision": "a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb",
+    "harness": "Python subprocess",
+    "model": null,
+    "scope": "synthetic integrated QA"
+  },
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:53:59.485638Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "manager",
+  "type": "run_start"
+}
+
+END 2026-10-10T02:53:59.512728+00:00 EXIT 0
+
+START 2026-10-10T02:53:59.512788+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "task_start", "--ref", "synthetic-evidence.md", "--metadata", "{\"scope\": \"synthetic lane\", \"parent_task\": \"manager\"}"]
+{
+  "at": "2026-10-10T02:54:00.099660Z",
+  "event_id": "c6ec151373fd478a9fe853003547add9",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {
+    "parent_task": "manager",
+    "scope": "synthetic lane"
+  },
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:00.099679Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "task_start"
+}
+
+END 2026-10-10T02:54:00.191987+00:00 EXIT 0
+
+START 2026-10-10T02:54:00.192054+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "B", "--type", "task_start", "--ref", "synthetic-evidence.md", "--metadata", "{\"scope\": \"synthetic lane\", \"parent_task\": \"manager\"}"]
+{
+  "at": "2026-10-10T02:54:03.443574Z",
+  "event_id": "c33d8ac2970547ce8adb71e3a0a4d10c",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "B",
+  "metadata": {
+    "parent_task": "manager",
+    "scope": "synthetic lane"
+  },
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:03.443590Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "B",
+  "type": "task_start"
+}
+
+END 2026-10-10T02:54:03.634525+00:00 EXIT 0
+
+START 2026-10-10T02:54:03.638623+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "B", "--type", "active_start", "--ref", "synthetic-evidence.md", "--interval", "work-1"]
+{
+  "at": "2026-10-10T02:54:03.737278Z",
+  "event_id": "68b63f2cff2244e48311755f88e2c4a2",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "work-1",
+  "lane_id": "B",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:03.737289Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "B",
+  "type": "active_start"
+}
+
+END 2026-10-10T02:54:03.754014+00:00 EXIT 0
+
+START 2026-10-10T02:54:03.637473+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "active_start", "--ref", "synthetic-evidence.md", "--interval", "work-1"]
+{
+  "at": "2026-10-10T02:54:03.740846Z",
+  "event_id": "c17bc43ba8c04f8f92eec09a3f13014c",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "work-1",
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:03.740858Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "active_start"
+}
+
+END 2026-10-10T02:54:03.757551+00:00 EXIT 0
+
+START 2026-10-10T02:54:03.759158+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "attempt", "--ref", "synthetic-evidence.md", "--event-id", "stable-attempt"]
+{
+  "at": "2026-10-10T02:54:03.825365Z",
+  "event_id": "stable-attempt",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:03.825378Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "attempt"
+}
+
+END 2026-10-10T02:54:03.850610+00:00 EXIT 0
+
+START 2026-10-10T02:54:03.850653+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "attempt", "--ref", "synthetic-evidence.md", "--event-id", "stable-attempt"]
+{
+  "at": "2026-10-10T02:54:03.825365Z",
+  "event_id": "stable-attempt",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:03.825378Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "attempt"
+}
+
+END 2026-10-10T02:54:03.992754+00:00 EXIT 0
+
+START 2026-10-10T02:54:03.992848+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "test_failure", "--ref", "synthetic-evidence.md", "--reason", "synthetic failure"]
+{
+  "at": "2026-10-10T02:54:04.176684Z",
+  "event_id": "3e51f19a2fa14530a1d9b45930fe8d6b",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": "synthetic failure",
+  "recorded_at": "2026-10-10T02:54:04.176697Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "test_failure"
+}
+
+END 2026-10-10T02:54:04.205009+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.205085+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "active_stop", "--ref", "synthetic-evidence.md", "--interval", "work-1"]
+{
+  "at": "2026-10-10T02:54:04.272433Z",
+  "event_id": "c9cd7fc3984b413597637b9d961f8748",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "work-1",
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.272470Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "active_stop"
+}
+
+END 2026-10-10T02:54:04.289700+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.289746+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "wait_start", "--ref", "synthetic-evidence.md", "--interval", "wait-1", "--reason", "environment"]
+{
+  "at": "2026-10-10T02:54:04.345643Z",
+  "event_id": "4025a5d8a91d4aacba33ce1b12f9ac6b",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "wait-1",
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": "environment",
+  "recorded_at": "2026-10-10T02:54:04.345653Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "wait_start"
+}
+
+END 2026-10-10T02:54:04.365909+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.365958+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "environment_blocker", "--ref", "synthetic-evidence.md", "--reason", "synthetic environment wait"]
+{
+  "at": "2026-10-10T02:54:04.418813Z",
+  "event_id": "902a51945e6241e3901f6d0cd65b0cde",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": "synthetic environment wait",
+  "recorded_at": "2026-10-10T02:54:04.418823Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "environment_blocker"
+}
+
+END 2026-10-10T02:54:04.434140+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.434230+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "B", "--type", "active_stop", "--ref", "synthetic-evidence.md", "--interval", "work-1"]
+{
+  "at": "2026-10-10T02:54:04.485142Z",
+  "event_id": "b9b17953a6bf4bbeb856c31e622ab55f",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "work-1",
+  "lane_id": "B",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.485152Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "B",
+  "type": "active_stop"
+}
+
+END 2026-10-10T02:54:04.504732+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.504766+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "wait_stop", "--ref", "synthetic-evidence.md", "--interval", "wait-1"]
+{
+  "at": "2026-10-10T02:54:04.574626Z",
+  "event_id": "80a97c515d4349c689b4cc11fd5cedcd",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "wait-1",
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.574636Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "wait_stop"
+}
+
+END 2026-10-10T02:54:04.592415+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.592548+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "active_start", "--ref", "synthetic-evidence.md", "--interval", "work-2"]
+{
+  "at": "2026-10-10T02:54:04.650517Z",
+  "event_id": "897ac96ba1d74581ad6dfc11424911e6",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "work-2",
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.650531Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "active_start"
+}
+
+END 2026-10-10T02:54:04.667238+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.667275+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "correction", "--ref", "synthetic-evidence.md"]
+{
+  "at": "2026-10-10T02:54:04.719340Z",
+  "event_id": "cf1ad28294a9434eb9f8b49d8c04c9fc",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.719350Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "correction"
+}
+
+END 2026-10-10T02:54:04.736047+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.736090+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "active_stop", "--ref", "synthetic-evidence.md", "--interval", "work-2"]
+{
+  "at": "2026-10-10T02:54:04.793929Z",
+  "event_id": "0848c295ec1945cb8ef4d96d80b0e2db",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "work-2",
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.793940Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "active_stop"
+}
+
+END 2026-10-10T02:54:04.809847+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.809881+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "review", "--type", "review", "--ref", "synthetic-evidence.md", "--outcome", "approved"]
+{
+  "at": "2026-10-10T02:54:04.873766Z",
+  "event_id": "516e287dab1242f39e4840cb55929dea",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "review",
+  "metadata": {},
+  "outcome": "approved",
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.873778Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "review",
+  "type": "review"
+}
+
+END 2026-10-10T02:54:04.893713+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.893748+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "QA", "--type", "ai_verification", "--ref", "synthetic-evidence.md", "--outcome", "pass"]
+{
+  "at": "2026-10-10T02:54:04.950755Z",
+  "event_id": "78c8794d8b064c24a4cef0295a6ac436",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "QA",
+  "metadata": {},
+  "outcome": "pass",
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:04.950766Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "QA",
+  "type": "ai_verification"
+}
+
+END 2026-10-10T02:54:04.969629+00:00 EXIT 0
+
+START 2026-10-10T02:54:04.969675+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "human", "--type", "human_qa", "--ref", "synthetic-evidence.md", "--outcome", "fail"]
+{
+  "at": "2026-10-10T02:54:05.030215Z",
+  "event_id": "2965c9b6237743d4b395594d0ba2722e",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "human",
+  "metadata": {},
+  "outcome": "fail",
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:05.030226Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "human",
+  "type": "human_qa"
+}
+
+END 2026-10-10T02:54:05.050420+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.050500+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "human", "--type", "qa_escape", "--ref", "synthetic-evidence.md", "--reason", "IMPLEMENTATION_DEFECT"]
+{
+  "at": "2026-10-10T02:54:05.111920Z",
+  "event_id": "bd03b6f2df7d44d5a41eb5ab6feba6e3",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "human",
+  "metadata": {},
+  "outcome": null,
+  "reason": "IMPLEMENTATION_DEFECT",
+  "recorded_at": "2026-10-10T02:54:05.111930Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "human",
+  "type": "qa_escape"
+}
+
+END 2026-10-10T02:54:05.137796+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.137843+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "A", "--type", "task_stop", "--ref", "synthetic-evidence.md", "--outcome", "implemented"]
+{
+  "at": "2026-10-10T02:54:05.217600Z",
+  "event_id": "fe3c2a80ae8641f69c6f1504186ecef5",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": "implemented",
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:05.217613Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "task_stop"
+}
+
+END 2026-10-10T02:54:05.240072+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.240118+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "B", "--type", "task_stop", "--ref", "synthetic-evidence.md", "--outcome", "implemented"]
+{
+  "at": "2026-10-10T02:54:05.290266Z",
+  "event_id": "eef692bf5a1a4ed481611a1b1efc32bc",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "B",
+  "metadata": {},
+  "outcome": "implemented",
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:05.290332Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "B",
+  "type": "task_stop"
+}
+
+END 2026-10-10T02:54:05.308317+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.308360+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "event", "--run", "SYNTHETIC", "--task", "manager", "--type", "run_stop", "--ref", "synthetic-evidence.md", "--outcome", "synthetic_qa_complete"]
+{
+  "at": "2026-10-10T02:54:05.396728Z",
+  "event_id": "9926098f01c643ad982aeaaaa1cc48c8",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "manager",
+  "metadata": {},
+  "outcome": "synthetic_qa_complete",
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:05.396741Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "manager",
+  "type": "run_stop"
+}
+
+END 2026-10-10T02:54:05.430755+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.430795+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "summary", "--run", "SYNTHETIC", "--format", "json"]
+{
+  "active_union_seconds": 0.8912761211395264,
+  "elapsed_seconds": 5.911103963851929,
+  "event_count": 22,
+  "interpretation": "Observed events only. Zero counts do not prove absence. Active intervals are not CPU/token time. AI verification is not human acceptance.",
+  "lane_effort_seconds": 1.422863245010376,
+  "metadata": {
+    "run:SYNTHETIC": {
+      "framework_revision": "a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb",
+      "harness": "Python subprocess",
+      "model": null,
+      "parent_task": null,
+      "scope": "synthetic integrated QA"
+    },
+    "task:A": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    },
+    "task:B": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    }
+  },
+  "observed_counts": {
+    "ai_verification": 1,
+    "attempt": 1,
+    "build_failure": 0,
+    "correction": 1,
+    "environment_blocker": 1,
+    "human_qa": 1,
+    "qa_escape": 1,
+    "review": 1,
+    "test_failure": 1
+  },
+  "observed_outcomes": {
+    "ai_verification": {
+      "pass": 1
+    },
+    "human_qa": {
+      "fail": 1
+    },
+    "review": {
+      "approved": 1
+    }
+  },
+  "open_intervals": [],
+  "run_id": "SYNTHETIC",
+  "run_outcome": "synthetic_qa_complete",
+  "schema_version": 1,
+  "task_elapsed_seconds": {
+    "A": 5.117940187454224,
+    "B": 1.8466920852661133
+  },
+  "task_outcomes": {
+    "A": "implemented",
+    "B": "implemented"
+  },
+  "unknown_seconds": 4.930343866348267,
+  "waiting_by_reason_seconds": {
+    "environment": 0.22898292541503906
+  },
+  "waiting_union_seconds": 0.22898292541503906,
+  "warnings": [
+    "Metadata varies across tasks; do not treat this as a controlled comparison."
+  ]
+}
+
+END 2026-10-10T02:54:05.524079+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.524363+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "summary", "--run", "SYNTHETIC", "--format", "json"]
+{
+  "active_union_seconds": 0.8912761211395264,
+  "elapsed_seconds": 5.911103963851929,
+  "event_count": 22,
+  "interpretation": "Observed events only. Zero counts do not prove absence. Active intervals are not CPU/token time. AI verification is not human acceptance.",
+  "lane_effort_seconds": 1.422863245010376,
+  "metadata": {
+    "run:SYNTHETIC": {
+      "framework_revision": "a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb",
+      "harness": "Python subprocess",
+      "model": null,
+      "parent_task": null,
+      "scope": "synthetic integrated QA"
+    },
+    "task:A": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    },
+    "task:B": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    }
+  },
+  "observed_counts": {
+    "ai_verification": 1,
+    "attempt": 1,
+    "build_failure": 0,
+    "correction": 1,
+    "environment_blocker": 1,
+    "human_qa": 1,
+    "qa_escape": 1,
+    "review": 1,
+    "test_failure": 1
+  },
+  "observed_outcomes": {
+    "ai_verification": {
+      "pass": 1
+    },
+    "human_qa": {
+      "fail": 1
+    },
+    "review": {
+      "approved": 1
+    }
+  },
+  "open_intervals": [],
+  "run_id": "SYNTHETIC",
+  "run_outcome": "synthetic_qa_complete",
+  "schema_version": 1,
+  "task_elapsed_seconds": {
+    "A": 5.117940187454224,
+    "B": 1.8466920852661133
+  },
+  "task_outcomes": {
+    "A": "implemented",
+    "B": "implemented"
+  },
+  "unknown_seconds": 4.930343866348267,
+  "waiting_by_reason_seconds": {
+    "environment": 0.22898292541503906
+  },
+  "waiting_union_seconds": 0.22898292541503906,
+  "warnings": [
+    "Metadata varies across tasks; do not treat this as a controlled comparison."
+  ]
+}
+
+END 2026-10-10T02:54:05.596997+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.598102+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "summary", "--run", "SYNTHETIC", "--format", "markdown"]
+# AEF task metrics
+
+Run: `SYNTHETIC`
+
+| Metric | Seconds |
+|---|---:|
+| elapsed_seconds | 5.911103963851929 |
+| active_union_seconds | 0.8912761211395264 |
+| lane_effort_seconds | 1.422863245010376 |
+| waiting_union_seconds | 0.22898292541503906 |
+| unknown_seconds | 4.930343866348267 |
+
+## Machine-readable details
+
+```json
+{
+  "active_union_seconds": 0.8912761211395264,
+  "elapsed_seconds": 5.911103963851929,
+  "event_count": 22,
+  "interpretation": "Observed events only. Zero counts do not prove absence. Active intervals are not CPU/token time. AI verification is not human acceptance.",
+  "lane_effort_seconds": 1.422863245010376,
+  "metadata": {
+    "run:SYNTHETIC": {
+      "framework_revision": "a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb",
+      "harness": "Python subprocess",
+      "model": null,
+      "parent_task": null,
+      "scope": "synthetic integrated QA"
+    },
+    "task:A": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    },
+    "task:B": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    }
+  },
+  "observed_counts": {
+    "ai_verification": 1,
+    "attempt": 1,
+    "build_failure": 0,
+    "correction": 1,
+    "environment_blocker": 1,
+    "human_qa": 1,
+    "qa_escape": 1,
+    "review": 1,
+    "test_failure": 1
+  },
+  "observed_outcomes": {
+    "ai_verification": {
+      "pass": 1
+    },
+    "human_qa": {
+      "fail": 1
+    },
+    "review": {
+      "approved": 1
+    }
+  },
+  "open_intervals": [],
+  "run_id": "SYNTHETIC",
+  "run_outcome": "synthetic_qa_complete",
+  "schema_version": 1,
+  "task_elapsed_seconds": {
+    "A": 5.117940187454224,
+    "B": 1.8466920852661133
+  },
+  "task_outcomes": {
+    "A": "implemented",
+    "B": "implemented"
+  },
+  "unknown_seconds": 4.930343866348267,
+  "waiting_by_reason_seconds": {
+    "environment": 0.22898292541503906
+  },
+  "waiting_union_seconds": 0.22898292541503906,
+  "warnings": [
+    "Metadata varies across tasks; do not treat this as a controlled comparison."
+  ]
+}
+```
+
+END 2026-10-10T02:54:05.682392+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.701484+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "add", "."]
+
+END 2026-10-10T02:54:05.843917+00:00 EXIT 0
+
+START 2026-10-10T02:54:05.843964+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "commit", "-qm", "synthetic telemetry fixture"]
+
+END 2026-10-10T02:54:05.906703+00:00 EXIT 0
+
+START 2026-10-10T02:54:47.543563+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef/cli
+COMMAND ["dart", "analyze"]
+Analyzing cli...
+No issues found!
+
+END 2026-10-10T02:55:05.028644+00:00 EXIT 0
+
+START 2026-10-10T02:57:04.380816+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/aef/cli/bin/framework.dart", "upgrade", "--target", "2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9"]
+[BLOCKED] upgrade: UPGRADE_READY_FOR_REVIEW
+Upgrade from c1476185dd3c9bcd3ba7113c0bcdd6a78c694cdc to 2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9
+Branch: framework/upgrade-c1476185dd3c-2a0720eb8f99 (commit 514204118899561215180d115086a6b44b1edb1f)
+Added: 2
+Deleted: 0
+Renamed: 0
+Modified: 17
+Conflicts: 0
+Product customizations preserved: 0
+Unmodified: 99
+Stale manifest entries dropped: 0
+Brick staging artifacts removed from the delivered tree: 0
+Adopted the incoming render: no
+Provenance pin spellings canonicalized: 0
+Manifest refreshed to revision 2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9.
+Delivered to: origin (/workspace/scratch/2c5d5034fecb/qa-consumer-old2-remote.git)
+Review: git diff HEAD..framework/upgrade-c1476185dd3c-2a0720eb8f99
+exit_category=MERGE_ACTION_REQUIRED exit_code=10
+
+END 2026-10-10T02:57:26.332865+00:00 EXIT 10
+
+START 2026-10-10T02:57:42.071634+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "fetch", "origin"]
+
+END 2026-10-10T02:57:42.099219+00:00 EXIT 0
+
+START 2026-10-10T02:57:42.099309+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "branch", "-r", "--list", "origin/framework/upgrade-*"]
+  origin/framework/upgrade-c1476185dd3c-2a0720eb8f99
+
+END 2026-10-10T02:57:42.102765+00:00 EXIT 0
+
+START 2026-10-10T02:57:42.102797+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "checkout", "--detach", "origin/framework/upgrade-c1476185dd3c-2a0720eb8f99"]
+HEAD is now at 5142041 framework: upgrade c1476185dd3c9bcd3ba7113c0bcdd6a78c694cdc -> 2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9
+
+END 2026-10-10T02:57:42.131902+00:00 EXIT 0
+
+START 2026-10-10T02:57:42.133581+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-old2
+COMMAND ["git", "status", "--porcelain"]
+
+END 2026-10-10T02:57:42.142821+00:00 EXIT 0
+
+START 2026-10-10T02:57:42.153199+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/aef/cli/bin/framework.dart", "upgrade", "--target", "2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9"]
+[BLOCKED] upgrade: UPGRADE_READY_FOR_REVIEW
+Upgrade from a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb to 2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9
+Branch: framework/upgrade-a7e1aa31d3e6-2a0720eb8f99 (commit ef36027ce2ddc033c46c97938add5620a94bda3a)
+Added: 0
+Deleted: 0
+Renamed: 0
+Modified: 2
+Conflicts: 0
+Product customizations preserved: 0
+Unmodified: 101
+Stale manifest entries dropped: 0
+Brick staging artifacts removed from the delivered tree: 0
+Adopted the incoming render: no
+Provenance pin spellings canonicalized: 0
+Manifest refreshed to revision 2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9.
+Delivered to: origin (/workspace/scratch/2c5d5034fecb/qa-consumer-metrics-remote.git)
+Review: git diff HEAD..framework/upgrade-a7e1aa31d3e6-2a0720eb8f99
+exit_category=MERGE_ACTION_REQUIRED exit_code=10
+
+END 2026-10-10T02:58:04.198276+00:00 EXIT 10
+
+START 2026-10-10T02:58:04.198321+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "fetch", "origin"]
+
+END 2026-10-10T02:58:04.222333+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.222391+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "branch", "-r", "--list", "origin/framework/upgrade-*"]
+  origin/framework/upgrade-a7e1aa31d3e6-2a0720eb8f99
+
+END 2026-10-10T02:58:04.226481+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.226515+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "checkout", "--detach", "origin/framework/upgrade-a7e1aa31d3e6-2a0720eb8f99"]
+HEAD is now at ef36027 framework: upgrade a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb -> 2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9
+
+END 2026-10-10T02:58:04.233090+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.234000+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["python3", "scripts/aef/task-metrics.py", "summary", "--run", "SYNTHETIC", "--format", "json"]
+{
+  "active_union_seconds": 0.8912761211395264,
+  "elapsed_seconds": 5.911103963851929,
+  "event_count": 22,
+  "interpretation": "Observed events only. Zero counts do not prove absence. Active intervals are not CPU/token time. AI verification is not human acceptance.",
+  "lane_effort_seconds": 1.422863245010376,
+  "metadata": {
+    "run:SYNTHETIC": {
+      "framework_revision": "a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb",
+      "harness": "Python subprocess",
+      "model": null,
+      "parent_task": null,
+      "scope": "synthetic integrated QA"
+    },
+    "task:A": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    },
+    "task:B": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    }
+  },
+  "observed_counts": {
+    "ai_verification": 1,
+    "attempt": 1,
+    "build_failure": 0,
+    "correction": 1,
+    "environment_blocker": 1,
+    "human_qa": 1,
+    "qa_escape": 1,
+    "review": 1,
+    "test_failure": 1
+  },
+  "observed_outcomes": {
+    "ai_verification": {
+      "pass": 1
+    },
+    "human_qa": {
+      "fail": 1
+    },
+    "review": {
+      "approved": 1
+    }
+  },
+  "open_intervals": [],
+  "run_id": "SYNTHETIC",
+  "run_outcome": "synthetic_qa_complete",
+  "schema_version": 1,
+  "task_elapsed_seconds": {
+    "A": 5.117940187454224,
+    "B": 1.8466920852661133
+  },
+  "task_outcomes": {
+    "A": "implemented",
+    "B": "implemented"
+  },
+  "unknown_seconds": 4.930343866348267,
+  "waiting_by_reason_seconds": {
+    "environment": 0.22898292541503906
+  },
+  "waiting_union_seconds": 0.22898292541503906,
+  "warnings": [
+    "Metadata varies across tasks; do not treat this as a controlled comparison."
+  ]
+}
+
+END 2026-10-10T02:58:04.315521+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.315860+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-metrics
+COMMAND ["git", "status", "--porcelain"]
+
+END 2026-10-10T02:58:04.322413+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.322616+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-normal"]
+
+END 2026-10-10T02:58:04.328175+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.328201+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+COMMAND ["git", "config", "user.email", "qa@example.invalid"]
+
+END 2026-10-10T02:58:04.331312+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.331335+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+COMMAND ["git", "config", "user.name", "Synthetic QA"]
+
+END 2026-10-10T02:58:04.334032+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.334524+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+COMMAND ["git", "add", "."]
+
+END 2026-10-10T02:58:04.337688+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.337711+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+COMMAND ["git", "commit", "-qm", "fixture product"]
+
+END 2026-10-10T02:58:04.346612+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.346665+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "init", "--bare", "-q", "/workspace/scratch/2c5d5034fecb/qa-consumer-normal-remote.git"]
+
+END 2026-10-10T02:58:04.352279+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.352306+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+COMMAND ["git", "remote", "add", "origin", "/workspace/scratch/2c5d5034fecb/qa-consumer-normal-remote.git"]
+
+END 2026-10-10T02:58:04.357771+00:00 EXIT 0
+
+START 2026-10-10T02:58:04.357826+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/aef/cli/bin/framework.dart", "bootstrap", "--target", "/workspace/scratch/2c5d5034fecb/qa-consumer-normal"]
+[BLOCKED] bootstrap: BOOTSTRAP_BLOCKED
+Preflight failed
+exit_category=PREFLIGHT_POLICY_FAILURE exit_code=20
+blockers:
+  - Working tree is dirty (8 uncommitted path(s))
+human_action_required: yes
+
+END 2026-10-10T02:58:17.811142+00:00 EXIT 20
+
+START 2026-10-10T02:58:32.246824+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/aef/cli/bin/framework.dart", "bootstrap", "--target", "/workspace/scratch/2c5d5034fecb/qa-consumer-normal"]
+[OK] bootstrap: BOOTSTRAP_COMPLETE
+Bootstrap COMPLETE — real Mason render + authoritative manifest.
+Target: /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+Revision: 68c2d8a70edf21dcbc7093c4dedb649769d3e56f
+Manifest written with 101 artifacts (hashes + provenance).
+exit_category=SUCCESS exit_code=0
+
+END 2026-10-10T02:58:47.506378+00:00 EXIT 0
+
+START 2026-10-10T02:58:47.506827+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-consumer-normal
+COMMAND ["python3", "scripts/aef/task-metrics.py", "--help"]
+usage: task-metrics.py [-h] [--store STORE] {event,summary} ...
+
+Optional, offline AEF observability. No lifecycle or approval authority.
+
+positional arguments:
+  {event,summary}
+    event          append one immutable event
+    summary        render reproducible observed metrics
+
+options:
+  -h, --help       show this help message and exit
+  --store STORE
+
+END 2026-10-10T02:58:47.573096+00:00 EXIT 0
+
+START 2026-10-10T02:58:47.573219+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef/cli
+COMMAND ["dart", "analyze"]
+Analyzing cli...
+No issues found!
+
+END 2026-10-10T02:58:54.012539+00:00 EXIT 0
+
+START 2026-10-10T02:58:54.012668+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef
+COMMAND ["git", "diff", "--check"]
+
+END 2026-10-10T02:58:54.019783+00:00 EXIT 0

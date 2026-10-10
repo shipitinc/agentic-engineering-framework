@@ -1,0 +1,77 @@
+2026-10-10T03:11:14.404435+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-publish/cli
+COMMAND ["dart", "format", "--output=none", "--set-exit-if-changed", "lib/src/version.dart", "lib/src/commands.dart"]
+Formatted 2 files (0 changed) in 0.07 seconds.
+
+EXIT 0
+2026-10-10T03:11:14.596855+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-publish/cli
+COMMAND ["dart", "run", "tool/compute_brick_hash.dart"]
+Brick content hash: be111963ae74fd5fb1e5edc3471852e50c830f6e75b9ae7fdc0b086e426ce60f
+Revision: 3a089565a9aad8c81bff71cd17b03d0018790362
+
+EXIT 0
+2026-10-10T03:11:17.017856+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-publish
+COMMAND ["git", "init", "-q", "/workspace/scratch/2c5d5034fecb/qa-published-consumer"]
+
+EXIT 0
+2026-10-10T03:11:17.035734+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-publish
+COMMAND ["git", "init", "--bare", "-q", "/workspace/scratch/2c5d5034fecb/qa-published-remote.git"]
+
+EXIT 0
+2026-10-10T03:11:17.044393+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-published-consumer
+COMMAND ["git", "config", "user.name", "AEF QA"]
+
+EXIT 0
+2026-10-10T03:11:17.059473+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-published-consumer
+COMMAND ["git", "config", "user.email", "qa@example.invalid"]
+
+EXIT 0
+2026-10-10T03:11:17.064782+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-published-consumer
+COMMAND ["git", "add", "product.txt"]
+
+EXIT 0
+2026-10-10T03:11:17.072057+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-published-consumer
+COMMAND ["git", "commit", "-qm", "fixture"]
+
+EXIT 0
+2026-10-10T03:11:17.083675+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-published-consumer
+COMMAND ["git", "remote", "add", "origin", "/workspace/scratch/2c5d5034fecb/qa-published-remote.git"]
+
+EXIT 0
+FRAMEWORK_CLI_TEST_MODE absent; FRAMEWORK_BRICK_PATH=/workspace/scratch/2c5d5034fecb/aef-publish/framework/templates
+2026-10-10T03:11:17.089425+00:00
+CWD /workspace/scratch/2c5d5034fecb/qa-published-consumer
+COMMAND ["dart", "run", "/workspace/scratch/2c5d5034fecb/aef-publish/cli/bin/framework.dart", "bootstrap", "--target", "/workspace/scratch/2c5d5034fecb/qa-published-consumer"]
+[OK] bootstrap: BOOTSTRAP_COMPLETE
+Bootstrap COMPLETE — real Mason render + authoritative manifest.
+Target: /workspace/scratch/2c5d5034fecb/qa-published-consumer
+Revision: a1e082c96f337a31053bc73696c417298aa34bef
+Manifest written with 101 artifacts (hashes + provenance).
+exit_category=SUCCESS exit_code=0
+
+EXIT 0
+2026-10-10T03:12:11.834140+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-publish
+COMMAND ["git", "diff", "--check"]
+
+EXIT 0
+2026-10-10T03:12:11.841568+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-publish
+COMMAND ["git", "status", "--short"]
+
+EXIT 0
+2026-10-10T03:12:11.851250+00:00
+CWD /workspace/scratch/2c5d5034fecb/aef-publish
+COMMAND ["git", "rev-parse", "HEAD"]
+3a089565a9aad8c81bff71cd17b03d0018790362
+
+EXIT 0
+PASS: normal bootstrap, published manifest pin, metrics adapter installed.

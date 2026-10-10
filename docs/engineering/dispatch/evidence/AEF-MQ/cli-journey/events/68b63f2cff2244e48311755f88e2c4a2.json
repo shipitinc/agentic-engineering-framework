@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T02:54:03.737278Z",
+  "event_id": "68b63f2cff2244e48311755f88e2c4a2",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": "work-1",
+  "lane_id": "B",
+  "metadata": {},
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:03.737289Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "B",
+  "type": "active_start"
+}

@@ -1,0 +1,22 @@
+{
+  "at": "2026-10-10T02:54:03.443574Z",
+  "event_id": "c33d8ac2970547ce8adb71e3a0a4d10c",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "B",
+  "metadata": {
+    "parent_task": "manager",
+    "scope": "synthetic lane"
+  },
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:54:03.443590Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "B",
+  "type": "task_start"
+}

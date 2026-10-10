@@ -1,0 +1,12 @@
+{
+  "synthetic": true,
+  "event_count": 22,
+  "independent_expected_seconds": {
+    "elapsed_seconds": 5.911103963851929,
+    "active_union_seconds": 0.8912761211395264,
+    "lane_effort_seconds": 1.422863245010376,
+    "waiting_union_seconds": 0.22898292541503906,
+    "unknown_seconds": 4.930343866348267
+  },
+  "result": "PASS"
+}

@@ -52,3 +52,24 @@ as parked Human Decision objects — no PENDING period existed):
 
 Correction: `docs/engineering/**` other than `dispatch/` belongs to the lane; `dispatch/` stays
 Manager-owned bookkeeping.
+
+## AEF metrics and journey work — 2026-10-10T02:35:16.133946+00:00
+
+Manager self-edit: persisted dispatch prompts and ownership before launch. Existing defaults apply; LANE_WORKTREE_ROOT is /workspace/scratch/2c5d5034fecb (not OS temporary storage). Two isolated writers; ownership explicitly disjoint. AEF-METRICS owns new metrics script/docs/tests and script README; AEF-JOURNEY owns canonical policy/QA templates; generated outputs reserved for serialized generation. Independent review required before integration.
+
+AEF-MQ-CONTRACT dispatched to distinct QA Architect in isolated aef-qa worktree; sole owned path docs/engineering/dispatch/evidence/AEF-MQ/qa-contract.md. Journey lane owns generated outputs via generator only; metrics lane owns CI inclusion for new tests. No overlaps.
+
+Manager froze QA contract v1.0.0 following read-only independent APPROVE_FOR_MERGE at fdf5e3c; no implementation approval implied. Child interruption was host usage limit; resumed on user request. Dart SDK permission repaired; no framework source workaround.
+
+Integrated source candidate68c2d8a independently approved. Full suite found new metrics wrapper cwd coupling; correction scoped solely cli/test/task_metrics_test.dart, fresh focused review dispatched. GitHub create-tree denied403 Resource not accessible by integration; no publication performed.
+
+Final source target:2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9. All172 tests pass at exact target;
+normal integrity-enabled install and both upgrades pass. Independent review approved source,
+CWD/packaging corrections and release registration. QA architect and executor were distinct.
+Publication blocked only by GitHub integration write access (403); user permission update needed.
+No new mandatory approval, no remote changes, no TeamHub upgrade performed.
+
+Publication retry: GitHub access restored; source snapshota1e082c published to feat/aef-task-metrics-journey,
+matching local4a9d0ed tree exactly. AEF-MQ-PUBLISH-PIN implemented two SHA replacements;
+AEF-MQ-PUBLISH-REVIEW approved exact3a08956. Normal bootstrap verifies reachable source pin without
+test mode. Prior GitHub403 blocker resolved. Main and TeamHub unchanged; draft review submission follows.

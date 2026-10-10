@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T02:54:04.418813Z",
+  "event_id": "902a51945e6241e3901f6d0cd65b0cde",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "A",
+  "metadata": {},
+  "outcome": null,
+  "reason": "synthetic environment wait",
+  "recorded_at": "2026-10-10T02:54:04.418823Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "A",
+  "type": "environment_blocker"
+}
