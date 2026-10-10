@@ -25,6 +25,16 @@ Ownership must not overlap with any concurrent writer. If it would overlap, stop
 
 - **Revision pinning mandatory**: All evidence must correspond to the exact `target_revision` (git SHA) under test. Stale evidence is invalid.
 - **Automated QA**: Run unit, integration, contract, e2e tests per QA Contract. Record exact commands and results.
+- **Integrated journey**: Execute the contract's uninterrupted real UI path from its reset state,
+  including navigation/auth transitions and actual post-auth route/state assertions. Use production
+  dependency wiring; no direct URL jumps between steps or injected client substitutes. Record
+  served revision, build/mode, environment, dedicated browser session, and each expected/observed
+  result per QA_GOVERNANCE.md. Automated success is not Human QA acceptance.
+- **Resource preflight**: Verify every API and database port belongs to the intended process,
+  isolate database fixtures and cleanup to the run (no shared whole-table teardown), and use a
+  dedicated browser context/tab. Serialize heavy analyzers/builds when resources are limited. Set
+  a bounded command timeout, record stall/environment causes, and stop owned stalled processes
+  before rerunning; do not kill foreign processes or silently substitute a different build mode.
 - **Visual QA**: Run perceptual/pixel diff against golden baselines per QA Contract thresholds. Record diffs and scores.
 - **Human QA**: Coordinate exploratory/usability/accessibility sessions per QA Contract charters. Document evidence.
 - **Deterministic evidence authority**: Test results are authoritative over reviewer opinion. Passing tests cannot be vetoed.

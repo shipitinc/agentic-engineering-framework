@@ -49,6 +49,17 @@ Every structured result **must** conform to this top-level envelope:
 }
 ```
 
+### Optional task telemetry
+
+Task timing and performance observations live in the append-only event store described in
+[TASK_METRICS.md](TASK_METRICS.md). An envelope may link them through
+`metadata.custom.task_metrics` with `run_id`, `task_id`, and `events_ref`; these are optional
+metadata, not new result/status tokens or admission requirements. Missing telemetry stays unknown
+and never blocks a gate. Keep total elapsed, explicitly observed active intervals, waiting, and
+unknown time distinct. Do not infer agent work time from commit timestamps or add parallel lane
+hours and call the sum delivery time. Record actual model, harness, framework revision, attempts,
+review/correction outcomes, and agent verification separately from Human QA outcomes.
+
 ### Result Types (Enum)
 
 | Result Type | Emitted By | Description |

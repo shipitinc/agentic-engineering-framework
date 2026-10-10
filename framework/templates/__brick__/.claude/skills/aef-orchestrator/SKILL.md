@@ -342,6 +342,13 @@ Every dispatch MUST tell the child which other lanes are running. Every returned
 `SAFE_PARALLEL_WORK` and `PROHIBITED_PARALLEL_WORK` (see the report template), so the Manager can
 schedule the next lanes without re-deriving what is blocked.
 
+File isolation is not runtime isolation. Before shared-environment validation, assign ownership
+for **all API and database ports**, verify the actual bindings, isolate database fixtures/teardown,
+and allocate a dedicated browser context/tab per lane. Serialize heavy analyzers/builds when
+capacity is limited. Declare bounded command timeouts; record stall reasons and clean up only
+owned processes. A fallback build/mode must satisfy the QA Contract and be disclosed in evidence;
+a timeout does not justify arbitrary retries or another review loop.
+
 ## 12. Cost-aware delegation policy
 
 - Delegation is **authorized explicitly by the Manager** and must be **bounded, independent work**
@@ -468,6 +475,33 @@ Write rules:
   session dies);
 - update `LANES.md` and `state.json` on every result, state change, and escalation;
 - **never** rely on in-memory-only state, and never rely on a tool-specific hook to save it.
+
+### Task metrics (observability, not a gate)
+
+Use `scripts/aef/task-metrics.py` and [TASK_METRICS.md](../../../docs/engineering/TASK_METRICS.md)
+to capture UTC events as work happens. The default append-only store is
+`docs/engineering/dispatch/metrics/events/`; pass `--store` explicitly for a different dispatch
+location. Assign one stable run id to the delivery and task ids to its lanes. The Manager records
+`run_start`/`run_stop`; each lane records `task_start`/`task_stop`, attempts, and observed outcomes.
+For example (replace identifiers with the dispatched values):
+
+```sh
+python3 scripts/aef/task-metrics.py event --run RUN --task TASK --type task_start
+python3 scripts/aef/task-metrics.py event --run RUN --task TASK --type wait_start --interval WAIT1 --reason environment
+python3 scripts/aef/task-metrics.py event --run RUN --task TASK --type wait_stop --interval WAIT1
+python3 scripts/aef/task-metrics.py event --run RUN --task TASK --type task_stop --outcome implemented
+python3 scripts/aef/task-metrics.py summary --run RUN --format json
+```
+
+Capture actual model/harness/framework revision and scope in `run_start` metadata; record a lane's
+actual differing execution context in `task_start` metadata too. Record `active_start`/`active_stop` only around intervals
+actually observed, with matching interval ids. Task duration does not imply active work. Record
+review, correction, failures, environment blockers, QA escapes, and agent verification vs Human QA
+outcomes with evidence refs, using the documented event vocabulary. Refresh a JSON/Markdown summary
+for comparison at handoff; record first Human QA failure and later acceptance as separate events.
+Do not infer missing timestamps or model identities, count absent observations as zero, or sum
+parallel elapsed durations as delivery time. Missing metrics/tooling stay unknown and do not block
+report admission, existing validations, or approvals. Telemetry grants no workflow authority.
 
 **Relationship to `STRUCTURED_RESULTS.md` rule 6.** That rule persists the **envelope JSON** in the
 product repository under `.results/` (or a configured location) for audit. This layout is a

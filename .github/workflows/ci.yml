@@ -28,17 +28,22 @@ jobs:
         with:
           sdk: '3.13.5'
 
+      - name: Set up Python for task metrics regression tests
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
       - name: Install dependencies
         run: dart pub get
 
       - name: Format check
-        run: dart format --output=none --set-exit-if-changed bin/ lib/ test/runner_test.dart test/exit_mapping_test.dart test/human_output_test.dart test/json_output_test.dart test/no_mutation_test.dart test/bootstrap_regression_test.dart test/manifest/
+        run: dart format --output=none --set-exit-if-changed bin/ lib/ test/runner_test.dart test/exit_mapping_test.dart test/human_output_test.dart test/json_output_test.dart test/no_mutation_test.dart test/bootstrap_regression_test.dart test/task_metrics_test.dart test/manifest/
 
       - name: Analyze
         run: dart analyze
 
       - name: Run tests (unit only)
-        run: dart test --timeout=120s test/runner_test.dart test/exit_mapping_test.dart test/human_output_test.dart test/json_output_test.dart test/no_mutation_test.dart test/bootstrap_regression_test.dart test/manifest/
+        run: dart test --timeout=120s test/runner_test.dart test/exit_mapping_test.dart test/human_output_test.dart test/json_output_test.dart test/no_mutation_test.dart test/bootstrap_regression_test.dart test/task_metrics_test.dart test/manifest/
 
       - name: Compile executable
         run: dart compile exe bin/framework.dart -o framework_cli

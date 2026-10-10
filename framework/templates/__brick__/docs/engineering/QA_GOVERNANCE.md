@@ -218,6 +218,29 @@ were formally determined skipped.
    initiation**. Human QA may not begin on a contract whose journey row is
    missing, still planned (`READY_NOT_EXECUTED`), or blocked.
 
+### Integrated journey evidence
+
+For a user-facing change, bind the existing journey row's `params` and `prerequisites` to:
+
+- The initial route, account/role, data fixtures, reset commands, and fresh signed-out browser
+  state when authentication is part of the journey. Disclose any fixture setup and its limits.
+- One uninterrupted sequence of actual UI actions from entry through navigation, sign-in when
+  applicable, and the final user-visible result. Assert the actual post-authentication route and
+  retained intended state (for example, the selected team or requested destination).
+- The integrated app's production dependency wiring and page lifecycle. Direct `page.goto`
+  jumps between journey steps, injected test clients, or bypassed auth transitions can support
+  focused tests but cannot stand in for this user journey. Opening the initial entry URL is valid.
+
+Evidence records each action, expected and observed result, failure point if any, exact served
+revision, build artifact/mode, environment/base URL, and dedicated browser context/tab identifier.
+Redact credentials and session secrets. Preserve a trace, recording, or equivalent step evidence
+so the next tester can reproduce the same path. A destination screenshot alone does not prove
+navigation worked. For non-UI changes, exercise the actual integrated entry point instead.
+
+An automated pass or agent verification closes only its corresponding checks; it is **not human
+acceptance**. Record Human QA's actual outcome separately, including when it has not occurred.
+These requirements refine the existing journey row; they add no lifecycle stage or approval.
+
 ---
 
 ## QA Execution Types

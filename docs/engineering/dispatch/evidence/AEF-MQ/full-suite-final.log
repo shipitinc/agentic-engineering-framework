@@ -1,0 +1,174 @@
+00:00 +0: loading test/bootstrap_integration_test.dart
+00:00 +0: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +1: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +2: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +3: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +4: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +5: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +6: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +7: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +8: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +9: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +10: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +11: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +12: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +13: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +14: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +15: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:00 +16: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:01 +17: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:01 +18: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:01 +19: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:01 +20: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:01 +21: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:01 +22: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +23: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +24: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +25: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +26: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +27: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +28: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +29: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +30: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +31: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +32: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +33: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +34: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +35: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +36: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +37: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +38: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +39: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +40: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +41: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +42: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +43: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +44: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +45: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +46: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +47: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +48: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +49: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +50: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +51: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +52: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +53: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +54: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +55: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +56: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +57: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +58: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +59: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +60: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +61: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +62: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +63: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +64: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +65: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +66: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +67: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +68: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +69: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +70: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +71: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +72: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +73: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +74: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +75: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +76: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +77: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +78: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +79: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +80: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +81: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +82: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:02 +83: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +84: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +85: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +86: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +87: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +88: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +89: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +90: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +91: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:03 +92: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +93: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +94: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +95: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +96: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +97: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +98: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +99: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +100: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +101: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +102: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +103: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:04 +104: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +105: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +106: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +107: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +108: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +109: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +110: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +111: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +112: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +113: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:05 +114: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +115: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +116: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +117: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +118: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +119: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +120: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +121: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +122: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +123: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +124: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +125: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +126: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +127: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +128: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:06 +129: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:07 +130: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:07 +131: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:07 +132: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:07 +133: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:07 +134: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:07 +135: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:08 +136: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:10 +137: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:11 +138: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:12 +139: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:13 +140: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:15 +141: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:15 +142: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:17 +143: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:18 +144: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:19 +145: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:19 +146: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT B: .git/** paths are NEVER in managed artifacts
+00:19 +147: test/task_metrics_test.dart: fresh CLI bootstrap ships usable metrics and guidance
+00:20 +148: test/task_metrics_test.dart: fresh CLI bootstrap ships usable metrics and guidance
+00:21 +149: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:21 +150: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:23 +151: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:25 +152: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:26 +153: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:28 +154: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:29 +155: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:32 +156: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT A: Pre-existing product files are preserved and NOT managed
+00:34 +157: test/upgrade_merge_test.dart: an upgrade whose every change is a one-sided upstream edit is not a no-op
+00:34 +158: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:37 +159: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:38 +160: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:40 +161: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:42 +162: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:43 +163: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:45 +164: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:45 +165: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:45 +166: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT C: Manifest records framework source revision, not product revision
+00:50 +167: test/bootstrap_integration_test.dart: bootstrap integration regression KNOWN DEFECT D: Template completeness - all governance files installed
+01:08 +168: test/bootstrap_integration_test.dart: bootstrap integration regression Re-run safety: bootstrap no-ops when manifest already exists
+01:41 +169: test/bootstrap_integration_test.dart: bootstrap integration regression Managed artifacts have baseline hashes (source_hash and install_hash)
+02:00 +170: test/bootstrap_integration_test.dart: bootstrap integration regression Framework source identity recorded in manifest
+02:20 +171: test/bootstrap_integration_test.dart: bootstrap integration regression Path safety: managed paths are normalized and safe
+02:40 +172: All tests passed!

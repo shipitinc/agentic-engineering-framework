@@ -241,6 +241,7 @@ void main() {
           'docs/engineering/DESIGN_GOVERNANCE.md',
           'docs/engineering/DEPLOYMENT_GOVERNANCE.md',
           'docs/engineering/HUMAN_DECISIONS.md',
+          'docs/engineering/TASK_METRICS.md',
           'docs/engineering/adr/0001-framework-distribution-and-versioning.md',
           'docs/engineering/adr/0002-dart-mason-git-framework-driver.md',
           'docs/engineering/adr/0003-product-generic-orchestrator-skill.md',
@@ -274,6 +275,7 @@ void main() {
           'scripts/aef/load-task-state.sh',
           'scripts/aef/save-task-state.sh',
           'scripts/aef/validate-report.sh',
+          'scripts/aef/task-metrics.py',
           // Generated platform adapters — never hand-edited; rendered from the
           // canonical `.agents/` artifacts by
           // cli/tool/generate_platform_adapters.dart. `.opencode/skills/` is
@@ -314,7 +316,7 @@ void main() {
           ],
         ];
 
-        expect(expectedPaths, hasLength(99));
+        expect(expectedPaths, hasLength(101));
 
         for (final expectedPath in expectedPaths) {
           expect(

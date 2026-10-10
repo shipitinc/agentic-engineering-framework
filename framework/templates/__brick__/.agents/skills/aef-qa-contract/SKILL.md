@@ -34,6 +34,9 @@ work must be serialized or re-partitioned (AGENTS.md concurrency invariant).
   integrated/deployed build at the pinned `target_revision`. The row must reach `EXECUTED` — or
   carry a formal `SKIPPED` determination with `authority_ref` — **before Human QA initiation**.
   A contract lacking the journey row fails validation; the reviewer/verifier rejects it.
+  For user-facing work, bind its reset prerequisites and uninterrupted UI actions (including
+  navigation/auth and post-auth route/state assertions) per QA_GOVERNANCE.md § Integrated journey
+  evidence. Exercise production dependency wiring; disclose fixture setup and expected results.
 
 ## 3. Report exact HEAD / provenance
 

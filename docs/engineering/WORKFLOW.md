@@ -155,6 +155,9 @@ These rules are authoritative wherever `AUTO`, `GATE`, and `HUMAN_DECISION_REQUI
 27. **Automated QA Execution** `GATE`
     QA Executor runs: unit, integration, contract, e2e tests per QA Contract.
     Deterministic evidence is authoritative over reviewer opinion.
+    The required integrated journey follows actual user actions through navigation and auth,
+    using the production dependency wiring; capture its revision, build, environment, and steps
+    per [QA_GOVERNANCE.md](QA_GOVERNANCE.md). Agent verification does not grant human acceptance.
 
 28. **Visual QA Execution** `GATE`
     QA Executor runs visual regression against golden baselines.

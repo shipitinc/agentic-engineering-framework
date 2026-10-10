@@ -1,0 +1,24 @@
+{
+  "at": "2026-10-10T02:53:59.485624Z",
+  "event_id": "58ad014c6c3f4f7cb8c2bd11dea6b034",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "manager",
+  "metadata": {
+    "framework_revision": "a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb",
+    "harness": "Python subprocess",
+    "model": null,
+    "scope": "synthetic integrated QA"
+  },
+  "outcome": null,
+  "reason": null,
+  "recorded_at": "2026-10-10T02:53:59.485638Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "manager",
+  "type": "run_start"
+}

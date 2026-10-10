@@ -1,0 +1,19 @@
+{
+  "at": "2026-10-10T02:54:05.111920Z",
+  "event_id": "bd03b6f2df7d44d5a41eb5ab6feba6e3",
+  "git": {
+    "branch": "master",
+    "head": "7a3e32594b36354d1d859b72cfd7840e8afc1feb"
+  },
+  "interval_id": null,
+  "lane_id": "human",
+  "metadata": {},
+  "outcome": null,
+  "reason": "IMPLEMENTATION_DEFECT",
+  "recorded_at": "2026-10-10T02:54:05.111930Z",
+  "ref": "synthetic-evidence.md",
+  "run_id": "SYNTHETIC",
+  "schema_version": 1,
+  "task_id": "human",
+  "type": "qa_escape"
+}

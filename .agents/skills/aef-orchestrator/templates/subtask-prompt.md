@@ -42,6 +42,25 @@ git rev-parse HEAD           # must equal BASE_SHA
 If either check fails, STOP and report `IMPLEMENTATION_BLOCKED` (or the applicable blocked result)
 with the observed values. Do not write anything.
 
+## Task metrics context (optional; never an admission gate)
+
+```yaml
+METRICS_RUN_ID: <stable delivery/run id, or unknown>
+METRICS_TASK_ID: <TASK_ID>
+METRICS_STORE: docs/engineering/dispatch/metrics/events/
+HARNESS_USED: <actual harness/version, or unknown>
+FRAMEWORK_REVISION: <installed framework revision, or unknown>
+```
+
+When supported, record `task_start` and `task_stop` using
+`python3 scripts/aef/task-metrics.py event --run RUN --task TASK --type TYPE`.
+Supply `--outcome` on `task_stop` and other outcome events. Record actual model/harness in
+`task_start --metadata` JSON. Record attempts, paired active/wait intervals, reasons, and outcomes; use
+[TASK_METRICS.md](../../../../docs/engineering/TASK_METRICS.md) for the event schema and options.
+The Manager supplies a shared writable event store or collects lane event files at handoff so
+isolated worktrees retain distinct, durable observations. Missing tooling/data is unknown, not a
+blocker. Do not derive working time from commit times or fabricate an earlier start timestamp.
+
 ## Original request (verbatim)
 
 Paste the request, bug report, or work-item text exactly as received. Do not summarize it away — if

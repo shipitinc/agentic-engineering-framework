@@ -9,6 +9,7 @@ framework depends on these adapters existing or being wired.
 | Script | Purpose |
 |--------|---------|
 | `validate-report.sh` | Mechanical admission check for a lane `report.md` before the Manager acts on it. **The one script here that is part of the shipped policy**: the orchestrator skill calls it (or its equivalent checks) before consuming a lane result. Fails closed: non-zero exit plus a named `VIOLATION:` per defect. |
+| `task-metrics.py` | Optional offline task/run events and JSON/Markdown duration, rework, and QA summaries. Python 3.9+ standard library; no lifecycle authority. See [TASK_METRICS.md](../../docs/engineering/TASK_METRICS.md). |
 | `save-task-state.sh` | Reads a Devin-shaped `todo_write` hook JSON event from stdin and persists it to `$AEF_STATE_DIR/task-state.md` (`# Pending Tasks` / `# Completed Tasks`), preserving `active-worktrees.md` when present. Always exits 0. |
 | `load-task-state.sh` | Session-start adapter: emits the persisted task state back as hook context so in-flight work survives crash/compaction. Always exits 0. |
 | `check-task-state.sh` | Stop-style adapter: reports unreconciled in-progress tasks so the task list is accurate before the session ends. Always exits 0. |
@@ -30,3 +31,5 @@ state, not from these scripts.
 
 Run any script with `sh scripts/aef/<name>.sh` — no executable bit or build
 step is required.
+
+Run metrics with `python3 scripts/aef/task-metrics.py --help`; the `sh` invocation above applies only to `.sh` adapters.

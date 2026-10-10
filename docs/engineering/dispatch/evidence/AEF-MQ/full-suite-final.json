@@ -1,0 +1,8 @@
+{
+  "command": "dart test --reporter expanded",
+  "target_revision": "2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9",
+  "started_at": "2026-10-10T02:59:04.231996+00:00",
+  "ended_at": "2026-10-10T03:01:48.185397+00:00",
+  "exit_code": 0,
+  "log": "full-suite-final.log"
+}

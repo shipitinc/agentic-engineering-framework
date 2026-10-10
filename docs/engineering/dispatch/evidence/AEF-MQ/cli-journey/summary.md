@@ -1,0 +1,88 @@
+# AEF task metrics
+
+Run: `SYNTHETIC`
+
+| Metric | Seconds |
+|---|---:|
+| elapsed_seconds | 5.911103963851929 |
+| active_union_seconds | 0.8912761211395264 |
+| lane_effort_seconds | 1.422863245010376 |
+| waiting_union_seconds | 0.22898292541503906 |
+| unknown_seconds | 4.930343866348267 |
+
+## Machine-readable details
+
+```json
+{
+  "active_union_seconds": 0.8912761211395264,
+  "elapsed_seconds": 5.911103963851929,
+  "event_count": 22,
+  "interpretation": "Observed events only. Zero counts do not prove absence. Active intervals are not CPU/token time. AI verification is not human acceptance.",
+  "lane_effort_seconds": 1.422863245010376,
+  "metadata": {
+    "run:SYNTHETIC": {
+      "framework_revision": "a7e1aa31d3e6da4d4ee5d3045ba6f45e1dfa99eb",
+      "harness": "Python subprocess",
+      "model": null,
+      "parent_task": null,
+      "scope": "synthetic integrated QA"
+    },
+    "task:A": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    },
+    "task:B": {
+      "framework_revision": null,
+      "harness": null,
+      "model": null,
+      "parent_task": "manager",
+      "scope": "synthetic lane"
+    }
+  },
+  "observed_counts": {
+    "ai_verification": 1,
+    "attempt": 1,
+    "build_failure": 0,
+    "correction": 1,
+    "environment_blocker": 1,
+    "human_qa": 1,
+    "qa_escape": 1,
+    "review": 1,
+    "test_failure": 1
+  },
+  "observed_outcomes": {
+    "ai_verification": {
+      "pass": 1
+    },
+    "human_qa": {
+      "fail": 1
+    },
+    "review": {
+      "approved": 1
+    }
+  },
+  "open_intervals": [],
+  "run_id": "SYNTHETIC",
+  "run_outcome": "synthetic_qa_complete",
+  "schema_version": 1,
+  "task_elapsed_seconds": {
+    "A": 5.117940187454224,
+    "B": 1.8466920852661133
+  },
+  "task_outcomes": {
+    "A": "implemented",
+    "B": "implemented"
+  },
+  "unknown_seconds": 4.930343866348267,
+  "waiting_by_reason_seconds": {
+    "environment": 0.22898292541503906
+  },
+  "waiting_union_seconds": 0.22898292541503906,
+  "warnings": [
+    "Metadata varies across tasks; do not treat this as a controlled comparison."
+  ]
+}
+```

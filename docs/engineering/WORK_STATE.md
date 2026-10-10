@@ -761,3 +761,31 @@ work items, disjoint ownership, each through the full independent-review loop.
   `scripts/aef/README.md`); `Platform.script` under `dart test` is a kernel dill (encoded in
   `bootstrap_integration_test.dart` helper); `LEARNINGS.md` does not exist — X1–X3 closures
   were recorded in this file in place.
+
+## Task metrics and real journey evidence — 2026-10-10
+
+User-authorized update implemented on `feat/aef-task-metrics-journey`; source candidate
+`2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9`. Canonical guidance requires actual integrated
+navigation/auth transitions and runtime resource isolation. Optional Python event recorder
+ships with deterministic JSON/Markdown summaries for elapsed/observed-active/wait/unknown time,
+attempts, correction/review outcomes, failures and separate agent/Human QA observations.
+It adds no approval gate and makes no model-speed or causal framework-performance claim.
+
+Independent source review and focused correction/release review approved. Frozen contract
+`5f42f832-c170-47cf-bdb7-c1d7237ce503`; final complete suite passed172/172 at the exact source
+candidate, analyzer clean,138 generated adapters in sync. Actual CLI bootstrap/upgrade
+verified new-file delivery and preservation of22 synthetic fixture events; normal installation
+passed with integrity checking enabled. Evidence lives under `dispatch/evidence/AEF-MQ/`.
+The registered embedded brick source is `68c2d8a70edf21dcbc7093c4dedb649769d3e56f`,
+whose template tree is unchanged at the final CLI candidate.
+
+**External blocker: publication.** Git push lacks local credentials; GitHub connector tree creation
+returned403 `Resource not accessible by integration`. No remote branch, PR, merge or TeamHub
+change was made. Request GitHub plugin write access to `shipitinc/agentic-engineering-framework`
+(Contents and Pull requests), then publish the reviewed branch. If API publication rewrites commit
+IDs, register the resulting remote template-source SHA before claiming a distributable release;
+preserve the recorded content hash and exact source-tree/evidence relationship. Git-native push
+of the saved branch preserves existing SHAs. This is access recovery, not a new product approval.
+
+Manager self-edits: dispatch prompts/reports, contract freeze, lane state, this work-state entry,
+final QA command log and normalized orchestration result only. Production changes were delegated.

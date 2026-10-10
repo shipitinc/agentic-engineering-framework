@@ -193,6 +193,25 @@ ESCALATION_REASON: <why, or n/a>
 Routing is replaceable execution policy, not workflow authority: this block is observability, not a
 gate. It never changes which validations or approvals apply.
 
+## Task metrics (optional observability)
+
+```yaml
+METRICS_RUN_ID: <run id, or unknown>
+METRICS_TASK_ID: <task id>
+METRICS_EVENTS_REF: <event directory/files, or unknown>
+OBSERVED_STARTED_AT: <UTC timestamp, or unknown>
+OBSERVED_ENDED_AT: <UTC timestamp, or unknown>
+HARNESS_USED: <actual harness/version, or unknown>
+FRAMEWORK_REVISION: <installed framework revision, or unknown>
+```
+
+Link events/summary per `docs/engineering/TASK_METRICS.md` for attempts, paired active/wait
+intervals and reasons, review/correction outcomes, failures, QA escapes, agent verification, and
+actual Human QA outcomes. Missing values are unknown, not zero or a reason to reject the report.
+Keep elapsed duration distinct from observed active time; do not invent session starts from git
+history. `MODEL_USED` above records the actual model, not a requested routing-class assumption.
+Telemetry neither changes `RESULT:` nor substitutes for revision-pinned QA evidence or human acceptance.
+
 ## Unresolved issues and blockers
 
 - <anything preventing completion, integration, or merge>
