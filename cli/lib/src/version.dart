@@ -11,4 +11,4 @@ const String frameworkCliVersion = '0.1.0';
 /// authoritative revision for provenance and brick integrity validation.
 /// Updated during release process.
 const String frameworkEmbeddedRevision =
-    '68c2d8a70edf21dcbc7093c4dedb649769d3e56f';
+    'a1e082c96f337a31053bc73696c417298aa34bef';

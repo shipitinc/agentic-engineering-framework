@@ -779,7 +779,7 @@ passed with integrity checking enabled. Evidence lives under `dispatch/evidence/
 The registered embedded brick source is `68c2d8a70edf21dcbc7093c4dedb649769d3e56f`,
 whose template tree is unchanged at the final CLI candidate.
 
-**External blocker: publication.** Git push lacks local credentials; GitHub connector tree creation
+**Initial publication blocker (resolved on retry below).** Git push lacks local credentials; GitHub connector tree creation
 returned403 `Resource not accessible by integration`. No remote branch, PR, merge or TeamHub
 change was made. Request GitHub plugin write access to `shipitinc/agentic-engineering-framework`
 (Contents and Pull requests), then publish the reviewed branch. If API publication rewrites commit
@@ -789,3 +789,17 @@ of the saved branch preserves existing SHAs. This is access recovery, not a new 
 
 Manager self-edits: dispatch prompts/reports, contract freeze, lane state, this work-state entry,
 final QA command log and normalized orchestration result only. Production changes were delegated.
+
+### Publication access restored — 2026-10-10
+
+User requested retry after permission update. GitHub connector writes now succeed. Published
+source snapshot `a1e082c96f337a31053bc73696c417298aa34bef` has tree
+`57f484a79ecb9c873fb2b11fa6a5b29abc6b8369`, exactly identical to reviewed local `4a9d0ed`.
+The review branch is `feat/aef-task-metrics-journey`; main remains unchanged.
+The CLI now embeds the reachable published source SHA and registers its unchanged brick hash.
+Independent focused review approved local correction `3a089565a9aad8c81bff71cd17b03d0018790362`;
+normal integrity-enabled bootstrap passed with101 artifacts and the published manifest pin.
+Prior172-test evidence applies to unchanged implementation; this follow-up changes only two
+release revision literals plus workflow/evidence records. No integrity policy was weakened.
+Reports and manifest are in `dispatch/tasks/AEF-MQ-PUBLISH-{PIN,REVIEW}/`. Submission is for
+review; no merge or TeamHub upgrade has been performed.

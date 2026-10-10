@@ -68,3 +68,8 @@ normal integrity-enabled install and both upgrades pass. Independent review appr
 CWD/packaging corrections and release registration. QA architect and executor were distinct.
 Publication blocked only by GitHub integration write access (403); user permission update needed.
 No new mandatory approval, no remote changes, no TeamHub upgrade performed.
+
+Publication retry: GitHub access restored; source snapshota1e082c published to feat/aef-task-metrics-journey,
+matching local4a9d0ed tree exactly. AEF-MQ-PUBLISH-PIN implemented two SHA replacements;
+AEF-MQ-PUBLISH-REVIEW approved exact3a08956. Normal bootstrap verifies reachable source pin without
+test mode. Prior GitHub403 blocker resolved. Main and TeamHub unchanged; draft review submission follows.

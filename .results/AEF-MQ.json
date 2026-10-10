@@ -1,6 +1,6 @@
 {
   "result_type": "ORCHESTRATION_RESULT",
-  "status": "BLOCKED",
+  "status": "COMPLETE",
   "schema_version": "1.0",
   "provenance": {
     "agent_id": "root",
@@ -9,12 +9,12 @@
     "work_item_type": "FEATURE",
     "branch": "feat/aef-task-metrics-journey",
     "base_sha": "c1476185dd3c9bcd3ba7113c0bcdd6a78c694cdc",
-    "head_sha": "2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9",
-    "timestamp": "2026-10-10T03:02:41.893465+00:00"
+    "head_sha": "b804edb",
+    "timestamp": "2026-10-10T03:13:58.244692+00:00"
   },
   "payload": {
     "work_item_id": "AEF-MQ",
-    "final_state": "Implementation and QA complete; GitHub publication blocked",
+    "final_state": "Implemented, validated and published for review; not merged",
     "lanes_dispatched": [
       {
         "task_id": "AEF-JOURNEY",
@@ -125,6 +125,28 @@
         "head_sha": "fdf5e3c534befbd69fd9ec4b705b375016b175b0",
         "result_ref": "docs/engineering/dispatch/tasks/AEF-MQ-REVIEW/report.md",
         "verdict": "COMPLETE"
+      },
+      {
+        "task_id": "AEF-MQ-PUBLISH-PIN",
+        "task_type": "implement",
+        "routing_class": "STANDARD",
+        "worktree": "/workspace/scratch/2c5d5034fecb/aef-publish",
+        "branch": "feat/published-metrics-release",
+        "base_sha": "4a9d0ed93675eeb2209cd0eab077e46dd51220cd",
+        "head_sha": "3a089565a9aad8c81bff71cd17b03d0018790362",
+        "result_ref": "docs/engineering/dispatch/tasks/AEF-MQ-PUBLISH-PIN/report.md",
+        "verdict": "COMPLETE"
+      },
+      {
+        "task_id": "AEF-MQ-PUBLISH-REVIEW",
+        "task_type": "review",
+        "routing_class": "STANDARD",
+        "worktree": "/workspace/scratch/2c5d5034fecb/aef-publish",
+        "branch": "feat/published-metrics-release",
+        "base_sha": "4a9d0ed",
+        "head_sha": "3a089565a9aad8c81bff71cd17b03d0018790362",
+        "result_ref": "docs/engineering/dispatch/tasks/AEF-MQ-PUBLISH-REVIEW/report.md",
+        "verdict": "COMPLETE"
       }
     ],
     "gates": {
@@ -141,12 +163,7 @@
       "final QA command evidence",
       "orchestration envelope"
     ],
-    "blockers": [
-      {
-        "type": "GitHub integration write access",
-        "escalation_path": "STOP"
-      }
-    ],
+    "blockers": [],
     "open_decision_ids": [],
     "conventions": {
       "declared_in": "docs/engineering/dispatch/LANES.md",
@@ -169,21 +186,15 @@
       "docs/engineering/dispatch/tasks/AEF-MQ-QA/report.md",
       "docs/engineering/dispatch/tasks/AEF-MQ-RELEASE/report.md",
       "docs/engineering/dispatch/tasks/AEF-MQ-RELEASE-REVIEW/report.md",
-      "docs/engineering/dispatch/tasks/AEF-MQ-REVIEW/report.md"
+      "docs/engineering/dispatch/tasks/AEF-MQ-REVIEW/report.md",
+      "docs/engineering/dispatch/tasks/AEF-MQ-PUBLISH-PIN/report.md",
+      "docs/engineering/dispatch/tasks/AEF-MQ-PUBLISH-REVIEW/report.md"
     ],
     "lanes_ledger": "docs/engineering/dispatch/LANES.md",
     "qa_result": "docs/engineering/dispatch/evidence/AEF-MQ/qa-result.md",
     "test_result": "docs/engineering/dispatch/evidence/AEF-MQ/full-suite-final.json"
   },
-  "blockers": [
-    {
-      "blocker_id": "GITHUB_WRITE_ACCESS",
-      "type": "OTHER",
-      "description": "GitHub tree creation returned403 Resource not accessible by integration; no publication performed.",
-      "related_artifact_ids": [],
-      "escalation_path": "User updates GitHub plugin repository write permissions"
-    }
-  ],
+  "blockers": [],
   "next_actions": [
     "PARK"
   ],
@@ -191,8 +202,12 @@
     "custom": {
       "active_duration_seconds": null,
       "model_used": null,
-      "publication": "not performed",
-      "teamhub_upgrade": "not performed"
+      "publication": "review branch published; draft PR submission",
+      "teamhub_upgrade": "not performed",
+      "published_source_sha": "a1e082c96f337a31053bc73696c417298aa34bef",
+      "published_source_tree": "57f484a79ecb9c873fb2b11fa6a5b29abc6b8369",
+      "full_suite_target": "2a0720eb8f99ec47a0b2e55f6a65fb1a47396cc9",
+      "release_pin_reviewed_head": "3a089565a9aad8c81bff71cd17b03d0018790362"
     }
   }
 }
